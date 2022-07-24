@@ -1,0 +1,40 @@
+{
+	"name": "schnosebot",
+	"version": "1.0.0",
+	"description": "discord.js bot for CS:GO KZ commands",
+	"main": "./dist/bot.js",
+	"scripts": {
+		"test": "hi mom",
+		"build": "tsc",
+		"watch": "tsc -w",
+		"start": "node ./dist/bot.js"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/AlphaKeks/SchnoseBot.git"
+	},
+	"keywords": [
+		"discord.js",
+		"csgo",
+		"kz",
+		"kreedz",
+		"schnose"
+	],
+	"author": "AlphaKeks",
+	"license": "GPL-3.0",
+	"bugs": {
+		"url": "https://github.com/AlphaKeks/SchnoseBot/issues"
+	},
+	"homepage": "https://github.com/AlphaKeks/SchnoseBot#readme",
+	"devDependencies": {
+		"@types/node": "^18.0.6",
+		"@typescript-eslint/eslint-plugin": "^5.30.7",
+		"@typescript-eslint/parser": "^5.30.7",
+		"eslint": "^8.20.0",
+		"typescript": "^4.7.4"
+	},
+	"dependencies": {
+		"discord.js": "^14.0.3",
+		"dotenv": "^16.0.1"
+	}
+}
