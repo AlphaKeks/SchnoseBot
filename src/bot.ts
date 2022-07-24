@@ -1,7 +1,9 @@
 import { Client } from "discord.js";
+import { eventHandler } from "./handlers/eventHandler";
 import "dotenv/config";
 
 const schnose = new Client({ intents: 34576 });
+eventHandler(schnose);
 
 async function main(bot: Client, token: string) {
 	bot
