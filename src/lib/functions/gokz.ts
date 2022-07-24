@@ -29,7 +29,7 @@ export async function verifyMap(
 ): Promise<{ success: boolean; data?: KZMap; error?: any }> {
 	let response: response = { success: false };
 	mapList.forEach((map) => {
-		if (map.name.includes(mapName))
+		if (map.name.includes(mapName.toLowerCase()))
 			return (response = { success: true, data: map });
 	});
 	if (response.success) return response;
