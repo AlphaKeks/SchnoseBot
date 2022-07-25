@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from "@discordjs/builders";
+import { SlashCommandBuilder } from "discord.js";
 import axios from "axios";
 import { EmbedBuilder } from "discord.js";
 import { CommandInteraction } from "discord.js";

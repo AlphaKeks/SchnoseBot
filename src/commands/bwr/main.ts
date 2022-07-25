@@ -1,5 +1,6 @@
 import { SlashCommandBuilder } from "discord.js";
 import { CommandInteraction } from "discord.js";
+import { EmbedBuilder } from "discord.js";
 import { reply } from "../../lib/functions/discord";
 import * as g from "../../lib/functions/gokz";
 import { timeString } from "../../lib/functions/util";
@@ -7,7 +8,6 @@ import modeMap from "../../lib/types/gokz";
 import userSchema from "../../lib/schemas/user";
 import "dotenv/config";
 import { apiCall } from "./api";
-import { EmbedBuilder } from "@discordjs/builders";
 
 module.exports = {
 	data: new SlashCommandBuilder()

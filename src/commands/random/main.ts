@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from "@discordjs/builders";
+import { SlashCommandBuilder } from "discord.js";
 import { CommandInteraction } from "discord.js";
 import { reply } from "../../lib/functions/discord";
 import { KZMap } from "../../lib/types/gokz";
