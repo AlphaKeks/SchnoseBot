@@ -63,6 +63,11 @@ module.exports = {
 			.setColor([116, 128, 194])
 			.setTitle(`[WR] ${map.data!.name}`)
 			.setURL(`https://kzgo.eu/maps/${map.data!.name}`)
+			.setThumbnail(
+				`https://raw.githubusercontent.com/KZGlobalTeam/map-images/master/images/${
+					map.data!.name
+				}.jpg`
+			)
 			.setDescription(`Mode: ${modeMap.get(mode)}`)
 			.addFields(
 				{
