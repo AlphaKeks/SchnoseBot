@@ -2,16 +2,15 @@ import { SlashCommandBuilder } from "discord.js";
 import { CommandInteraction } from "discord.js";
 import { EmbedBuilder } from "discord.js";
 import { reply } from "../../lib/functions/discord";
-import * as g from "../../lib/functions/gokz";
 import { timeString } from "../../lib/functions/util";
+import * as g from "../../lib/functions/gokz";
 import modeMap from "../../lib/types/gokz";
-import "dotenv/config";
 import { apiCall } from "./api";
 
 module.exports = {
 	data: new SlashCommandBuilder()
-		.setName("bwr")
-		.setDescription("Check the World Record on a bonus.")
+		.setName("bpb")
+		.setDescription("Check a player's PB on a bonus.")
 		.addStringOption((o) =>
 			o.setName("map").setDescription("Choose a map.").setRequired(true)
 		)
@@ -27,14 +26,18 @@ module.exports = {
 				.addChoices({ name: "SKZ", value: "kz_simple" })
 				.addChoices({ name: "VNL", value: "kz_vanilla" })
 				.addChoices({ name: "ALL", value: "none" })
+		)
+		.addStringOption((o) =>
+			o.setName("target").setDescription("Specify a player.")
 		),
 
 	async execute(interaction: CommandInteraction) {
 		interaction.deferReply();
 
-		const input_map = interaction.options.get("map")!.value!.toString()!;
+		const input_map = interaction.options.get("map")!.value!.toString();
 		const input_course = interaction.options.get("course")?.value || 1;
 		const input_mode = interaction.options.get("mode")?.value || null;
+		const input_target = interaction.options.get("target")?.value || null;
 
 		// verify map
 		const map = await g.verifyMap(input_map);
@@ -51,18 +54,28 @@ module.exports = {
 		);
 		if (!mode.success) return reply(interaction, { content: mode.error });
 
+		// verify target
+		const target = await g.verifyTarget(
+			interaction,
+			input_target?.toString() || null
+		);
+		if (!target.success) return reply(interaction, { content: target.error });
+
 		// execute api call
 		const request = await apiCall(
 			map.data!,
 			mode.data!,
-			input_course as number
+			input_course as number,
+			target as { success: true; data: { type: string; value: string } }
 		);
 
-		// reply to the user
+		// reply  to the user
+		const playerName = await g.playerSteamID(target.data!.value);
+
 		const embed = new EmbedBuilder()
 			.setColor([116, 128, 194])
-			.setTitle(`[BWR ${input_course}] ${map.data!.name}`)
-			.setURL(`https://kzgo.eu/maps/${map.data!.name}?bonus=${input_course}`)
+			.setTitle(`[PB] ${playerName.data?.name} on ${map.data!.name}`)
+			.setURL(`https://kzgo.eu/maps/${map.data!.name}`)
 			.setThumbnail(
 				`https://raw.githubusercontent.com/KZGlobalTeam/map-images/master/images/${
 					map.data!.name
@@ -73,15 +86,15 @@ module.exports = {
 				{
 					name: "TP",
 					value: `${
-						request.TP?.data?.time ? timeString(request.TP.data.time) : ""
-					}\n (${request.TP?.data?.player_name || ""})`,
+						request.TP?.data?.time ? timeString(request.TP.data.time) : "none"
+					}`,
 					inline: true,
 				},
 				{
 					name: "PRO",
 					value: `${
-						request.PRO?.data?.time ? timeString(request.PRO.data.time) : ""
-					}\n (${request.PRO?.data?.player_name || ""})`,
+						request.PRO?.data?.time ? timeString(request.PRO.data.time) : "none"
+					}`,
 					inline: true,
 				}
 			)
