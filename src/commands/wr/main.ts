@@ -5,7 +5,6 @@ import { reply } from "../../lib/functions/discord";
 import * as g from "../../lib/functions/gokz";
 import { timeString } from "../../lib/functions/util";
 import modeMap from "../../lib/types/gokz";
-import userSchema from "../../lib/schemas/user";
 import "dotenv/config";
 import { apiCall } from "./api";
 
@@ -34,29 +33,18 @@ module.exports = {
 		const input_mode = interaction.options.get("mode")?.value || null;
 
 		// verify map
-		const globalMaps = await g.getMapsAPI();
-		if (!globalMaps.success)
-			return reply(interaction, { content: globalMaps.error });
-
-		const map = await g.verifyMap(globalMaps.data!, input_map);
+		const map = await g.verifyMap(input_map);
 		if (!map.success) return reply(interaction, { content: map.error });
 
 		// verify mode
-		let mode = "";
-		if (input_mode) {
-			mode = input_mode.toString();
-		} else {
-			const userDB = await userSchema.find({ discordID: interaction.user.id });
-			if (!userDB[0]?.mode) mode = "none";
-			else mode = userDB[0].mode;
-		}
-		if (mode === ("none" || null))
-			return reply(interaction, {
-				content: "Please specify a mode or set a default one with `/mode`.",
-			});
+		const mode = await g.verifyMode(
+			interaction,
+			input_mode?.toString() || null
+		);
+		if (!mode.success) return reply(interaction, { content: mode.error });
 
 		// execute api call
-		const request = await apiCall(map.data!, mode);
+		const request = await apiCall(map.data!, mode.data!);
 
 		// reply to the user
 		const embed = new EmbedBuilder()
@@ -68,7 +56,7 @@ module.exports = {
 					map.data!.name
 				}.jpg`
 			)
-			.setDescription(`Mode: ${modeMap.get(mode)}`)
+			.setDescription(`Mode: ${modeMap.get(mode.data)}`)
 			.addFields(
 				{
 					name: "TP",
