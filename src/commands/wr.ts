@@ -43,7 +43,7 @@ module.exports = {
 		if (!globalMaps.success)
 			return reply(interaction, { content: globalMaps.error });
 
-		const mapValidation = await validateMap(inputMap, globalMaps.data);
+		const mapValidation = await validateMap(inputMap, globalMaps.data!);
 		if (!mapValidation.success)
 			return reply(interaction, { content: mapValidation.error });
 
@@ -60,16 +60,16 @@ module.exports = {
 		}
 
 		const req = await Promise.all([
-			await getWR(mapValidation.data.name, 0, mode, true),
-			await getWR(mapValidation.data.name, 0, mode, false),
+			await getWR(mapValidation.data!.name, 0, mode, true),
+			await getWR(mapValidation.data!.name, 0, mode, false),
 		]);
 
 		const embed = new EmbedBuilder()
 			.setColor([116, 128, 194])
-			.setTitle(`[WR] - ${mapValidation.data.name}`)
-			.setURL(`https://kzgo.eu/maps/${mapValidation.data.name}`)
+			.setTitle(`[WR] - ${mapValidation.data!.name}`)
+			.setURL(`https://kzgo.eu/maps/${mapValidation.data!.name}`)
 			.setThumbnail(
-				`https://raw.githubusercontent.com/KZGlobalTeam/map-images/master/images/${mapValidation.data.name}.jpg`
+				`https://raw.githubusercontent.com/KZGlobalTeam/map-images/master/images/${mapValidation.data!.name}.jpg`
 			)
 			.addFields([
 				{

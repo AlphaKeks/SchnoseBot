@@ -22,8 +22,10 @@ export async function validateTarget(
 	} else {
 		if (input.startsWith("<@") && input.endsWith(">"))
 			res.data = { type: "mention" };
-		else if (/STEAM_[0-1]:[0-1]:[0-9]+/.test(input))
-			res.data = { type: "steamID" };
+		else if (/STEAM_[0-1]:[0-1]:[0-9]+/.test(input)) {
+
+			res.data = { type: "steamID", value: input };
+		}
 		else res.data = { type: "name" };
 	}
 
@@ -48,15 +50,15 @@ export async function validateTarget(
 		}
 		case "name": {
 			const player = await getPlayer(input!);
-			console.log(player);
 			if (!player.success) res.error = player.error;
 			else {
 				res.success = true;
-				res.data.value = player.data.steam_id;
+				res.data.value = player.data!.steam_id;
 			}
 			break;
 		}
 		case "steamID":
+			res.success = true
 			break;
 	}
 	return res;

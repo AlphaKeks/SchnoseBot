@@ -26,7 +26,7 @@ module.exports = {
 					.create({
 						name: interaction.user.username,
 						discordID: interaction.user.id,
-						steamID: player.data.steam_id,
+						steamID: player.data!.steam_id,
 						mode: null,
 					})
 					.then(() => {
@@ -41,7 +41,7 @@ module.exports = {
 			} else {
 				await userSchema.findOneAndUpdate(
 					{ discordID: interaction.user.id },
-					{ steamID: player.data.steam_id }
+					{ steamID: player.data!.steam_id }
 				);
 				reply(interaction, {
 					content: `Successfully updated steamID for ${player.data?.name}.`,

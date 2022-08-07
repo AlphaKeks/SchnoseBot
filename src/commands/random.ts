@@ -1,5 +1,6 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction } from "discord.js";
 import { getMaps } from "gokz.js";
+import { Map } from "gokz.js/lib/types";
 import { reply } from "../lib/functions/discord";
 
 module.exports = {
@@ -28,12 +29,10 @@ module.exports = {
 		if (!globalMaps.success)
 			return reply(interaction, { content: globalMaps.error });
 
-		// TODO: remove `any` and add type definitions
-		const maps: any[] = [];
+		const maps: Map[] = [];
 
 		if (tier) {
-			// TODO: remove `any` and add type definitions
-			globalMaps.data!.forEach((x: any) => {
+			globalMaps.data!.forEach((x: Map) => {
 				if (x.difficulty === tier) maps.push(x);
 			});
 

@@ -15,7 +15,7 @@ module.exports = {
 		.setName("pb")
 		.setDescription("Check a player's personal best on a map.")
 		.addStringOption((o) =>
-			o.setName("mapname").setDescription("Specify a map.").setRequired(true)
+			o.setName("map").setDescription("Specify a map.").setRequired(true)
 		)
 		.addStringOption((o) =>
 			o.setName("mode").setDescription("Specify a mode.").setChoices(
@@ -40,7 +40,7 @@ module.exports = {
 	async execute(interaction: ChatInputCommandInteraction) {
 		interaction.deferReply();
 
-		const inputMap = interaction.options.getString("mapname")!;
+		const inputMap = interaction.options.getString("map")!;
 		const inputMode = interaction.options.getString("mode") || null;
 		const inputTarget = interaction.options.getString("target") || null;
 
@@ -48,7 +48,7 @@ module.exports = {
 		if (!globalMaps.success)
 			return reply(interaction, { content: globalMaps.error });
 
-		const mapValidation = await validateMap(inputMap, globalMaps.data);
+		const mapValidation = await validateMap(inputMap, globalMaps.data!);
 		if (!mapValidation.success)
 			return reply(interaction, { content: mapValidation.error });
 
@@ -71,14 +71,14 @@ module.exports = {
 		const req = await Promise.all([
 			await getPB(
 				targetValidation.data.value,
-				mapValidation.data.name,
+				mapValidation.data!.name,
 				0,
 				mode,
 				true
 			),
 			await getPB(
 				targetValidation.data.value,
-				mapValidation.data.name,
+				mapValidation.data!.name,
 				0,
 				mode,
 				false
@@ -87,10 +87,10 @@ module.exports = {
 
 		const embed = new EmbedBuilder()
 			.setColor([116, 128, 194])
-			.setTitle(`[WR] - ${mapValidation.data.name}`)
-			.setURL(`https://kzgo.eu/maps/${mapValidation.data.name}`)
+			.setTitle(`[PB] - ${req[0].data?.player_name || req[1].data?.player_name} on ${mapValidation.data!.name}`)
+			.setURL(`https://kzgo.eu/maps/${mapValidation.data!.name}`)
 			.setThumbnail(
-				`https://raw.githubusercontent.com/KZGlobalTeam/map-images/master/images/${mapValidation.data.name}.jpg`
+				`https://raw.githubusercontent.com/KZGlobalTeam/map-images/master/images/${mapValidation.data!.name}.jpg`
 			)
 			.addFields([
 				{
