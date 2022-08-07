@@ -8,7 +8,7 @@ export async function commandHandler(client: Client) {
 	const PG = promisify(glob);
 	const commands: JSON[] = [];
 	const commandList: string[] = [];
-	const commandFiles = await PG(`${process.cwd()}/dist/commands/**/main.js`);
+	const commandFiles = await PG(`${process.cwd()}/dist/commands/*.js`);
 	client.commands = new Collection();
 
 	for (const command of commandFiles) {

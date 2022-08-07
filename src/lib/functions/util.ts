@@ -1,4 +1,4 @@
-export function timeString(time: number) {
+export function parseTime(time: number) {
 	const date = new Date(time * 1000);
 	const hours = date.getUTCHours();
 	const minutes = date.getUTCMinutes();
