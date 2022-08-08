@@ -70,14 +70,14 @@ module.exports = {
 
 		const req = await Promise.all([
 			await getPB(
-				targetValidation.data.value,
+				targetValidation.data!.value!,
 				mapValidation.data!.name,
 				0,
 				mode,
 				true
 			),
 			await getPB(
-				targetValidation.data.value,
+				targetValidation.data!.value!,
 				mapValidation.data!.name,
 				0,
 				mode,
@@ -87,10 +87,16 @@ module.exports = {
 
 		const embed = new EmbedBuilder()
 			.setColor([116, 128, 194])
-			.setTitle(`[PB] - ${req[0].data?.player_name || req[1].data?.player_name} on ${mapValidation.data!.name}`)
+			.setTitle(
+				`[PB] - ${req[0].data?.player_name || req[1].data?.player_name} on ${
+					mapValidation.data!.name
+				}`
+			)
 			.setURL(`https://kzgo.eu/maps/${mapValidation.data!.name}`)
 			.setThumbnail(
-				`https://raw.githubusercontent.com/KZGlobalTeam/map-images/master/images/${mapValidation.data!.name}.jpg`
+				`https://raw.githubusercontent.com/KZGlobalTeam/map-images/master/images/${
+					mapValidation.data!.name
+				}.jpg`
 			)
 			.addFields([
 				{

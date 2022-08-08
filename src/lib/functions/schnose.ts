@@ -5,8 +5,16 @@ import userSchema from "../schemas/user";
 export async function validateTarget(
 	interaction: Interaction,
 	input: null | string | UserMention
-): Promise<{ success: boolean; data?: any; error?: string }> {
-	const res: { success: boolean; data?: any; error?: string } = {
+): Promise<{
+	success: boolean;
+	data?: { type: "name" | "steamID" | "mention" | null; value?: string };
+	error?: string;
+}> {
+	const res: {
+		success: boolean;
+		data?: { type: "name" | "steamID" | "mention" | null; value?: string };
+		error?: string;
+	} = {
 		success: false,
 		data: { type: "name" },
 	};
@@ -23,10 +31,8 @@ export async function validateTarget(
 		if (input.startsWith("<@") && input.endsWith(">"))
 			res.data = { type: "mention" };
 		else if (/STEAM_[0-1]:[0-1]:[0-9]+/.test(input)) {
-
 			res.data = { type: "steamID", value: input };
-		}
-		else res.data = { type: "name" };
+		} else res.data = { type: "name" };
 	}
 
 	switch (res.data.type) {
@@ -58,7 +64,7 @@ export async function validateTarget(
 			break;
 		}
 		case "steamID":
-			res.success = true
+			res.success = true;
 			break;
 	}
 	return res;
