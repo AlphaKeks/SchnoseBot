@@ -14,13 +14,14 @@ import {
 } from "gokz.js";
 import userSchema from "../lib/schemas/user";
 import "dotenv/config";
+import modeMap from "gokz.js/lib/api";
 
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName("bwr")
 		.setDescription("Check the World Record on a bonus.")
 		.addStringOption((o) =>
-			o.setName("mapname").setDescription("Specify a map.").setRequired(true)
+			o.setName("map").setDescription("Specify a map.").setRequired(true)
 		)
 		.addIntegerOption((o) =>
 			o.setName("course").setDescription("Specify a bonus.")
@@ -45,7 +46,7 @@ module.exports = {
 	async execute(interaction: ChatInputCommandInteraction) {
 		interaction.deferReply();
 
-		const inputMap = interaction.options.getString("mapname")!;
+		const inputMap = interaction.options.getString("map")!;
 		const inputCourse = interaction.options.getInteger("course") || 0;
 		const inputMode = interaction.options.getString("mode") || null;
 
@@ -83,12 +84,18 @@ module.exports = {
 
 		const embed = new EmbedBuilder()
 			.setColor([116, 128, 194])
-			.setTitle(`[BWR ${inputCourse}] - ${mapValidation.data!.name}`)
+			.setTitle(
+				`[BWR ${inputCourse}] - ${mapValidation.data!.name} (${modeMap.get(
+					req[0].data?.mode || req[1].data?.mode
+				)})`
+			)
 			.setURL(
 				`https://kzgo.eu/maps/${mapValidation.data!.name}&bonus=${inputCourse}`
 			)
 			.setThumbnail(
-				`https://raw.githubusercontent.com/KZGlobalTeam/map-images/master/images/${mapValidation.data!.name}.jpg`
+				`https://raw.githubusercontent.com/KZGlobalTeam/map-images/master/images/${
+					mapValidation.data!.name
+				}.jpg`
 			)
 			.addFields([
 				{
