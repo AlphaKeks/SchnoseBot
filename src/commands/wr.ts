@@ -35,7 +35,7 @@ module.exports = {
 		),
 
 	async execute(interaction: ChatInputCommandInteraction) {
-		interaction.deferReply();
+		await interaction.deferReply();
 
 		const inputMap = interaction.options.getString("map")!;
 		const inputMode = interaction.options.getString("mode") || null;

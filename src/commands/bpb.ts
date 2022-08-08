@@ -41,7 +41,7 @@ module.exports = {
 		),
 
 	async execute(interaction: ChatInputCommandInteraction) {
-		interaction.deferReply();
+		await interaction.deferReply();
 
 		const inputMap = interaction.options.getString("map")!;
 		const inputCourse = interaction.options.getInteger("course") || 0;
@@ -109,14 +109,14 @@ module.exports = {
 				{
 					name: "TP",
 					value: `${parseTime(req[0].data?.time || 0)} (${
-						req[0].data?.player_name || "-"
+						req[0].data?.points || "-"
 					})`,
 					inline: true,
 				},
 				{
 					name: "PRO",
 					value: `${parseTime(req[1].data?.time || 0)} (${
-						req[1].data?.player_name || "-"
+						req[1].data?.points || "-"
 					})`,
 					inline: true,
 				},

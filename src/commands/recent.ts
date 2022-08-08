@@ -18,7 +18,7 @@ module.exports = {
 		),
 
 	async execute(interaction: ChatInputCommandInteraction) {
-		interaction.deferReply();
+		await interaction.deferReply();
 
 		const inputTarget = interaction.options.getString("target") || null;
 

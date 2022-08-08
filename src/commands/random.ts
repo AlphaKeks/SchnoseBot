@@ -22,7 +22,7 @@ module.exports = {
 		),
 
 	async execute(interaction: ChatInputCommandInteraction) {
-		interaction.deferReply();
+		await interaction.deferReply();
 
 		const tier = interaction.options.getInteger("tier") || null;
 		const globalMaps = await getMaps();

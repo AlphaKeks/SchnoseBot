@@ -44,7 +44,7 @@ module.exports = {
 		),
 
 	async execute(interaction: ChatInputCommandInteraction) {
-		interaction.deferReply();
+		await interaction.deferReply();
 
 		const inputMap = interaction.options.getString("map")!;
 		const inputCourse = interaction.options.getInteger("course") || 0;
