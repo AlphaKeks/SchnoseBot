@@ -69,3 +69,12 @@ export async function validateTarget(
 	}
 	return res;
 }
+
+const modeMap = new Map();
+modeMap.set("kz_timer", "KZT");
+modeMap.set("kz_simple", "SKZ");
+modeMap.set("kz_vanilla", "VNL");
+modeMap.set("KZT", "kz_timer");
+modeMap.set("SKZ", "kz_simple");
+modeMap.set("VNL", "kz_vanilla");
+export default modeMap;

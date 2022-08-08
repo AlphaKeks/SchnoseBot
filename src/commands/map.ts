@@ -16,6 +16,8 @@ module.exports = {
 		),
 
 	async execute(interaction: ChatInputCommandInteraction) {
+		interaction.deferReply();
+
 		const inputMap = interaction.options.getString("map")!;
 
 		const globalMaps = await getMaps();
