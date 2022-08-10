@@ -1,8 +1,4 @@
-import {
-	SlashCommandBuilder,
-	ChatInputCommandInteraction,
-	EmbedBuilder,
-} from "discord.js";
+import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from "discord.js";
 import { reply } from "../lib/functions/discord";
 import { parseTime } from "../lib/functions/util";
 import { validateTarget } from "../lib/functions/schnose";
@@ -14,28 +10,24 @@ module.exports = {
 	data: new SlashCommandBuilder()
 		.setName("pb")
 		.setDescription("Check a player's personal best on a map.")
-		.addStringOption((o) =>
-			o.setName("map").setDescription("Specify a map.").setRequired(true)
-		)
+		.addStringOption((o) => o.setName("map").setDescription("Specify a map.").setRequired(true))
 		.addStringOption((o) =>
 			o.setName("mode").setDescription("Specify a mode.").setChoices(
 				{
 					name: "KZT",
-					value: "kz_timer",
+					value: "kz_timer"
 				},
 				{
 					name: "SKZ",
-					value: "kz_simple",
+					value: "kz_simple"
 				},
 				{
 					name: "VNL",
-					value: "kz_vanilla",
+					value: "kz_vanilla"
 				}
 			)
 		)
-		.addStringOption((o) =>
-			o.setName("target").setDescription("Specify a target.")
-		),
+		.addStringOption((o) => o.setName("target").setDescription("Specify a target.")),
 
 	async execute(interaction: ChatInputCommandInteraction) {
 		await interaction.deferReply();
@@ -45,12 +37,10 @@ module.exports = {
 		const inputTarget = interaction.options.getString("target") || null;
 
 		const globalMaps = await getMaps();
-		if (!globalMaps.success)
-			return reply(interaction, { content: globalMaps.error });
+		if (!globalMaps.success) return reply(interaction, { content: globalMaps.error });
 
 		const mapValidation = await validateMap(inputMap, globalMaps.data!);
-		if (!mapValidation.success)
-			return reply(interaction, { content: mapValidation.error });
+		if (!mapValidation.success) return reply(interaction, { content: mapValidation.error });
 
 		let mode: string;
 		if (inputMode) mode = inputMode;
@@ -58,31 +48,17 @@ module.exports = {
 			const userDB = await userSchema.find({ discordID: interaction.user.id });
 			if (!userDB[0]?.mode)
 				return reply(interaction, {
-					content:
-						"You must either specify a mode or set a default value using `/mode`.",
+					content: "You must either specify a mode or set a default value using `/mode`."
 				});
 			else mode = userDB[0].mode;
 		}
 
 		const targetValidation = await validateTarget(interaction, inputTarget);
-		if (!targetValidation.success)
-			return reply(interaction, { content: targetValidation.error });
+		if (!targetValidation.success) return reply(interaction, { content: targetValidation.error });
 
 		const req = await Promise.all([
-			await getPB(
-				targetValidation.data!.value!,
-				mapValidation.data!.name,
-				0,
-				mode,
-				true
-			),
-			await getPB(
-				targetValidation.data!.value!,
-				mapValidation.data!.name,
-				0,
-				mode,
-				false
-			),
+			await getPB(targetValidation.data!.value!, mapValidation.data!.name, 0, mode, true),
+			await getPB(targetValidation.data!.value!, mapValidation.data!.name, 0, mode, false)
 		]);
 
 		const embed = new EmbedBuilder()
@@ -101,26 +77,22 @@ module.exports = {
 			.addFields([
 				{
 					name: "TP",
-					value: `${parseTime(req[0].data?.time || 0)} (${
-						req[0].data?.points || "-"
-					})`,
-					inline: true,
+					value: `${parseTime(req[0].data?.time || 0)} (${req[0].data?.points || "-"})`,
+					inline: true
 				},
 				{
 					name: "PRO",
-					value: `${parseTime(req[1].data?.time || 0)} (${
-						req[1].data?.points || "-"
-					})`,
-					inline: true,
-				},
+					value: `${parseTime(req[1].data?.time || 0)} (${req[1].data?.points || "-"})`,
+					inline: true
+				}
 			])
 			.setFooter({
 				text: "(͡ ͡° ͜ つ ͡͡°)7",
-				iconURL: process.env.ICON,
+				iconURL: process.env.ICON
 			});
 
 		return reply(interaction, {
-			embeds: [embed],
+			embeds: [embed]
 		});
-	},
+	}
 };

@@ -1,8 +1,4 @@
-import {
-	SlashCommandBuilder,
-	ChatInputCommandInteraction,
-	EmbedBuilder,
-} from "discord.js";
+import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from "discord.js";
 import { getRecent } from "gokz.js";
 import { validateTarget } from "../lib/functions/schnose";
 import modeMap from "../lib/functions/schnose";
@@ -23,8 +19,7 @@ module.exports = {
 		const inputTarget = interaction.options.getString("target") || null;
 
 		const targetValidation = await validateTarget(interaction, inputTarget);
-		if (!targetValidation.success)
-			return reply(interaction, { content: targetValidation.error });
+		if (!targetValidation.success) return reply(interaction, { content: targetValidation.error });
 
 		const req = await getRecent(targetValidation.data!.value!);
 		if (!req.success) return reply(interaction, { content: req.error });
@@ -41,17 +36,15 @@ module.exports = {
 			.addFields([
 				{
 					name: `${modeMap.get(req.data!.mode)}`,
-					value: `${req.data!.teleports > 0 ? "TP" : "PRO"}: ${parseTime(
-						req.data!.time
-					)}
+					value: `${req.data!.teleports > 0 ? "TP" : "PRO"}: ${parseTime(req.data!.time)}
 
 				> <t:${parseInt(req.data!.created_on) / 1000}:R>`,
-					inline: true,
-				},
+					inline: true
+				}
 			])
 			.setTimestamp()
 			.setFooter({ text: `(͡ ͡° ͜ つ ͡͡°)7` });
 
 		return reply(interaction, { embeds: [embed] });
-	},
+	}
 };

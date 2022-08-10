@@ -6,7 +6,7 @@ module.exports = {
 
 	async execute(interaction: ChatInputCommandInteraction) {
 		return reply(interaction, {
-			content: `pong! \`[${Date.now() - interaction.createdTimestamp}ms]\``,
+			content: `pong! \`[${Date.now() - interaction.createdTimestamp}ms]\``
 		});
-	},
+	}
 };

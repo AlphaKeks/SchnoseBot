@@ -8,10 +8,7 @@ module.exports = {
 		.setName("setsteam")
 		.setDescription("Save your steamID in the database.")
 		.addStringOption((o) =>
-			o
-				.setName("steamid")
-				.setDescription("e.g. STEAM_1:1:161178172")
-				.setRequired(true)
+			o.setName("steamid").setDescription("e.g. STEAM_1:1:161178172").setRequired(true)
 		),
 
 	async execute(interaction: ChatInputCommandInteraction) {
@@ -27,11 +24,11 @@ module.exports = {
 						name: interaction.user.username,
 						discordID: interaction.user.id,
 						steamID: player.data!.steam_id,
-						mode: null,
+						mode: null
 					})
 					.then(() => {
 						reply(interaction, {
-							content: `Successfully set steamID for ${player.data?.name}.`,
+							content: `Successfully set steamID for ${player.data?.name}.`
 						});
 					})
 					.catch((e: unknown) => {
@@ -44,9 +41,9 @@ module.exports = {
 					{ steamID: player.data!.steam_id }
 				);
 				reply(interaction, {
-					content: `Successfully updated steamID for ${player.data?.name}.`,
+					content: `Successfully updated steamID for ${player.data?.name}.`
 				});
 			}
 		}
-	},
+	}
 };

@@ -17,9 +17,7 @@ async function main(bot: Client, token: string) {
 	if (!process.env.MONGODB) console.log("No database found.");
 	mongoose
 		.connect(process.env.MONGODB!)
-		.then(() =>
-			console.log("Successfully established connection to the database.")
-		)
+		.then(() => console.log("Successfully established connection to the database."))
 		.catch((e: unknown) => console.error(e));
 }
 

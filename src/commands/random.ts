@@ -26,8 +26,7 @@ module.exports = {
 
 		const tier = interaction.options.getInteger("tier") || null;
 		const globalMaps = await getMaps();
-		if (!globalMaps.success)
-			return reply(interaction, { content: globalMaps.error });
+		if (!globalMaps.success) return reply(interaction, { content: globalMaps.error });
 
 		const maps: Map[] = [];
 
@@ -38,14 +37,13 @@ module.exports = {
 
 			const map = maps[Math.floor(Math.random() * maps.length)];
 			return reply(interaction, {
-				content: `🎲 \`${map.name} (T${map.difficulty})\``,
+				content: `🎲 \`${map.name} (T${map.difficulty})\``
 			});
 		} else {
-			const map =
-				globalMaps.data![Math.floor(Math.random() * globalMaps.data!.length)];
+			const map = globalMaps.data![Math.floor(Math.random() * globalMaps.data!.length)];
 			return reply(interaction, {
-				content: `🎲 \`${map.name} (T${map.difficulty})\``,
+				content: `🎲 \`${map.name} (T${map.difficulty})\``
 			});
 		}
-	},
+	}
 };

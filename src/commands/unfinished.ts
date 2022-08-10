@@ -3,7 +3,7 @@ import {
 	ChatInputCommandInteraction,
 	EmbedBuilder,
 } from "discord.js";
-import { getTimes, getFilterDist, getMaps, getMapsKZGO } from "gokz.js";
+import { getTimes, getFilterDist, getMaps } from "gokz.js";
 import modeMap, { validateTarget } from "../lib/functions/schnose";
 import { reply } from "../lib/functions/discord";
 import userSchema from "../lib/schemas/user";

@@ -1,8 +1,4 @@
-import {
-	SlashCommandBuilder,
-	ChatInputCommandInteraction,
-	EmbedBuilder,
-} from "discord.js";
+import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from "discord.js";
 import { getFilters, getMapKZGO, getMaps, validateMap } from "gokz.js";
 import { reply } from "../lib/functions/discord";
 import "dotenv/config";
@@ -11,9 +7,7 @@ module.exports = {
 	data: new SlashCommandBuilder()
 		.setName("map")
 		.setDescription("Get detailed information on a map.")
-		.addStringOption((o) =>
-			o.setName("map").setDescription("Specify a map.").setRequired(true)
-		),
+		.addStringOption((o) => o.setName("map").setDescription("Specify a map.").setRequired(true)),
 
 	async execute(interaction: ChatInputCommandInteraction) {
 		await interaction.deferReply();
@@ -21,12 +15,10 @@ module.exports = {
 		const inputMap = interaction.options.getString("map")!;
 
 		const globalMaps = await getMaps();
-		if (!globalMaps.success)
-			return reply(interaction, { content: globalMaps.error });
+		if (!globalMaps.success) return reply(interaction, { content: globalMaps.error });
 
 		const mapValidation = await validateMap(inputMap, globalMaps.data!);
-		if (!mapValidation.success)
-			return reply(interaction, { content: mapValidation.error });
+		if (!mapValidation.success) return reply(interaction, { content: mapValidation.error });
 
 		const kzgoMap = await getMapKZGO(mapValidation.data!.name);
 		if (!kzgoMap.success) return reply(interaction, { content: kzgoMap.error });
@@ -34,9 +26,9 @@ module.exports = {
 		const mappers: any = [];
 		for (let i = 0; i < kzgoMap.data!.mapperIds.length; i++) {
 			mappers.push(
-				`[${
-					kzgoMap.data!.mapperNames[i]
-				}](https://steamcommunity.com/profiles/${kzgoMap.data!.mapperIds[i]})`
+				`[${kzgoMap.data!.mapperNames[i]}](https://steamcommunity.com/profiles/${
+					kzgoMap.data!.mapperIds[i]
+				})`
 			);
 		}
 
@@ -65,24 +57,24 @@ module.exports = {
 				{
 					name: filters.data!.KZT.displayMode,
 					value: filters.data!.KZT.icon,
-					inline: true,
+					inline: true
 				},
 				{
 					name: filters.data!.SKZ.displayMode,
 					value: filters.data!.SKZ.icon,
-					inline: true,
+					inline: true
 				},
 				{
 					name: filters.data!.VNL.displayMode,
 					value: filters.data!.VNL.icon,
-					inline: true,
-				},
+					inline: true
+				}
 			])
 			.setFooter({
 				text: "(͡ ͡° ͜ つ ͡͡°)7 | <3 to kzgo.eu",
-				iconURL: process.env.ICON,
+				iconURL: process.env.ICON
 			});
 
 		return reply(interaction, { embeds: [embed] });
-	},
+	}
 };

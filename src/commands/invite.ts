@@ -9,7 +9,7 @@ module.exports = {
 	async execute(interaction: ChatInputCommandInteraction) {
 		return reply(interaction, {
 			content: `https://bot.schnose.eu/`,
-			ephemeral: true,
+			ephemeral: true
 		});
-	},
+	}
 };

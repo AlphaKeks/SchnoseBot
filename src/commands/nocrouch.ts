@@ -23,7 +23,7 @@ module.exports = {
 		const approx = distance + (max / 128) * 4;
 
 		return reply(interaction, {
-			content: `Approximated distance: \`${approx.toFixed(4)}\``,
+			content: `Approximated distance: \`${approx.toFixed(4)}\``
 		});
-	},
+	}
 };

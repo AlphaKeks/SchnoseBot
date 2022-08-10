@@ -1,8 +1,4 @@
-import {
-	SlashCommandBuilder,
-	ChatInputCommandInteraction,
-	EmbedBuilder,
-} from "discord.js";
+import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from "discord.js";
 import { APIStatus } from "gokz.js";
 import { reply } from "../lib/functions/discord";
 import "dotenv/config";
@@ -25,19 +21,19 @@ module.exports = {
 				{
 					name: "Frontend",
 					value: `${statusRequest.frontEnd}`,
-					inline: true,
+					inline: true
 				},
 				{
 					name: "Backend",
 					value: `${statusRequest.backEnd}`,
-					inline: true,
-				},
+					inline: true
+				}
 			])
 			.setFooter({
 				text: "(͡ ͡° ͜ つ ͡͡°)7",
-				iconURL: process.env.ICON,
+				iconURL: process.env.ICON
 			});
 
 		return reply(interaction, { embeds: [statusEmbed] });
-	},
+	}
 };

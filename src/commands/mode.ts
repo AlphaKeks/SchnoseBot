@@ -27,11 +27,11 @@ module.exports = {
 					name: interaction.user.username,
 					discordID: interaction.user.id,
 					steamID: null,
-					mode: mode,
+					mode: mode
 				})
 				.then(() => {
 					reply(interaction, {
-						content: `Successfully set mode for ${interaction.user.username}.`,
+						content: `Successfully set mode for ${interaction.user.username}.`
 					});
 				})
 				.catch((e: unknown) => {
@@ -39,13 +39,10 @@ module.exports = {
 					reply(interaction, { content: "Database Error." });
 				});
 		} else {
-			await userSchema.findOneAndUpdate(
-				{ discordID: interaction.user.id },
-				{ mode: mode }
-			);
+			await userSchema.findOneAndUpdate({ discordID: interaction.user.id }, { mode: mode });
 			reply(interaction, {
-				content: `Successfully updated mode for ${interaction.user.username}.`,
+				content: `Successfully updated mode for ${interaction.user.username}.`
 			});
 		}
-	},
+	}
 };

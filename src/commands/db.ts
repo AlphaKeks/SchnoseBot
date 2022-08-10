@@ -1,8 +1,4 @@
-import {
-	SlashCommandBuilder,
-	ChatInputCommandInteraction,
-	EmbedBuilder,
-} from "discord.js";
+import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from "discord.js";
 import userSchema from "../lib/schemas/user";
 import { reply } from "../lib/functions/discord";
 import "dotenv/config";
@@ -16,13 +12,13 @@ module.exports = {
 		const userDB = await userSchema.find({ discordID: interaction.user.id });
 		if (!userDB[0])
 			return reply(interaction, {
-				content: "You don't have any database entries yet.",
+				content: "You don't have any database entries yet."
 			});
 
 		let [userID, steamID, mode]: string[] = [
 			userDB[0].discordID!,
 			userDB[0].steamID || "none",
-			userDB[0].mode || "none",
+			userDB[0].mode || "none"
 		];
 
 		const embed = new EmbedBuilder()
@@ -36,5 +32,5 @@ module.exports = {
 			.setFooter({ text: "(͡ ͡° ͜ つ ͡͡°)7", iconURL: process.env.ICON });
 
 		return reply(interaction, { embeds: [embed] });
-	},
+	}
 };

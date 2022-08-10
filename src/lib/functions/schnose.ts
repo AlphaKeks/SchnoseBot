@@ -16,7 +16,7 @@ export async function validateTarget(
 		error?: string;
 	} = {
 		success: false,
-		data: { type: "name" },
+		data: { type: "name" }
 	};
 
 	if (!input) {
@@ -25,11 +25,10 @@ export async function validateTarget(
 		else
 			res.data = {
 				type: "steamID",
-				value: userDB[0].steamID,
+				value: userDB[0].steamID
 			};
 	} else {
-		if (input.startsWith("<@") && input.endsWith(">"))
-			res.data = { type: "mention" };
+		if (input.startsWith("<@") && input.endsWith(">")) res.data = { type: "mention" };
 		else if (/STEAM_[0-1]:[0-1]:[0-9]+/.test(input)) {
 			res.data = { type: "steamID", value: input };
 		} else res.data = { type: "name" };
@@ -45,12 +44,11 @@ export async function validateTarget(
 			if (input.startsWith("!")) input = input.slice(1);
 			const userDB = await userSchema.find({ discordID: input });
 			if (!userDB[0]?.steamID)
-				res.error =
-					"The user you mentioned did not register a steamID in the database.";
+				res.error = "The user you mentioned did not register a steamID in the database.";
 			else res.success = true;
 			res.data = {
 				type: "steamID",
-				value: userDB[0].steamID,
+				value: userDB[0].steamID
 			};
 			break;
 		}

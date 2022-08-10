@@ -8,9 +8,9 @@ module.exports = {
 		// discord randomly resets bot statuses, no idea why.
 		setInterval(() => {
 			client.user!.setActivity("with your balls", {
-				type: ActivityType.Playing,
+				type: ActivityType.Playing
 			});
 		}, 60000);
 		console.log(`${client.user!.tag} is now online.`);
-	},
+	}
 };

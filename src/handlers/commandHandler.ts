@@ -28,31 +28,19 @@ export async function commandHandler(client: Client) {
 
 		switch (process.env.MODE) {
 			case "DEV":
-				await rest.put(
-					Routes.applicationGuildCommands(
-						client.user!.id,
-						process.env.DEV_GUILD!
-					),
-					{ body: {} }
-				);
-				await rest.put(
-					Routes.applicationGuildCommands(
-						client.user!.id,
-						process.env.DEV_GUILD!
-					),
-					{ body: commands }
-				);
-				console.log(
-					`[LOCAL] Successfully registered commands:\n${commandList}`
-				);
+				await rest.put(Routes.applicationGuildCommands(client.user!.id, process.env.DEV_GUILD!), {
+					body: {}
+				});
+				await rest.put(Routes.applicationGuildCommands(client.user!.id, process.env.DEV_GUILD!), {
+					body: commands
+				});
+				console.log(`[LOCAL] Successfully registered commands:\n${commandList}`);
 				break;
 			case "PROD":
 				await rest.put(Routes.applicationCommands(client.user!.id), {
-					body: commands,
+					body: commands
 				});
-				console.log(
-					`[GLOBAL] Successfully registered commands:\n${commandList}`
-				);
+				console.log(`[GLOBAL] Successfully registered commands:\n${commandList}`);
 				break;
 			default:
 				return console.error("Please configure your .env properly. [2]");
@@ -65,9 +53,7 @@ export async function commandHandler(client: Client) {
 			const command = client.commands.get(interaction.commandName);
 			if (!command) return;
 
-			await command
-				.execute(interaction)
-				.catch((e: unknown) => console.error(e));
+			await command.execute(interaction).catch((e: unknown) => console.error(e));
 		}
 	});
 }
