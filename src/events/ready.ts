@@ -7,7 +7,7 @@ module.exports = {
 	execute(client: Client) {
 		// discord randomly resets bot statuses, no idea why.
 		setInterval(() => {
-			client.user!.setActivity("with your balls", {
+			client.user!.setActivity("kz_epiphany_v2", {
 				type: ActivityType.Playing
 			});
 		}, 60000);
