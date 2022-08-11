@@ -1,8 +1,4 @@
-import {
-	SlashCommandBuilder,
-	ChatInputCommandInteraction,
-	EmbedBuilder,
-} from "discord.js";
+import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from "discord.js";
 import { getTimes, getFilterDist, getMaps } from "gokz.js";
 import modeMap, { validateTarget } from "../lib/functions/schnose";
 import { reply } from "../lib/functions/discord";
@@ -33,12 +29,8 @@ module.exports = {
 				.addChoices({ name: "SimpleKZ", value: "kz_simple" })
 				.addChoices({ name: "Vanilla", value: "kz_vanilla" })
 		)
-		.addBooleanOption((o) =>
-			o.setName("runtype").setDescription("TP = true, PRO = false")
-		)
-		.addStringOption((o) =>
-			o.setName("target").setDescription("Specify a target")
-		),
+		.addBooleanOption((o) => o.setName("runtype").setDescription("TP = true, PRO = false"))
+		.addStringOption((o) => o.setName("target").setDescription("Specify a target")),
 	async execute(interaction: ChatInputCommandInteraction) {
 		await interaction.deferReply();
 
@@ -51,20 +43,18 @@ module.exports = {
 			? inputMode
 			: await (async () => {
 					const userDB = await userSchema.find({
-						discordID: interaction.user.id,
+						discordID: interaction.user.id
 					});
 					if (!userDB[0]?.mode) return null;
 					else return userDB[0].mode;
 			  })();
 		if (!mode)
 			return reply(interaction, {
-				content:
-					"You must either specify a mode or set a default option with `/mode`.",
+				content: "You must either specify a mode or set a default option with `/mode`."
 			});
 
 		const targetValidation = await validateTarget(interaction, inputTarget);
-		if (!targetValidation.success)
-			return reply(interaction, { content: targetValidation.error });
+		if (!targetValidation.success) return reply(interaction, { content: targetValidation.error });
 
 		let modeID: number;
 		switch (mode) {
@@ -81,16 +71,10 @@ module.exports = {
 		}
 
 		const doableMaps = await getFilterDist(modeID, inputRuntype);
-		if (!doableMaps.success)
-			return reply(interaction, { content: doableMaps.error });
+		if (!doableMaps.success) return reply(interaction, { content: doableMaps.error });
 
-		const completedMaps = await getTimes(
-			targetValidation.data!.value!,
-			mode,
-			inputRuntype
-		);
-		if (!completedMaps.success)
-			return reply(interaction, { content: completedMaps.error });
+		const completedMaps = await getTimes(targetValidation.data!.value!, mode, inputRuntype);
+		if (!completedMaps.success) return reply(interaction, { content: completedMaps.error });
 
 		const compIDs: number[] = [];
 		completedMaps.data!.forEach((map) => compIDs.push(map.map_id));
@@ -101,21 +85,21 @@ module.exports = {
 		});
 
 		const globalMaps = await getMaps();
-		if (!globalMaps.success)
-			return reply(interaction, { content: globalMaps.error });
+		if (!globalMaps.success) return reply(interaction, { content: globalMaps.error });
 
 		const uncompletedMaps: string[] = [];
 		globalMaps.data!.forEach((map) => {
 			if (
 				uncompIDs.includes(map.id) &&
-				(inputTier ? map.difficulty === inputTier : true)
+				(inputTier ? map.difficulty === inputTier : true) &&
+				(inputRuntype ? !map.name.startsWith("kzpro_") : true)
 			)
 				uncompletedMaps.push(map.name);
 		});
 
 		if (uncompletedMaps.length === 0)
 			return reply(interaction, {
-				content: "Congrats! You have no maps left to complete, good job 🎉",
+				content: "Congrats! You have no maps left to complete, good job 🎉"
 			});
 
 		let text = ``;
@@ -130,13 +114,13 @@ module.exports = {
 		const embed = new EmbedBuilder()
 			.setColor([116, 128, 194])
 			.setTitle(
-				`Uncompleted Maps - ${modeMap.get(mode)} ${
-					inputRuntype ? "TP" : "PRO"
-				} ${inputTier ? `[T${inputTier}]` : ""}`
+				`Uncompleted Maps - ${modeMap.get(mode)} ${inputRuntype ? "TP" : "PRO"} ${
+					inputTier ? `[T${inputTier}]` : ""
+				}`
 			)
 			.setDescription(text)
 			.setFooter({ text: "(͡ ͡° ͜ つ ͡͡°)7", iconURL: process.env.ICON });
 
 		return reply(interaction, { embeds: [embed] });
-	},
+	}
 };
