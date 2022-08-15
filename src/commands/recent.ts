@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from "discord.js";
-import { getRecent } from "gokz.js";
+import { getPlace, getRecent } from "gokz.js";
 import { validateTarget } from "../lib/functions/schnose";
 import modeMap from "../lib/functions/schnose";
 import { parseTime } from "../lib/functions/util";
@@ -24,6 +24,8 @@ module.exports = {
 		const req = await getRecent(targetValidation.data!.value!);
 		if (!req.success) return reply(interaction, { content: req.error });
 
+		const place = await getPlace(req.data!);
+
 		const embed = new EmbedBuilder()
 			.setColor([116, 128, 194])
 			.setTitle(`${req.data!.player_name} on ${req.data!.map_name}`)
@@ -36,7 +38,9 @@ module.exports = {
 			.addFields([
 				{
 					name: `${modeMap.get(req.data!.mode)}`,
-					value: `${req.data!.teleports > 0 ? "TP" : "PRO"}: ${parseTime(req.data!.time)}
+					value: `${req.data!.teleports > 0 ? "TP" : "PRO"}: ${parseTime(req.data!.time)} (#${
+						place.success ? `${place.data!}` : `?`
+					})
 
 				> <t:${parseInt(req.data!.created_on) / 1000}:R>`,
 					inline: true

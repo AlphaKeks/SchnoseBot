@@ -2,7 +2,7 @@ import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from "
 import { reply } from "../lib/functions/discord";
 import { parseTime } from "../lib/functions/util";
 import { validateTarget } from "../lib/functions/schnose";
-import { getMapKZGO, getMaps, getPB, validateMap } from "gokz.js";
+import { getMapKZGO, getMaps, getPB, getPlace, validateMap } from "gokz.js";
 import userSchema from "../lib/schemas/user";
 import "dotenv/config";
 
@@ -66,6 +66,11 @@ module.exports = {
 			await getPB(targetValidation.data!.value!, mapValidation.data!.name, inputCourse, mode, false)
 		]);
 
+		let tpPlace: any = null;
+		let proPlace: any = null;
+		if (req[0].success) tpPlace = await getPlace(req[0].data!);
+		if (req[1].success) proPlace = await getPlace(req[1].data!);
+
 		const embed = new EmbedBuilder()
 			.setColor([116, 128, 194])
 			.setTitle(
@@ -82,12 +87,16 @@ module.exports = {
 			.addFields([
 				{
 					name: "TP",
-					value: `${parseTime(req[0].data?.time || 0)} (${req[0].data?.points || "-"})`,
+					value: `${parseTime(req[0].data?.time || 0)} (${
+						tpPlace.success ? `#${tpPlace.data}` : ""
+					})`,
 					inline: true
 				},
 				{
 					name: "PRO",
-					value: `${parseTime(req[1].data?.time || 0)} (${req[1].data?.points || "-"})`,
+					value: `${parseTime(req[1].data?.time || 0)} (${
+						proPlace.success ? `#${proPlace.data}` : ""
+					})`,
 					inline: true
 				}
 			])
