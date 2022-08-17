@@ -83,14 +83,14 @@ module.exports = {
 				{
 					name: "TP",
 					value: `${parseTime(req[0].data?.time || 0)} (${
-						tpPlace.success ? `#${tpPlace.data}` : ""
+						tpPlace?.success ? `#${tpPlace?.data}` : ""
 					})`,
 					inline: true
 				},
 				{
 					name: "PRO",
 					value: `${parseTime(req[1].data?.time || 0)} (${
-						proPlace.success ? `#${proPlace.data}` : ""
+						proPlace?.success ? `#${proPlace?.data}` : ""
 					})`,
 					inline: true
 				}

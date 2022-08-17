@@ -39,7 +39,7 @@ module.exports = {
 				{
 					name: `${modeMap.get(req.data!.mode)}`,
 					value: `${req.data!.teleports > 0 ? "TP" : "PRO"}: ${parseTime(req.data!.time)} (#${
-						place.success ? `${place.data!}` : `?`
+						place?.success ? `${place?.data}` : `?`
 					})
 
 				> <t:${parseInt(req.data!.created_on) / 1000}:R>`,
