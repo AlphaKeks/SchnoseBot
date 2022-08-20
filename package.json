@@ -1,12 +1,12 @@
 {
 	"name": "schnosebot",
-	"version": "1.26.1",
+	"version": "1.26.2",
 	"description": "discord.js bot for CS:GO KZ commands",
 	"main": "./dist/bot.js",
 	"scripts": {
 		"test": "hi mom",
-		"build": "tsc",
-		"watch": "tsc -w",
+		"build": "rm -rf ./dist/* && tsc",
+		"watch": "rm -rf ./dist/* && tsc -w",
 		"start": "node ./dist/bot.js"
 	},
 	"repository": {

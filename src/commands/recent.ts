@@ -38,9 +38,9 @@ module.exports = {
 			.addFields([
 				{
 					name: `${modeMap.get(req.data!.mode)}`,
-					value: `${req.data!.teleports > 0 ? "TP" : "PRO"}: ${parseTime(req.data!.time)} (#${
-						place?.success ? `${place?.data}` : `?`
-					})
+					value: `${req.data!.teleports > 0 ? "TP" : "PRO"}: ${
+						req.data?.time ? parseTime(req.data.time) : "😔"
+					} (#${place && place.success ? `${place?.data}` : `${req.success ? "?" : ""}`})
 
 				> <t:${parseInt(req.data!.created_on) / 1000}:R>`,
 					inline: true

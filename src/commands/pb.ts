@@ -5,6 +5,7 @@ import { validateTarget } from "../lib/functions/schnose";
 import { getMaps, getPB, getPlace, validateMap } from "gokz.js";
 import userSchema from "../lib/schemas/user";
 import "dotenv/config";
+import modeMap from "gokz.js/lib/api";
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -69,8 +70,12 @@ module.exports = {
 		const embed = new EmbedBuilder()
 			.setColor([116, 128, 194])
 			.setTitle(
-				`[PB] - ${req[0].data?.player_name || req[1].data?.player_name} on ${
-					mapValidation.data!.name
+				`[PB] ${
+					req[0].data?.player_name || req[1].data?.player_name
+						? `${req[0].data?.player_name || req[1].data?.player_name} on ${
+								mapValidation.data!.name
+						  }`
+						: `${mapValidation.data!.name}`
 				}`
 			)
 			.setURL(`https://kzgo.eu/maps/${mapValidation.data!.name}`)
@@ -82,21 +87,21 @@ module.exports = {
 			.addFields([
 				{
 					name: "TP",
-					value: `${parseTime(req[0].data?.time || 0)} (${
-						tpPlace?.success ? `#${tpPlace?.data}` : ""
-					})`,
+					value: `${req[0].data?.time ? parseTime(req[0].data.time) : "😔"} ${
+						tpPlace && tpPlace.success ? `(#${tpPlace?.data})` : `${req[0].success ? "?" : ""}`
+					}`,
 					inline: true
 				},
 				{
 					name: "PRO",
-					value: `${parseTime(req[1].data?.time || 0)} (${
-						proPlace?.success ? `#${proPlace?.data}` : ""
-					})`,
+					value: `${req[1].data?.time ? parseTime(req[1].data.time) : "😔"} ${
+						proPlace && proPlace.success ? `(#${proPlace?.data})` : `${req[1].success ? "?" : ""}`
+					}`,
 					inline: true
 				}
 			])
 			.setFooter({
-				text: "(͡ ͡° ͜ つ ͡͡°)7",
+				text: `(͡ ͡° ͜ つ ͡͡°)7 | ${modeMap.get(mode)}`,
 				iconURL: process.env.ICON
 			});
 
