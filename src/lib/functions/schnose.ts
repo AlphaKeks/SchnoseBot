@@ -45,11 +45,13 @@ export async function validateTarget(
 			const userDB = await userSchema.find({ discordID: input });
 			if (!userDB[0]?.steamID)
 				res.error = "The user you mentioned did not register a steamID in the database.";
-			else res.success = true;
-			res.data = {
-				type: "steamID",
-				value: userDB[0].steamID
-			};
+			else {
+				res.success = true;
+				res.data = {
+					type: "steamID",
+					value: userDB[0].steamID
+				};
+			}
 			break;
 		}
 		case "name": {
