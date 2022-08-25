@@ -1,6 +1,6 @@
 {
 	"name": "schnosebot",
-	"version": "1.27.1",
+	"version": "1.27.2",
 	"description": "discord.js bot for CS:GO KZ commands",
 	"main": "./dist/bot.js",
 	"scripts": {

@@ -345,7 +345,7 @@ steamID: ${player.steam_id}
 		const embed = new EmbedBuilder()
 			.setColor([116, 128, 194])
 			.setTitle(`${player.name}'s ${modeMap.get(mode)} Profile`)
-			.setURL(`https://kzgo.eu/players/${player.steam_id}`)
+			.setURL(`https://kzgo.eu/players/${player.steam_id}?${modeMap.get(mode).toLowerCase()}=`)
 			.setThumbnail(avatar.data)
 			.setDescription(text)
 			.setFooter({ text: "(͡ ͡° ͜ つ ͡͡°)7 | <3 to kzgo.eu", iconURL: process.env.ICON });
