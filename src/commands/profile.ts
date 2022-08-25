@@ -36,6 +36,9 @@ module.exports = {
 		const inputTarget = interaction.options.getString("target") || null;
 		const inputMode = interaction.options.getString("mode") || null;
 
+		const targetValidation = await validateTarget(interaction, inputTarget);
+		if (!targetValidation.success) return reply(interaction, { content: targetValidation.error });
+
 		let mode: string;
 		if (inputMode) mode = inputMode;
 		else {
@@ -47,14 +50,10 @@ module.exports = {
 			else mode = userDB[0].mode;
 		}
 
-		const targetValidation = await validateTarget(interaction, inputTarget);
-		if (!targetValidation.success) return reply(interaction, { content: targetValidation.error });
-
 		const req = await getPlayer(targetValidation.data!.value!);
 		if (!req.success) return reply(interaction, { content: req.error });
 
 		const player: PlayerProfile = {
-			mode: modeMap.get(mode),
 			tpPoints: 0,
 			proPoints: 0,
 			tpRecords: 0,
@@ -65,6 +64,10 @@ module.exports = {
 			proFinishes: [0, 0, 0, 0, 0, 0, 0, 0],
 			...req.data!
 		};
+
+		const playerDB = await userSchema.find({ steamID: player.steam_id });
+		if (!playerDB[0]?.mode) player.mode = "unknown";
+		else player.mode = modeMap.get(playerDB[0].mode);
 
 		const mapCycle = await getMapcycle();
 		if (!mapCycle.success) return reply(interaction, { content: mapCycle.error });
@@ -312,9 +315,8 @@ module.exports = {
 		}
 
 		let text = `
-\`WRs 🏆: ${player.tpRecords} / ${player.proRecords}\`
-\`Pts: ${player.tpPoints} / ${player.proPoints}\`
 ──────────────────────────────
+                      TP                                               PRO
            \`${player.tpFinishes![7]}/${doableCount[0][7]} (${
 			player.tpPerc
 		}%)\`                     \`${player.proFinishes![7]}/${doableCount[1][7]} (${
@@ -328,6 +330,9 @@ T5   ⌠ ${bars[0][4]} ⌡          ⌠ ${bars[1][4]} 
 T6  ⌠ ${bars[0][5]} ⌡          ⌠ ${bars[1][5]} ⌡
 T7   ⌠ ${bars[0][6]} ⌡          ⌠ ${bars[1][6]} ⌡
 
+Records: \`${player.tpRecords}\` / \`${player.proRecords}\`
+Points: \`${player.tpPoints}\` / \`${player.proPoints}\`
+
 ──────────────────────────────
 Rank: **${player.rank}** (${player.tpPoints! + player.proPoints!})
 Preferred Mode: ${player.mode}
@@ -339,7 +344,7 @@ steamID: ${player.steam_id}
 
 		const embed = new EmbedBuilder()
 			.setColor([116, 128, 194])
-			.setTitle(`${player.name}'s Profile`)
+			.setTitle(`${player.name}'s ${modeMap.get(mode)} Profile`)
 			.setURL(`https://kzgo.eu/players/${player.steam_id}`)
 			.setThumbnail(avatar.data)
 			.setDescription(text)
