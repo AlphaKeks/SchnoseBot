@@ -1,9 +1,9 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from "discord.js";
 import { getPlace, getRecent } from "gokz.js";
 import { validateTarget } from "../lib/functions/schnose";
-import modeMap from "../lib/functions/schnose";
 import { parseTime } from "../lib/functions/util";
 import { reply } from "../lib/functions/discord";
+import modeMap from "gokz.js/lib/api";
 
 module.exports = {
 	data: new SlashCommandBuilder()

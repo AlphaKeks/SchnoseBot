@@ -1,3 +1,4 @@
+import axios from "axios";
 import { Interaction, UserMention } from "discord.js";
 import { getPlayer } from "gokz.js";
 import userSchema from "../schemas/user";
@@ -70,11 +71,24 @@ export async function validateTarget(
 	return res;
 }
 
-const modeMap = new Map();
-modeMap.set("kz_timer", "KZT");
-modeMap.set("kz_simple", "SKZ");
-modeMap.set("kz_vanilla", "VNL");
-modeMap.set("KZT", "kz_timer");
-modeMap.set("SKZ", "kz_simple");
-modeMap.set("VNL", "kz_vanilla");
-export default modeMap;
+export async function getSteamAvatar(steamid64: bigint | string) {
+	const res: { success: boolean; data?: any; error?: string } = await axios
+		.get(
+			`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${
+				process.env.STEAM_API || ""
+			}&`,
+			{
+				params: {
+					steamids: steamid64
+				}
+			}
+		)
+		.then((response) => {
+			return { success: true, data: response.data.response.players[0].avatarfull };
+		})
+		.catch((_) => {
+			return { success: false, error: "Steam API Error" };
+		});
+
+	return res;
+}

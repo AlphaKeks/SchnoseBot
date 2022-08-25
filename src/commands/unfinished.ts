@@ -1,8 +1,9 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from "discord.js";
 import { getTimes, getFilterDist, getMaps } from "gokz.js";
-import modeMap, { validateTarget } from "../lib/functions/schnose";
+import { validateTarget } from "../lib/functions/schnose";
 import { reply } from "../lib/functions/discord";
 import userSchema from "../lib/schemas/user";
+import modeMap from "gokz.js/lib/api";
 import "dotenv/config";
 
 module.exports = {
