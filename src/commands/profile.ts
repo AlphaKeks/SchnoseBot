@@ -7,6 +7,7 @@ import { getPlayer } from "gokz.js";
 import modeMap, { getMaps, getTimes } from "gokz.js/lib/api";
 import "dotenv/config";
 import axios from "axios";
+import fs from "fs";
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -72,9 +73,10 @@ module.exports = {
 		const globalMaps = await getMaps();
 		if (!globalMaps.success) return reply(interaction, { content: globalMaps.error });
 
-		const tiers: Map<string, number> = new Map();
+		const tiers: Map<string, number>[] = [new Map(), new Map()];
 		for (let i = 0; i < globalMaps.data!.length; i++) {
-			tiers.set(globalMaps.data![i].name, globalMaps.data![i].difficulty);
+			tiers[0].set(globalMaps.data![i].name, globalMaps.data![i].difficulty);
+			tiers[1].set(globalMaps.data![i].name, globalMaps.data![i].difficulty);
 		}
 
 		const [tpTimes, proTimes] = await Promise.all([
@@ -91,12 +93,12 @@ module.exports = {
 			(tpTimes.data!.length > proTimes.data!.length ? tpTimes.data!.length : proTimes.data!.length);
 			i++
 		) {
-			if (tiers.has(tpTimes.data![i]?.map_name)) {
+			if (tiers[0].has(tpTimes.data![i]?.map_name)) {
 				if (tpTimes.data![i]) {
 					player.tpPoints! += tpTimes.data![i].points;
 					player.tpFinishes![7]++;
 
-					switch (tiers.get(tpTimes.data![i].map_name)) {
+					switch (tiers[0].get(tpTimes.data![i].map_name)) {
 						case 1:
 							player.tpFinishes![0]++;
 							break;
@@ -120,15 +122,17 @@ module.exports = {
 					}
 
 					if (tpTimes.data![i].points === 1000) player.tpRecords!++;
+
+					tiers[0].delete(tpTimes.data![i].map_name);
 				}
 			}
 
-			if (tiers.has(proTimes.data![i]?.map_name)) {
+			if (tiers[1].has(proTimes.data![i]?.map_name)) {
 				if (proTimes.data![i]) {
 					player.proPoints! += proTimes.data![i].points;
 					player.proFinishes![7]++;
 
-					switch (tiers.get(proTimes.data![i].map_name)) {
+					switch (tiers[1].get(proTimes.data![i].map_name)) {
 						case 1:
 							player.proFinishes![0]++;
 							break;
@@ -152,6 +156,8 @@ module.exports = {
 					}
 
 					if (proTimes.data![i].points === 1000) player.proRecords!++;
+
+					tiers[1].delete(proTimes.data![i].map_name);
 				}
 			}
 		}
