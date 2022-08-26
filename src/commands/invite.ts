@@ -1,7 +1,7 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction } from "discord.js";
 import { reply } from "../lib/functions/discord";
 
-module.exports = {
+export default {
 	data: new SlashCommandBuilder()
 		.setName("invite")
 		.setDescription("Invite the bot to your server!"),

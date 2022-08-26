@@ -1,14 +1,14 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from "discord.js";
 import userSchema from "../lib/schemas/user";
 import { reply } from "../lib/functions/discord";
-import "dotenv/config";
+import SchnoseBot from "src/classes/Schnose";
 
-module.exports = {
+export default {
 	data: new SlashCommandBuilder()
 		.setName("db")
 		.setDescription("Check your current database entries."),
 
-	async execute(interaction: ChatInputCommandInteraction) {
+	async execute(interaction: ChatInputCommandInteraction, client: SchnoseBot) {
 		const userDB = await userSchema.find({ discordID: interaction.user.id });
 		if (!userDB[0])
 			return reply(interaction, {
@@ -25,11 +25,13 @@ module.exports = {
 			.setColor([116, 128, 194])
 			.setTitle("Your current database entries:")
 			.setDescription(
-				`> userID: ${userID}
-		> steamID: ${steamID}
-		> mode: ${mode}`
+				`
+				> userID: ${userID}
+				> steamID: ${steamID}
+				> mode: ${mode}
+				`
 			)
-			.setFooter({ text: "(͡ ͡° ͜ つ ͡͡°)7", iconURL: process.env.ICON });
+			.setFooter({ text: "(͡ ͡° ͜ つ ͡͡°)7", iconURL: client.icon });
 
 		return reply(interaction, { embeds: [embed] });
 	}

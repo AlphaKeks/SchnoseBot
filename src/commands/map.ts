@@ -1,15 +1,15 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from "discord.js";
 import { getFilters, getMapKZGO, getMaps, validateMap } from "gokz.js";
+import SchnoseBot from "src/classes/Schnose";
 import { reply } from "../lib/functions/discord";
-import "dotenv/config";
 
-module.exports = {
+export default {
 	data: new SlashCommandBuilder()
 		.setName("map")
 		.setDescription("Get detailed information on a map.")
 		.addStringOption((o) => o.setName("map").setDescription("Specify a map.").setRequired(true)),
 
-	async execute(interaction: ChatInputCommandInteraction) {
+	async execute(interaction: ChatInputCommandInteraction, client: SchnoseBot) {
 		await interaction.deferReply();
 
 		const inputMap = interaction.options.getString("map")!;
@@ -72,7 +72,7 @@ module.exports = {
 			])
 			.setFooter({
 				text: "(͡ ͡° ͜ つ ͡͡°)7 | <3 to kzgo.eu",
-				iconURL: process.env.ICON
+				iconURL: client.icon
 			});
 
 		return reply(interaction, { embeds: [embed] });

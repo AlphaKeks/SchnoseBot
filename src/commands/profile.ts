@@ -5,11 +5,10 @@ import userSchema from "../lib/schemas/user";
 import { PlayerProfile } from "../lib/types/schnose";
 import { getPlayer } from "gokz.js";
 import modeMap, { getMaps, getTimes } from "gokz.js/lib/api";
-import "dotenv/config";
 import axios from "axios";
-import fs from "fs";
+import SchnoseBot from "src/classes/Schnose";
 
-module.exports = {
+export default {
 	data: new SlashCommandBuilder()
 		.setName("profile")
 		.setDescription("Check a player's stats")
@@ -31,7 +30,7 @@ module.exports = {
 			)
 		),
 
-	async execute(interaction: ChatInputCommandInteraction) {
+	async execute(interaction: ChatInputCommandInteraction, client: SchnoseBot) {
 		await interaction.deferReply();
 
 		const inputTarget = interaction.options.getString("target") || null;
@@ -351,7 +350,7 @@ steamID: ${player.steam_id}
 			.setURL(`https://kzgo.eu/players/${player.steam_id}?${modeMap.get(mode).toLowerCase()}=`)
 			.setThumbnail(avatar.data)
 			.setDescription(text)
-			.setFooter({ text: "(͡ ͡° ͜ つ ͡͡°)7 | <3 to kzgo.eu", iconURL: process.env.ICON });
+			.setFooter({ text: "(͡ ͡° ͜ つ ͡͡°)7 | <3 to kzgo.eu", iconURL: client.icon });
 
 		return reply(interaction, { embeds: [embed] });
 	}

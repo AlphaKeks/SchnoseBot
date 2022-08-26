@@ -1,14 +1,14 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from "discord.js";
 import { APIStatus } from "gokz.js";
+import SchnoseBot from "src/classes/Schnose";
 import { reply } from "../lib/functions/discord";
-import "dotenv/config";
 
-module.exports = {
+export default {
 	data: new SlashCommandBuilder()
 		.setName("apistatus")
 		.setDescription("Check the GlobalAPI Status."),
 
-	async execute(interaction: ChatInputCommandInteraction) {
+	async execute(interaction: ChatInputCommandInteraction, client: SchnoseBot) {
 		const statusRequest = await APIStatus();
 
 		const statusEmbed = new EmbedBuilder()
@@ -31,7 +31,7 @@ module.exports = {
 			])
 			.setFooter({
 				text: "(͡ ͡° ͜ つ ͡͡°)7",
-				iconURL: process.env.ICON
+				iconURL: client.icon
 			});
 
 		return reply(interaction, { embeds: [statusEmbed] });

@@ -1,11 +1,11 @@
 import { Message } from "discord.js";
-import "dotenv/config";
+import SchnoseBot from "../classes/Schnose";
 
-module.exports = {
+export default {
 	name: "messageCreate",
 
-	execute(msg: Message) {
-		if (msg.author.id === process.env.BOT_ID) return;
+	execute(msg: Message, client: SchnoseBot) {
+		if (msg.author.id === client.user!.id) return;
 
 		if (msg.content.toLowerCase().includes("bing?")) {
 			if (msg.author.id === "291585142164815873") return msg.reply({ content: "chilling 🍦" });

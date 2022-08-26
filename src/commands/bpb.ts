@@ -4,10 +4,10 @@ import { parseTime } from "../lib/functions/util";
 import { validateTarget } from "../lib/functions/schnose";
 import { getMapKZGO, getMaps, getPB, getPlace, validateMap } from "gokz.js";
 import userSchema from "../lib/schemas/user";
-import "dotenv/config";
 import modeMap from "gokz.js/lib/api";
+import SchnoseBot from "src/classes/Schnose";
 
-module.exports = {
+export default {
 	data: new SlashCommandBuilder()
 		.setName("bpb")
 		.setDescription("Check a player's personal best on a bonus.")
@@ -31,7 +31,7 @@ module.exports = {
 		)
 		.addStringOption((o) => o.setName("target").setDescription("Specify a target.")),
 
-	async execute(interaction: ChatInputCommandInteraction) {
+	async execute(interaction: ChatInputCommandInteraction, client: SchnoseBot) {
 		await interaction.deferReply();
 
 		const inputMap = interaction.options.getString("map")!;
@@ -107,7 +107,7 @@ module.exports = {
 			])
 			.setFooter({
 				text: `(͡ ͡° ͜ つ ͡͡°)7 | ${modeMap.get(mode)}`,
-				iconURL: process.env.ICON
+				iconURL: client.icon
 			});
 
 		return reply(interaction, {

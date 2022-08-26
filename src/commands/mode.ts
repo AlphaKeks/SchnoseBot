@@ -2,7 +2,7 @@ import { SlashCommandBuilder, ChatInputCommandInteraction } from "discord.js";
 import { reply } from "../lib/functions/discord";
 import userSchema from "../lib/schemas/user";
 
-module.exports = {
+export default {
 	data: new SlashCommandBuilder()
 		.setName("mode")
 		.setDescription("Save your preferred gamemode in the database.")

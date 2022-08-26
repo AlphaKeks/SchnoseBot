@@ -1,10 +1,9 @@
 {
 	"name": "schnosebot",
-	"version": "1.27.5",
+	"version": "1.28.0",
 	"description": "discord.js bot for CS:GO KZ commands",
 	"main": "./dist/bot.js",
 	"scripts": {
-		"test": "hi mom",
 		"build": "rm -rf ./dist/* && tsc",
 		"watch": "rm -rf ./dist/* && tsc -w",
 		"start": "node ./dist/bot.js"
@@ -27,23 +26,17 @@
 	},
 	"homepage": "https://github.com/AlphaKeks/SchnoseBot#readme",
 	"devDependencies": {
-		"@types/glob": "^7.2.0",
 		"@types/node": "^18.0.6",
 		"@typescript-eslint/eslint-plugin": "^5.30.7",
 		"@typescript-eslint/parser": "^5.30.7",
-		"eslint": "^8.20.0",
 		"typescript": "^4.7.4"
 	},
 	"dependencies": {
-		"@discordjs/rest": "^1.0.0",
 		"axios": "^0.27.2",
-		"discord-api-types": "^0.36.3",
-		"discord.js": "^14.0.3",
-		"discordjs-button-pagination": "^3.0.1",
+		"discord.js": "^14.3.0",
 		"dotenv": "^16.0.1",
-		"glob": "^8.0.3",
 		"gokz.js": "^4.0.0",
-		"mongoose": "^6.4.6",
-		"zod": "^3.17.10"
+		"mongoose": "^6.5.3",
+		"zod": "^3.18.0"
 	}
 }

@@ -14,6 +14,7 @@ Install all the dependencies:
 
 ```sh
 $ npm i
+$ npm i -D
 ```
 
 Initialize environment variables:
@@ -24,14 +25,15 @@ $ cp .env.tx .env
 
 ```
 # login credentials
-DJS_TOKEN=somecooltokenigotfromdiscord.com/developers
-MONGODB=amongodbconnectionstring
+DJS_TOKEN=<[Bot token](https://discord.com/developers/applications)>
+MONGODB=<MongoDB connection string>
+STEAM_API=<Steam WebAPI Key>
 
 # variables
-MODE=DEV
-DEV_GUILD=theserveridofmytestserver
-BOT_ID=thebotsid
-ICON=aurltoacoolicon
+MODE=<"DEV" or "PROD">
+DEV_GUILD=<GuildID of your test server>
+BOT_ID=<UserID of your bot's discord account>
+ICON=<URL for embed icons>
 ```
 
 Build the bot:

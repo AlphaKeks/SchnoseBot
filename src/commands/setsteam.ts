@@ -3,7 +3,7 @@ import { getPlayer } from "gokz.js";
 import { reply } from "../lib/functions/discord";
 import userSchema from "../lib/schemas/user";
 
-module.exports = {
+export default {
 	data: new SlashCommandBuilder()
 		.setName("setsteam")
 		.setDescription("Save your steamID in the database.")

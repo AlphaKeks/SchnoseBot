@@ -3,10 +3,10 @@ import { reply } from "../lib/functions/discord";
 import { parseTime } from "../lib/functions/util";
 import { getMapKZGO, getMaps, getWR, validateCourse, validateMap } from "gokz.js";
 import userSchema from "../lib/schemas/user";
-import "dotenv/config";
 import modeMap from "gokz.js/lib/api";
+import SchnoseBot from "src/classes/Schnose";
 
-module.exports = {
+export default {
 	data: new SlashCommandBuilder()
 		.setName("bwr")
 		.setDescription("Check the World Record on a bonus.")
@@ -29,7 +29,7 @@ module.exports = {
 			)
 		),
 
-	async execute(interaction: ChatInputCommandInteraction) {
+	async execute(interaction: ChatInputCommandInteraction, client: SchnoseBot) {
 		await interaction.deferReply();
 
 		const inputMap = interaction.options.getString("map")!;
@@ -91,7 +91,7 @@ module.exports = {
 			])
 			.setFooter({
 				text: "(͡ ͡° ͜ つ ͡͡°)7",
-				iconURL: process.env.ICON
+				iconURL: client.icon
 			});
 
 		return reply(interaction, {

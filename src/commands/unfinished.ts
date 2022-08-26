@@ -4,9 +4,9 @@ import { validateTarget } from "../lib/functions/schnose";
 import { reply } from "../lib/functions/discord";
 import userSchema from "../lib/schemas/user";
 import modeMap from "gokz.js/lib/api";
-import "dotenv/config";
+import SchnoseBot from "src/classes/Schnose";
 
-module.exports = {
+export default {
 	data: new SlashCommandBuilder()
 		.setName("unfinished")
 		.setDescription("Check which maps you still need to complete.")
@@ -32,7 +32,7 @@ module.exports = {
 		)
 		.addBooleanOption((o) => o.setName("runtype").setDescription("TP = true, PRO = false"))
 		.addStringOption((o) => o.setName("target").setDescription("Specify a target")),
-	async execute(interaction: ChatInputCommandInteraction) {
+	async execute(interaction: ChatInputCommandInteraction, client: SchnoseBot) {
 		await interaction.deferReply();
 
 		const inputTier = interaction.options.getInteger("tier") || null;
@@ -120,7 +120,7 @@ module.exports = {
 				}`
 			)
 			.setDescription(text)
-			.setFooter({ text: "(͡ ͡° ͜ つ ͡͡°)7", iconURL: process.env.ICON });
+			.setFooter({ text: "(͡ ͡° ͜ つ ͡͡°)7", iconURL: client.icon });
 
 		return reply(interaction, { embeds: [embed] });
 	}

@@ -3,25 +3,24 @@ import {
 	ChatInputCommandInteraction,
 	EmbedBuilder,
 	ActionRowBuilder,
-	SelectMenuBuilder,
-	APIMessageActionRowComponent
+	SelectMenuBuilder
 } from "discord.js";
+import SchnoseBot from "src/classes/Schnose";
 import { reply } from "../lib/functions/discord";
-import "dotenv/config";
 
-module.exports = {
+export default {
 	data: new SlashCommandBuilder()
 		.setName("help")
 		.setDescription("Get a list of all usable commands."),
 
-	async execute(interaction: ChatInputCommandInteraction) {
+	async execute(interaction: ChatInputCommandInteraction, client: SchnoseBot) {
 		const helpEmbed = new EmbedBuilder()
 			.setColor("#7480C2")
 			.setTitle("Help Menu")
 			.setDescription(
 				"**(͡ ͡° ͜ つ ͡͡°)/**\n\nUse the menu below to get information on any command.\nIf you find any bugs or have any ideas for new features / improving existing ones, you can message `AlphaKeks#9826`.\n\nGitHub Page: https://github.com/AlphaKeks/SchnoseBot\nSteam Group: https://steamcommunity.com/groups/schnose"
 			)
-			.setFooter({ text: "(͡ ͡° ͜ つ ͡͡°)7", iconURL: process.env.ICON });
+			.setFooter({ text: "(͡ ͡° ͜ つ ͡͡°)7", iconURL: client.icon });
 
 		const commandMenu = new ActionRowBuilder().addComponents(
 			new SelectMenuBuilder()

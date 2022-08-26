@@ -3,7 +3,7 @@ import { getMaps } from "gokz.js";
 import { Map } from "gokz.js/lib/types";
 import { reply } from "../lib/functions/discord";
 
-module.exports = {
+export default {
 	data: new SlashCommandBuilder()
 		.setName("random")
 		.setDescription("Get a random KZ map. You can sort by tier if you want :)")

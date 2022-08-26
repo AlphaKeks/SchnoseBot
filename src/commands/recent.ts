@@ -4,8 +4,9 @@ import { validateTarget } from "../lib/functions/schnose";
 import { parseTime } from "../lib/functions/util";
 import { reply } from "../lib/functions/discord";
 import modeMap from "gokz.js/lib/api";
+import SchnoseBot from "src/classes/Schnose";
 
-module.exports = {
+export default {
 	data: new SlashCommandBuilder()
 		.setName("recent")
 		.setDescription("Get a player's most recent personal best.")
@@ -13,7 +14,7 @@ module.exports = {
 			o.setName("target").setDescription("Specify a player.").setRequired(false)
 		),
 
-	async execute(interaction: ChatInputCommandInteraction) {
+	async execute(interaction: ChatInputCommandInteraction, client: SchnoseBot) {
 		await interaction.deferReply();
 
 		const inputTarget = interaction.options.getString("target") || null;
@@ -47,7 +48,7 @@ module.exports = {
 				}
 			])
 			.setTimestamp()
-			.setFooter({ text: `(͡ ͡° ͜ つ ͡͡°)7` });
+			.setFooter({ text: `(͡ ͡° ͜ つ ͡͡°)7`, iconURL: client.icon });
 
 		return reply(interaction, { embeds: [embed] });
 	}

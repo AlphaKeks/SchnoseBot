@@ -1,8 +1,7 @@
 import { ActivityType, Client } from "discord.js";
 
-module.exports = {
+export default {
 	name: "ready",
-	once: true,
 
 	execute(client: Client) {
 		// discord randomly resets bot statuses, no idea why.
