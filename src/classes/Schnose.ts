@@ -16,7 +16,9 @@ interface CustomCommand extends ApplicationCommand {
 
 class SchnoseBot extends Client {
 	public commands: Collection<string, CustomCommand> = new Collection();
-	public icon: string;
+	public icon =
+		process.env.ICON ||
+		"https://cdn.discordapp.com/attachments/981130651094900756/981130719537545286/churchOfSchnose.png";
 
 	constructor(opts: ClientOptions) {
 		super(opts);
@@ -24,10 +26,6 @@ class SchnoseBot extends Client {
 		this.eventHandler();
 		this.commandHandler();
 		this.connectToDatabase(process.env.MONGODB);
-
-		this.icon =
-			process.env.ICON ||
-			"https://cdn.discordapp.com/attachments/981130651094900756/981130719537545286/churchOfSchnose.png";
 	}
 
 	public run(token?: string) {
