@@ -4,7 +4,7 @@ import { reply } from "../lib/functions/discord";
 import userSchema from "../lib/schemas/user";
 import { PlayerProfile } from "../lib/types/schnose";
 import { getPlayer } from "gokz.js";
-import modeMap, { getMapcycle, getMaps, getTimes } from "gokz.js/lib/api";
+import modeMap, { getMaps, getTimes } from "gokz.js/lib/api";
 import "dotenv/config";
 import axios from "axios";
 
@@ -84,8 +84,6 @@ module.exports = {
 
 		if (!tpTimes.success && !proTimes.success)
 			return reply(interaction, { content: tpTimes.error || proTimes.error || "API Error" });
-
-		console.log(tpTimes.data!.length);
 
 		for (
 			let i = 0;
@@ -340,8 +338,6 @@ steamID: ${player.steam_id}
 
 		const avatar = await getSteamAvatar(player.steamid64);
 		if (!avatar.success) return reply(interaction, { content: avatar.error });
-
-		console.log({ player });
 
 		const embed = new EmbedBuilder()
 			.setColor([116, 128, 194])
