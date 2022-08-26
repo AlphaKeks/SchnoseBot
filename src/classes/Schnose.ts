@@ -89,7 +89,7 @@ class SchnoseBot extends Client {
 				break;
 
 			case "PROD":
-				await rest.put(Routes.applicationGuildCommands(BOT_ID, DEV_GUILD), {
+				await rest.put(Routes.applicationCommands(BOT_ID), {
 					body: commands
 				});
 				break;
