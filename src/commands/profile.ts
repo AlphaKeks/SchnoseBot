@@ -69,9 +69,6 @@ module.exports = {
 		if (!playerDB[0]?.mode) player.mode = "unknown";
 		else player.mode = modeMap.get(playerDB[0].mode);
 
-		const mapCycle = await getMapcycle();
-		if (!mapCycle.success) return reply(interaction, { content: mapCycle.error });
-
 		const globalMaps = await getMaps();
 		if (!globalMaps.success) return reply(interaction, { content: globalMaps.error });
 
@@ -88,13 +85,15 @@ module.exports = {
 		if (!tpTimes.success && !proTimes.success)
 			return reply(interaction, { content: tpTimes.error || proTimes.error || "API Error" });
 
+		console.log(tpTimes.data!.length);
+
 		for (
 			let i = 0;
 			i <
 			(tpTimes.data!.length > proTimes.data!.length ? tpTimes.data!.length : proTimes.data!.length);
 			i++
 		) {
-			if (mapCycle.data!.includes(tpTimes.data![i]?.map_name)) {
+			if (tiers.has(tpTimes.data![i]?.map_name)) {
 				if (tpTimes.data![i]) {
 					player.tpPoints! += tpTimes.data![i].points;
 					player.tpFinishes![7]++;
@@ -126,7 +125,7 @@ module.exports = {
 				}
 			}
 
-			if (mapCycle.data!.includes(proTimes.data![i]?.map_name)) {
+			if (tiers.has(proTimes.data![i]?.map_name)) {
 				if (proTimes.data![i]) {
 					player.proPoints! += proTimes.data![i].points;
 					player.proFinishes![7]++;
@@ -341,6 +340,8 @@ steamID: ${player.steam_id}
 
 		const avatar = await getSteamAvatar(player.steamid64);
 		if (!avatar.success) return reply(interaction, { content: avatar.error });
+
+		console.log({ player });
 
 		const embed = new EmbedBuilder()
 			.setColor([116, 128, 194])
