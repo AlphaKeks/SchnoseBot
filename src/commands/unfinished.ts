@@ -40,6 +40,8 @@ export default {
 		const inputRuntype = interaction.options.getBoolean("runtype") || false;
 		const inputTarget = interaction.options.getString("target") || null;
 
+		/* eslint-disable indent */
+		/* eslint-disable no-mixed-spaces-and-tabs */
 		const mode = inputMode
 			? inputMode
 			: await (async () => {
@@ -49,6 +51,8 @@ export default {
 					if (!userDB[0]?.mode) return null;
 					else return userDB[0].mode;
 			  })();
+		/* eslint-enable no-mixed-spaces-and-tabs */
+		/* eslint-enable indent */
 		if (!mode)
 			return reply(interaction, {
 				content: "You must either specify a mode or set a default option with `/mode`."
@@ -67,6 +71,7 @@ export default {
 				break;
 			case "kz_vanilla":
 				modeID = 202;
+				break;
 			default:
 				modeID = 200;
 		}

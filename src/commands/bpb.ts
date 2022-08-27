@@ -67,8 +67,8 @@ export default {
 			await getPB(targetValidation.data!.value!, mapValidation.data!.name, inputCourse, mode, false)
 		]);
 
-		let tpPlace: any = null;
-		let proPlace: any = null;
+		let tpPlace: any = null; // eslint-disable-line
+		let proPlace: any | null = null; // eslint-disable-line
 		if (req[0].success) tpPlace = await getPlace(req[0].data!);
 		if (req[1].success) proPlace = await getPlace(req[1].data!);
 
@@ -79,7 +79,7 @@ export default {
 					req[0].data?.player_name || req[1].data?.player_name
 						? `${req[0].data?.player_name || req[1].data?.player_name} on ${
 								mapValidation.data!.name
-						  }`
+						  }` // eslint-disable-line
 						: `${mapValidation.data!.name}`
 				}`
 			)

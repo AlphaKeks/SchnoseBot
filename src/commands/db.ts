@@ -15,7 +15,7 @@ export default {
 				content: "You don't have any database entries yet."
 			});
 
-		let [userID, steamID, mode]: string[] = [
+		const [userID, steamID, mode]: string[] = [
 			userDB[0].discordID!,
 			userDB[0].steamID || "none",
 			userDB[0].mode || "none"

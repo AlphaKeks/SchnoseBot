@@ -163,82 +163,82 @@ export default {
 
 		switch (mode) {
 			case "kz_timer": {
-				if (player.tpPoints! + player.proPoints!! >= 1000000) player.rank = "Legend";
-				else if (player.tpPoints! + player.proPoints!! >= 800000) player.rank = "Master";
-				else if (player.tpPoints! + player.proPoints!! >= 600000) player.rank = "Pro";
-				else if (player.tpPoints! + player.proPoints!! >= 400000) player.rank = "Semipro";
-				else if (player.tpPoints! + player.proPoints!! >= 250000) player.rank = "Expert+";
-				else if (player.tpPoints! + player.proPoints!! >= 230000) player.rank = "Expert";
-				else if (player.tpPoints! + player.proPoints!! >= 200000) player.rank = "Expert-";
-				else if (player.tpPoints! + player.proPoints!! >= 150000) player.rank = "Skilled+";
-				else if (player.tpPoints! + player.proPoints!! >= 120000) player.rank = "Skilled";
-				else if (player.tpPoints! + player.proPoints!! >= 100000) player.rank = "Skilled-";
-				else if (player.tpPoints! + player.proPoints!! >= 80000) player.rank = "Regular+";
-				else if (player.tpPoints! + player.proPoints!! >= 70000) player.rank = "Regular";
-				else if (player.tpPoints! + player.proPoints!! >= 60000) player.rank = "Regular-";
-				else if (player.tpPoints! + player.proPoints!! >= 40000) player.rank = "Casual+";
-				else if (player.tpPoints! + player.proPoints!! >= 30000) player.rank = "Casual";
-				else if (player.tpPoints! + player.proPoints!! >= 20000) player.rank = "Casual-";
-				else if (player.tpPoints! + player.proPoints!! >= 10000) player.rank = "Amateur+";
-				else if (player.tpPoints! + player.proPoints!! >= 5000) player.rank = "Amateur";
-				else if (player.tpPoints! + player.proPoints!! >= 2000) player.rank = "Amateur-";
-				else if (player.tpPoints! + player.proPoints!! >= 1000) player.rank = "Beginner+";
-				else if (player.tpPoints! + player.proPoints!! >= 500) player.rank = "Beginner";
-				else if (player.tpPoints! + player.proPoints!! > 0) player.rank = "Beginner-";
+				if (player.tpPoints! + player.proPoints! >= 1000000) player.rank = "Legend";
+				else if (player.tpPoints! + player.proPoints! >= 800000) player.rank = "Master";
+				else if (player.tpPoints! + player.proPoints! >= 600000) player.rank = "Pro";
+				else if (player.tpPoints! + player.proPoints! >= 400000) player.rank = "Semipro";
+				else if (player.tpPoints! + player.proPoints! >= 250000) player.rank = "Expert+";
+				else if (player.tpPoints! + player.proPoints! >= 230000) player.rank = "Expert";
+				else if (player.tpPoints! + player.proPoints! >= 200000) player.rank = "Expert-";
+				else if (player.tpPoints! + player.proPoints! >= 150000) player.rank = "Skilled+";
+				else if (player.tpPoints! + player.proPoints! >= 120000) player.rank = "Skilled";
+				else if (player.tpPoints! + player.proPoints! >= 100000) player.rank = "Skilled-";
+				else if (player.tpPoints! + player.proPoints! >= 80000) player.rank = "Regular+";
+				else if (player.tpPoints! + player.proPoints! >= 70000) player.rank = "Regular";
+				else if (player.tpPoints! + player.proPoints! >= 60000) player.rank = "Regular-";
+				else if (player.tpPoints! + player.proPoints! >= 40000) player.rank = "Casual+";
+				else if (player.tpPoints! + player.proPoints! >= 30000) player.rank = "Casual";
+				else if (player.tpPoints! + player.proPoints! >= 20000) player.rank = "Casual-";
+				else if (player.tpPoints! + player.proPoints! >= 10000) player.rank = "Amateur+";
+				else if (player.tpPoints! + player.proPoints! >= 5000) player.rank = "Amateur";
+				else if (player.tpPoints! + player.proPoints! >= 2000) player.rank = "Amateur-";
+				else if (player.tpPoints! + player.proPoints! >= 1000) player.rank = "Beginner+";
+				else if (player.tpPoints! + player.proPoints! >= 500) player.rank = "Beginner";
+				else if (player.tpPoints! + player.proPoints! > 0) player.rank = "Beginner-";
 				else player.rank = "New";
 				break;
 			}
 
 			case "kz_simple": {
-				if (player.tpPoints! + player.proPoints!! >= 800000) player.rank = "Legend";
-				else if (player.tpPoints! + player.proPoints!! >= 500000) player.rank = "Master";
-				else if (player.tpPoints! + player.proPoints!! >= 400000) player.rank = "Pro";
-				else if (player.tpPoints! + player.proPoints!! >= 300000) player.rank = "Semipro";
-				else if (player.tpPoints! + player.proPoints!! >= 250000) player.rank = "Expert+";
-				else if (player.tpPoints! + player.proPoints!! >= 230000) player.rank = "Expert";
-				else if (player.tpPoints! + player.proPoints!! >= 200000) player.rank = "Expert-";
-				else if (player.tpPoints! + player.proPoints!! >= 150000) player.rank = "Skilled+";
-				else if (player.tpPoints! + player.proPoints!! >= 120000) player.rank = "Skilled";
-				else if (player.tpPoints! + player.proPoints!! >= 100000) player.rank = "Skilled-";
-				else if (player.tpPoints! + player.proPoints!! >= 80000) player.rank = "Regular+";
-				else if (player.tpPoints! + player.proPoints!! >= 70000) player.rank = "Regular";
-				else if (player.tpPoints! + player.proPoints!! >= 60000) player.rank = "Regular-";
-				else if (player.tpPoints! + player.proPoints!! >= 40000) player.rank = "Casual+";
-				else if (player.tpPoints! + player.proPoints!! >= 30000) player.rank = "Casual";
-				else if (player.tpPoints! + player.proPoints!! >= 20000) player.rank = "Casual-";
-				else if (player.tpPoints! + player.proPoints!! >= 10000) player.rank = "Amateur+";
-				else if (player.tpPoints! + player.proPoints!! >= 5000) player.rank = "Amateur";
-				else if (player.tpPoints! + player.proPoints!! >= 2000) player.rank = "Amateur-";
-				else if (player.tpPoints! + player.proPoints!! >= 1000) player.rank = "Beginner+";
-				else if (player.tpPoints! + player.proPoints!! >= 500) player.rank = "Beginner";
-				else if (player.tpPoints! + player.proPoints!! > 0) player.rank = "Beginner-";
+				if (player.tpPoints! + player.proPoints! >= 800000) player.rank = "Legend";
+				else if (player.tpPoints! + player.proPoints! >= 500000) player.rank = "Master";
+				else if (player.tpPoints! + player.proPoints! >= 400000) player.rank = "Pro";
+				else if (player.tpPoints! + player.proPoints! >= 300000) player.rank = "Semipro";
+				else if (player.tpPoints! + player.proPoints! >= 250000) player.rank = "Expert+";
+				else if (player.tpPoints! + player.proPoints! >= 230000) player.rank = "Expert";
+				else if (player.tpPoints! + player.proPoints! >= 200000) player.rank = "Expert-";
+				else if (player.tpPoints! + player.proPoints! >= 150000) player.rank = "Skilled+";
+				else if (player.tpPoints! + player.proPoints! >= 120000) player.rank = "Skilled";
+				else if (player.tpPoints! + player.proPoints! >= 100000) player.rank = "Skilled-";
+				else if (player.tpPoints! + player.proPoints! >= 80000) player.rank = "Regular+";
+				else if (player.tpPoints! + player.proPoints! >= 70000) player.rank = "Regular";
+				else if (player.tpPoints! + player.proPoints! >= 60000) player.rank = "Regular-";
+				else if (player.tpPoints! + player.proPoints! >= 40000) player.rank = "Casual+";
+				else if (player.tpPoints! + player.proPoints! >= 30000) player.rank = "Casual";
+				else if (player.tpPoints! + player.proPoints! >= 20000) player.rank = "Casual-";
+				else if (player.tpPoints! + player.proPoints! >= 10000) player.rank = "Amateur+";
+				else if (player.tpPoints! + player.proPoints! >= 5000) player.rank = "Amateur";
+				else if (player.tpPoints! + player.proPoints! >= 2000) player.rank = "Amateur-";
+				else if (player.tpPoints! + player.proPoints! >= 1000) player.rank = "Beginner+";
+				else if (player.tpPoints! + player.proPoints! >= 500) player.rank = "Beginner";
+				else if (player.tpPoints! + player.proPoints! > 0) player.rank = "Beginner-";
 				else player.rank = "New";
 				break;
 			}
 
 			case "kz_vanilla": {
-				if (player.tpPoints! + player.proPoints!! >= 600000) player.rank = "Legend";
-				else if (player.tpPoints! + player.proPoints!! >= 400000) player.rank = "Master";
-				else if (player.tpPoints! + player.proPoints!! >= 300000) player.rank = "Pro";
-				else if (player.tpPoints! + player.proPoints!! >= 250000) player.rank = "Semipro";
-				else if (player.tpPoints! + player.proPoints!! >= 200000) player.rank = "Expert+";
-				else if (player.tpPoints! + player.proPoints!! >= 180000) player.rank = "Expert";
-				else if (player.tpPoints! + player.proPoints!! >= 160000) player.rank = "Expert-";
-				else if (player.tpPoints! + player.proPoints!! >= 140000) player.rank = "Skilled+";
-				else if (player.tpPoints! + player.proPoints!! >= 120000) player.rank = "Skilled";
-				else if (player.tpPoints! + player.proPoints!! >= 100000) player.rank = "Skilled-";
-				else if (player.tpPoints! + player.proPoints!! >= 80000) player.rank = "Regular+";
-				else if (player.tpPoints! + player.proPoints!! >= 70000) player.rank = "Regular";
-				else if (player.tpPoints! + player.proPoints!! >= 60000) player.rank = "Regular-";
-				else if (player.tpPoints! + player.proPoints!! >= 40000) player.rank = "Casual+";
-				else if (player.tpPoints! + player.proPoints!! >= 30000) player.rank = "Casual";
-				else if (player.tpPoints! + player.proPoints!! >= 20000) player.rank = "Casual-";
-				else if (player.tpPoints! + player.proPoints!! >= 10000) player.rank = "Amateur+";
-				else if (player.tpPoints! + player.proPoints!! >= 5000) player.rank = "Amateur";
-				else if (player.tpPoints! + player.proPoints!! >= 2000) player.rank = "Amateur-";
-				else if (player.tpPoints! + player.proPoints!! >= 1000) player.rank = "Beginner+";
-				else if (player.tpPoints! + player.proPoints!! >= 500) player.rank = "Beginner";
-				else if (player.tpPoints! + player.proPoints!! > 0) player.rank = "Beginner-";
+				if (player.tpPoints! + player.proPoints! >= 600000) player.rank = "Legend";
+				else if (player.tpPoints! + player.proPoints! >= 400000) player.rank = "Master";
+				else if (player.tpPoints! + player.proPoints! >= 300000) player.rank = "Pro";
+				else if (player.tpPoints! + player.proPoints! >= 250000) player.rank = "Semipro";
+				else if (player.tpPoints! + player.proPoints! >= 200000) player.rank = "Expert+";
+				else if (player.tpPoints! + player.proPoints! >= 180000) player.rank = "Expert";
+				else if (player.tpPoints! + player.proPoints! >= 160000) player.rank = "Expert-";
+				else if (player.tpPoints! + player.proPoints! >= 140000) player.rank = "Skilled+";
+				else if (player.tpPoints! + player.proPoints! >= 120000) player.rank = "Skilled";
+				else if (player.tpPoints! + player.proPoints! >= 100000) player.rank = "Skilled-";
+				else if (player.tpPoints! + player.proPoints! >= 80000) player.rank = "Regular+";
+				else if (player.tpPoints! + player.proPoints! >= 70000) player.rank = "Regular";
+				else if (player.tpPoints! + player.proPoints! >= 60000) player.rank = "Regular-";
+				else if (player.tpPoints! + player.proPoints! >= 40000) player.rank = "Casual+";
+				else if (player.tpPoints! + player.proPoints! >= 30000) player.rank = "Casual";
+				else if (player.tpPoints! + player.proPoints! >= 20000) player.rank = "Casual-";
+				else if (player.tpPoints! + player.proPoints! >= 10000) player.rank = "Amateur+";
+				else if (player.tpPoints! + player.proPoints! >= 5000) player.rank = "Amateur";
+				else if (player.tpPoints! + player.proPoints! >= 2000) player.rank = "Amateur-";
+				else if (player.tpPoints! + player.proPoints! >= 1000) player.rank = "Beginner+";
+				else if (player.tpPoints! + player.proPoints! >= 500) player.rank = "Beginner";
+				else if (player.tpPoints! + player.proPoints! > 0) player.rank = "Beginner-";
 				else player.rank = "New";
 				break;
 			}
@@ -246,7 +246,7 @@ export default {
 
 		const doable: {
 			success: boolean;
-			data?: any;
+			data?: any; // eslint-disable-line
 			error?: string;
 		} = await axios
 			.get(`https://kzgo.eu/api/completions/${mode}`)
@@ -287,7 +287,7 @@ export default {
 		if (player.proFinishes![7] > 0)
 			player.proPerc = Math.round(Math.floor((player.proFinishes![7] / doableCount[1][7]) * 100));
 
-		let bars = [
+		const bars = [
 			["", "", "", "", "", "", ""],
 			["", "", "", "", "", "", ""]
 		];
@@ -316,7 +316,9 @@ export default {
 			}
 		}
 
-		let text = `
+		/* eslint-disable no-irregular-whitespace */
+		/* eslint-disable indent */
+		const text = `
 ──────────────────────────────
                       TP                                               PRO
            \`${player.tpFinishes![7]}/${doableCount[0][7]} (${
@@ -340,6 +342,8 @@ Rank: **${player.rank}** (${player.tpPoints! + player.proPoints!})
 Preferred Mode: ${player.mode}
 steamID: ${player.steam_id}
 		`;
+		/* eslint-enable indent */
+		/* eslint-enable no-irregular-whitespace */
 
 		const avatar = await getSteamAvatar(player.steamid64);
 		if (!avatar.success) return reply(interaction, { content: avatar.error });
@@ -348,7 +352,7 @@ steamID: ${player.steam_id}
 			.setColor([116, 128, 194])
 			.setTitle(`${player.name}'s ${modeMap.get(mode)} Profile`)
 			.setURL(`https://kzgo.eu/players/${player.steam_id}?${modeMap.get(mode).toLowerCase()}=`)
-			.setThumbnail(avatar.data)
+			.setThumbnail(avatar.data!)
 			.setDescription(text)
 			.setFooter({ text: "(͡ ͡° ͜ つ ͡͡°)7 | <3 to kzgo.eu", iconURL: client.icon });
 

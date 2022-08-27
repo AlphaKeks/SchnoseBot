@@ -23,7 +23,7 @@ export default {
 		const kzgoMap = await getMapKZGO(mapValidation.data!.name);
 		if (!kzgoMap.success) return reply(interaction, { content: kzgoMap.error });
 
-		const mappers: any = [];
+		const mappers: string[] = [];
 		for (let i = 0; i < kzgoMap.data!.mapperIds.length; i++) {
 			mappers.push(
 				`[${kzgoMap.data!.mapperNames[i]}](https://steamcommunity.com/profiles/${

@@ -11,7 +11,7 @@ import { promises } from "fs";
 import mongoose from "mongoose";
 
 interface CustomCommand extends ApplicationCommand {
-	execute: Function;
+	execute: Function; // eslint-disable-line
 }
 
 class SchnoseBot extends Client {
@@ -50,7 +50,7 @@ class SchnoseBot extends Client {
 		const eventFiles = await promises.readdir(`${process.cwd()}/dist/events`);
 
 		eventFiles.forEach((file) => {
-			let eventFile = require(`${process.cwd()}/dist/events/${file}`)?.default;
+			const eventFile = require(`${process.cwd()}/dist/events/${file}`)?.default;
 			if (!eventFile.name || !eventFile.execute)
 				throw new SyntaxError("Incorrect event file structure");
 
@@ -70,7 +70,7 @@ class SchnoseBot extends Client {
 		const commandFiles = await promises.readdir(`${process.cwd()}/dist/commands`);
 
 		commandFiles.forEach((file) => {
-			let commandFile = require(`${process.cwd()}/dist/commands/${file}`)?.default;
+			const commandFile = require(`${process.cwd()}/dist/commands/${file}`)?.default;
 			if (!commandFile.data) throw new SyntaxError("incorrect command file structure");
 
 			commands.push(commandFile.data.toJSON());
@@ -115,6 +115,7 @@ class SchnoseBot extends Client {
 					let embedTitle = "";
 					let embedDescription = "";
 
+					/* eslint-disable max-len */
 					switch (interaction.values[0]) {
 						case "tutorial-value":
 							embedTitle = `Getting Started`;
@@ -177,6 +178,7 @@ class SchnoseBot extends Client {
 							embedDescription = `This command will show you the World Record of a given map.\nYou can specify the following parameters:\n> map*\n> mode\n\n*required`;
 							break;
 					}
+					/* eslint-enable max-len */
 
 					const helpEmbed = new EmbedBuilder()
 						.setColor([116, 128, 194])

@@ -18,7 +18,7 @@ export default {
 			.setColor("#7480C2")
 			.setTitle("Help Menu")
 			.setDescription(
-				"**(͡ ͡° ͜ つ ͡͡°)/**\n\nUse the menu below to get information on any command.\nIf you find any bugs or have any ideas for new features / improving existing ones, you can message `AlphaKeks#9826`.\n\nGitHub Page: https://github.com/AlphaKeks/SchnoseBot\nSteam Group: https://steamcommunity.com/groups/schnose"
+				"**(͡ ͡° ͜ つ ͡͡°)/**\n\nUse the menu below to get information on any command.\nIf you find any bugs or have any ideas for new features / improving existing ones, you can message `AlphaKeks#9826`.\n\nGitHub Page: https://github.com/AlphaKeks/SchnoseBot\nSteam Group: https://steamcommunity.com/groups/schnose" // eslint-disable-line
 			)
 			.setFooter({ text: "(͡ ͡° ͜ つ ͡͡°)7", iconURL: client.icon });
 

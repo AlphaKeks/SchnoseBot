@@ -38,7 +38,7 @@ export async function validateTarget(
 	switch (res.data.type) {
 		case null:
 			res.error =
-				"You did not specify a target and you also haven't saved a steamID in the database. You can do that with `/setsteam`, so you don't have to specify a target everytime you use a command.";
+				"You did not specify a target and you also haven't saved a steamID in the database. You can do that with `/setsteam`, so you don't have to specify a target everytime you use a command."; // eslint-disable-line
 			break;
 		case "mention": {
 			input = input!.slice(2, -1);
@@ -72,7 +72,7 @@ export async function validateTarget(
 }
 
 export async function getSteamAvatar(steamid64: bigint | string) {
-	const res: { success: boolean; data?: any; error?: string } = await axios
+	const res: { success: boolean; data?: string; error?: string } = await axios
 		.get(
 			`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${
 				process.env.STEAM_API || ""
