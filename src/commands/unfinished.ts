@@ -30,14 +30,24 @@ export default {
 				.addChoices({ name: "SimpleKZ", value: "kz_simple" })
 				.addChoices({ name: "Vanilla", value: "kz_vanilla" })
 		)
-		.addBooleanOption((o) => o.setName("runtype").setDescription("TP = true, PRO = false"))
+		.addStringOption((o) =>
+			o
+				.setName("runtype")
+				.setDescription("TP/PRO")
+				.addChoices({ name: "TP", value: "true" })
+				.addChoices({ name: "PRO", value: "false" })
+		)
 		.addStringOption((o) => o.setName("target").setDescription("Specify a target")),
 	async execute(interaction: ChatInputCommandInteraction, client: SchnoseBot) {
 		await interaction.deferReply();
 
 		const inputTier = interaction.options.getInteger("tier") || null;
 		const inputMode = interaction.options.getString("mode") || null;
-		const inputRuntype = interaction.options.getBoolean("runtype") || false;
+		const inputRuntype = interaction.options.getString("runtype")
+			? interaction.options.getString("runtype") === "true"
+				? true
+				: false
+			: false;
 		const inputTarget = interaction.options.getString("target") || null;
 
 		/* eslint-disable indent */
