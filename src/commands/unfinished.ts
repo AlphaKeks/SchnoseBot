@@ -121,7 +121,7 @@ export default {
 		let text = ``;
 		for (let i = 0; i < uncompletedMaps.length; i++) {
 			if (i === 10) {
-				text += `...${uncompletedMaps.length - 10} more`;
+				text += `...${uncompletedMaps.length - 10} more 😔`;
 				break;
 			}
 			text += `> ${uncompletedMaps[i]}\n`;
