@@ -1,0 +1,12 @@
+[package]
+name = "schnose"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+gokz = { version = "0.1.0", path = "../gokz"}
+serenity = { version = "0.11", default-features = false, features = ["client", "gateway", "rustls_backend", "model"] }
+tokio = { version = "1", features = ["full"] }
+dotenv = "0.15"
