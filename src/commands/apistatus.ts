@@ -1,7 +1,7 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from "discord.js";
-import { APIStatus } from "gokz.js";
 import SchnoseBot from "src/classes/Schnose";
 import { reply } from "../lib/functions/discord";
+import { APIStatus } from "gokz.js";
 
 export default {
 	data: new SlashCommandBuilder()
