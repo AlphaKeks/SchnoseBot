@@ -55,8 +55,13 @@ pub async fn map_wasm(map_name: String) -> JSResult {
 
 	let client = Client::new();
 
-	let map = match crate::core::get_map(NameOrId::Name(map_name), &client).await {
-		Ok(data) => data,
+	let global_maps = match get_maps(&client).await {
+		Ok(maps) => maps,
+		Err(err) => return err.to_string(),
+	};
+
+	let map = match validate_map(&map_name, global_maps).await {
+		Ok(map) => map,
 		Err(err) => return err.to_string(),
 	};
 
@@ -78,7 +83,7 @@ pub async fn map_wasm(map_name: String) -> JSResult {
 		Err(err) => return err.to_string(),
 	};
 
-	let date = match NaiveDateTime::from_str(&map.created_on) {
+	let date = match NaiveDateTime::from_str(&map.updated_on) {
 		Ok(str) => str,
 		_ => return "Error parsing date.".to_string(),
 	};
