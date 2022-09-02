@@ -117,7 +117,7 @@ pub async fn map_wasm(map_name: String) -> JSResult {
 		tier: map.difficulty,
 		mappers,
 		bonuses: kzgo_map.bonuses,
-		date: format!("<t:{}:d>", date.timestamp() / 1000).to_string(),
+		date: format!("<t:{}:d>", date.timestamp()).to_string(),
 		filters: embed_filters,
 	};
 
