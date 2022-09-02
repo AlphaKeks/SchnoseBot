@@ -1,7 +1,7 @@
 {
 	"name": "schnosebot",
-	"version": "1.30.0",
-	"description": "discord.js bot for CS:GO KZ commands",
+	"version": "2.0.0",
+	"description": "discord.js bot for CS:GO KZ commands, powered by WASM",
 	"main": "./dist/bot.js",
 	"scripts": {
 		"build": "rm -rf ./dist/* && tsc",

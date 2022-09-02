@@ -1,7 +1,7 @@
+#![allow(dead_code)]
 use serde::{Deserialize, Serialize};
 
 /* GlobalAPI */
-#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Ban {
 	pub id: Option<u32>,
@@ -18,7 +18,6 @@ pub struct Ban {
 	pub updated_on: String,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Jumpstat {
 	pub id: Option<u32>,
@@ -39,7 +38,6 @@ pub struct Jumpstat {
 	pub updated_on: String,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Map {
 	pub id: u16,
@@ -54,7 +52,6 @@ pub struct Map {
 	pub download_url: Option<String>,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Mode {
 	pub id: u32,
@@ -71,7 +68,6 @@ pub struct Mode {
 	pub updated_by_id: String,
 }
 
-#[allow(dead_code)]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Player {
 	pub steamid64: String,
@@ -81,7 +77,6 @@ pub struct Player {
 	pub name: Option<String>,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RecordFilter {
 	pub id: u32,
@@ -95,7 +90,6 @@ pub struct RecordFilter {
 	pub updated_by_id: String,
 }
 
-#[allow(dead_code)]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct DisplayFilter {
 	pub mode: String,
@@ -105,7 +99,6 @@ pub struct DisplayFilter {
 	pub icon: String,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DisplayFilterCollection {
 	pub kzt: DisplayFilter,
@@ -113,7 +106,6 @@ pub struct DisplayFilterCollection {
 	pub vnl: DisplayFilter,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RecordFilterDistribution {
 	record_filter_id: u32,
@@ -127,7 +119,6 @@ pub struct RecordFilterDistribution {
 	pub updated_by_id: String,
 }
 
-#[allow(dead_code)]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Record {
 	pub id: u32,
@@ -151,7 +142,6 @@ pub struct Record {
 	pub replay_id: u32,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Place {
 	pub steamid64: String,
@@ -160,7 +150,6 @@ pub struct Place {
 	pub player_name: String,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Replay {
 	pub id: u32,
@@ -176,7 +165,6 @@ pub struct Replay {
 	pub replay_id: u32,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Server {
 	pub id: u32,
@@ -186,7 +174,6 @@ pub struct Server {
 	pub owner_steamid64: String,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct APIStatusShort {
 	pub status: String,
@@ -194,7 +181,6 @@ pub struct APIStatusShort {
 	pub backend: String,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct APIStatusPage {
 	pub id: String,
@@ -204,7 +190,6 @@ pub struct APIStatusPage {
 	pub updated_at: String,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct APIStatusComponent {
 	pub id: String,
@@ -221,14 +206,12 @@ pub struct APIStatusComponent {
 	pub only_show_if_degraded: bool,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct APIStatusStatus {
 	pub indicator: String,
 	pub description: String,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct APIStatus {
 	pub page: APIStatusPage,
@@ -239,7 +222,6 @@ pub struct APIStatus {
 }
 
 /* KZ:GO API */
-#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct KZGOMap {
 	pub _id: String,
@@ -256,4 +238,31 @@ pub struct KZGOMap {
 	#[serde(rename = "mapperIds")]
 	pub mapper_ids: Vec<String>,
 	pub date: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CompletionCount {
+	#[serde(rename(deserialize = "1"))]
+	pub one: u32,
+	#[serde(rename(deserialize = "2"))]
+	pub two: u32,
+	#[serde(rename(deserialize = "3"))]
+	pub three: u32,
+	#[serde(rename(deserialize = "4"))]
+	pub four: u32,
+	#[serde(rename(deserialize = "5"))]
+	pub five: u32,
+	#[serde(rename(deserialize = "6"))]
+	pub six: u32,
+	#[serde(rename(deserialize = "7"))]
+	pub seven: u32,
+	pub total: u32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CompletionStats {
+	pub _id: String,
+	pub mode: String,
+	pub pro: CompletionCount,
+	pub tp: CompletionCount,
 }

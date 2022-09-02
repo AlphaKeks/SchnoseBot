@@ -108,11 +108,12 @@ impl ModeInput {
 #[allow(dead_code)]
 async fn api_request<T>(
 	route: &str,
-	params: Vec<(&str, String)>,
+	params: Vec<(&str, &str)>,
 	client: &Client,
 ) -> Result<T, APIError>
 where
-	T: DeserializeOwned, {
+	T: DeserializeOwned,
+{
 	let url = format!("https://kztimerglobal.com/api/v2.0/{route}");
 	let url = match Url::parse_with_params(&url, &params) {
 		Ok(url) => url,
@@ -131,27 +132,22 @@ where
 }
 
 #[allow(dead_code)]
-#[no_mangle]
-pub async extern "C" fn get_maps(client: &Client) -> Result<Vec<Map>, APIError> {
-	let params = vec![
-		("is_validated", true.to_string()),
-		("limit", 9999.to_string()),
-	];
+pub async fn get_maps(client: &Client) -> Result<Vec<Map>, APIError> {
+	let params = vec![("is_validated", "true"), ("limit", "9999")];
 
 	api_request::<Vec<Map>>("maps?", params, client).await
 }
 
 #[allow(dead_code)]
 pub async fn get_map(map: NameOrId, client: &Client) -> Result<Map, APIError> {
-	let mut params = vec![
-		("is_validated", true.to_string()),
-		("limit", 9999.to_string()),
-	];
+	let mut params = vec![("is_validated", "true"), ("limit", "1")];
 
-	match map {
-		NameOrId::Name(name) => params.push(("name", name)),
-		NameOrId::Id(id) => params.push(("id", id.to_string())),
+	let map = match map {
+		NameOrId::Name(name) => ("name", name),
+		NameOrId::Id(id) => ("id", id.to_string()),
 	};
+
+	params.push((map.0, &map.1));
 
 	match api_request::<Vec<Map>>("maps?", params, client).await {
 		Ok(mut maps) => {
@@ -167,16 +163,16 @@ pub async fn get_map(map: NameOrId, client: &Client) -> Result<Map, APIError> {
 
 #[allow(dead_code)]
 pub async fn get_filters(
-	map_id: u16,
-	course: u8,
+	map_id: &str,
+	course: &str,
 	client: &Client,
 ) -> Result<DisplayFilterCollection, APIError> {
 	let params = vec![
-		("map_ids", map_id.to_string()),
-		("stages", course.to_string()),
-		("tickrates", 128.to_string()),
-		("has_teleports", false.to_string()),
-		("limit", 9999.to_string()),
+		("map_ids", map_id),
+		("stages", course),
+		("tickrates", "128"),
+		("has_teleports", "false"),
+		("limit", "9999"),
 	];
 
 	match api_request::<Vec<RecordFilter>>("record_filters?", params, client).await {
@@ -220,16 +216,16 @@ pub async fn get_filters(
 
 #[allow(dead_code)]
 pub async fn get_filter_dist(
-	mode_id: u8,
-	runtype: bool,
+	mode_id: &str,
+	runtype: &str,
 	client: &Client,
 ) -> Result<Vec<RecordFilter>, APIError> {
 	let params = vec![
-		("stages", 0.to_string()),
-		("mode_ids", mode_id.to_string()),
-		("tickrates", 128.to_string()),
-		("has_teleports", runtype.to_string()),
-		("limit", 9999.to_string()),
+		("stages", "0"),
+		("mode_ids", mode_id),
+		("tickrates", "128"),
+		("has_teleports", runtype),
+		("limit", "9999"),
 	];
 
 	api_request::<Vec<RecordFilter>>("record_filters?", params, client).await
@@ -262,11 +258,13 @@ pub async fn get_mode(mode: NameOrId, client: &Client) -> Result<Mode, APIError>
 
 #[allow(dead_code)]
 pub async fn get_player(player: NameOrSteamID, client: &Client) -> Result<Player, APIError> {
-	let mut params = vec![("limit", 1.to_string())];
-	match player {
-		NameOrSteamID::Name(name) => params.push(("name", name)),
-		NameOrSteamID::SteamID(steam_id) => params.push(("steam_id", steam_id)),
+	let mut params = vec![("limit", "1")];
+	let player = match player {
+		NameOrSteamID::Name(name) => ("name", name),
+		NameOrSteamID::SteamID(steam_id) => ("steam_id", steam_id),
 	};
+
+	params.push((player.0, &player.1));
 
 	match api_request::<Vec<Player>>("players?", params, client).await {
 		Ok(mut players) => {
@@ -283,23 +281,25 @@ pub async fn get_player(player: NameOrSteamID, client: &Client) -> Result<Player
 #[allow(dead_code)]
 pub async fn get_wr(
 	map: NameOrId,
-	course: u8,
-	mode_name: String,
-	runtype: bool,
+	course: &str,
+	mode_name: &str,
+	runtype: &str,
 	client: &Client,
 ) -> Result<Record, APIError> {
 	let mut params = vec![
-		("tickrate", 128.to_string()),
-		("stage", course.to_string()),
+		("tickrate", "128"),
+		("stage", course),
 		("modes_list_string", mode_name),
-		("has_teleports", runtype.to_string()),
-		("limit", 1.to_string()),
+		("has_teleports", runtype),
+		("limit", "1"),
 	];
 
-	match map {
-		NameOrId::Name(name) => params.push(("map_name", name)),
-		NameOrId::Id(id) => params.push(("map_id", id.to_string())),
+	let map = match map {
+		NameOrId::Name(name) => ("map_name", name),
+		NameOrId::Id(id) => ("map_id", id.to_string()),
 	};
+
+	params.push((map.0, &map.1));
 
 	match api_request::<Vec<Record>>("records/top?", params, client).await {
 		Ok(mut records) => {
@@ -316,23 +316,25 @@ pub async fn get_wr(
 #[allow(dead_code)]
 pub async fn get_maptop(
 	map: NameOrId,
-	mode_name: String,
-	course: u8,
-	runtype: bool,
+	mode_name: &str,
+	course: &str,
+	runtype: &str,
 	client: &Client,
 ) -> Result<Vec<Record>, APIError> {
 	let mut params = vec![
-		("tickrate", 128.to_string()),
-		("stage", course.to_string()),
+		("tickrate", "128"),
+		("stage", course),
 		("modes_list_string", mode_name),
-		("has_teleports", runtype.to_string()),
-		("limit", 100.to_string()),
+		("has_teleports", runtype),
+		("limit", "100"),
 	];
 
-	match map {
-		NameOrId::Name(name) => params.push(("map_name", name)),
-		NameOrId::Id(id) => params.push(("map_id", id.to_string())),
+	let map = match map {
+		NameOrId::Name(name) => ("map_name", name),
+		NameOrId::Id(id) => ("map_id", id.to_string()),
 	};
+
+	params.push((map.0, &map.1));
 
 	api_request::<Vec<Record>>("records/top?", params, client).await
 }
@@ -340,25 +342,28 @@ pub async fn get_maptop(
 #[allow(dead_code)]
 pub async fn get_top(
 	mode: NameOrId,
-	stages: Vec<u8>,
-	runtype: bool,
+	stages: Vec<&str>,
+	runtype: &str,
 	client: &Client,
 ) -> Result<Vec<Place>, APIError> {
 	let mut params = vec![
-		("tickrates", 128.to_string()),
-		("has_teleports", runtype.to_string()),
-		("limit", 100.to_string()),
+		("tickrates", "128"),
+		("has_teleports", runtype),
+		("limit", "100"),
 	];
 
-	match mode {
+	let mode = match mode {
 		NameOrId::Name(name) => match name.as_str() {
-			"kz_timer" => params.push(("mode_ids", 200.to_string())),
-			"kz_simple" => params.push(("mode_ids", 201.to_string())),
-			"kz_vanilla" => params.push(("mode_ids", 202.to_string())),
-			_ => params.push(("mode_ids", 200.to_string())),
+			"kz_timer" => ("mode_ids", 200.to_string()),
+			"kz_simple" => ("mode_ids", 201.to_string()),
+			"kz_vanilla" => ("mode_ids", 202.to_string()),
+			// kzt as fallback
+			_ => ("mode_ids", 200.to_string()),
 		},
-		NameOrId::Id(id) => params.push(("mode_ids", id.to_string())),
+		NameOrId::Id(id) => ("mode_ids", id.to_string()),
 	};
+
+	params.push((mode.0, &mode.1));
 
 	let mut path = String::from("records/top/world_records?");
 	for i in stages {
@@ -372,28 +377,32 @@ pub async fn get_top(
 pub async fn get_pb(
 	player: NameOrSteamID,
 	map: NameOrId,
-	course: u8,
-	mode_name: String,
-	runtype: bool,
+	course: &str,
+	mode_name: &str,
+	runtype: &str,
 	client: &Client,
 ) -> Result<Record, APIError> {
 	let mut params = vec![
-		("tickrates", 128.to_string()),
-		("stage", course.to_string()),
+		("tickrates", "128"),
+		("stage", course),
 		("modes_list_string", mode_name),
-		("has_teleports", runtype.to_string()),
-		("limit", 1.to_string()),
+		("has_teleports", runtype),
+		("limit", "1"),
 	];
 
-	match player {
-		NameOrSteamID::Name(name) => params.push(("name", name)),
-		NameOrSteamID::SteamID(steam_id) => params.push(("steam_id", steam_id)),
+	let player = match player {
+		NameOrSteamID::Name(name) => ("player_name", name),
+		NameOrSteamID::SteamID(steam_id) => ("steam_id", steam_id),
 	};
 
-	match map {
-		NameOrId::Name(name) => params.push(("map_name", name)),
-		NameOrId::Id(id) => params.push(("map_id", id.to_string())),
+	params.push((player.0, &player.1));
+
+	let map = match map {
+		NameOrId::Name(name) => ("map_name", name),
+		NameOrId::Id(id) => ("map_id", id.to_string()),
 	};
+
+	params.push((map.0, &map.1));
 
 	match api_request::<Vec<Record>>("records/top?", params, client).await {
 		Ok(mut records) => {
@@ -410,22 +419,24 @@ pub async fn get_pb(
 #[allow(dead_code)]
 pub async fn get_times(
 	player: NameOrSteamID,
-	mode_name: String,
-	runtype: bool,
+	mode_name: &str,
+	runtype: &str,
 	client: &Client,
 ) -> Result<Vec<Record>, APIError> {
 	let mut params = vec![
-		("tickrates", 128.to_string()),
-		("stage", 0.to_string()),
+		("tickrates", "128"),
+		("stage", "0"),
 		("modes_list_string", mode_name),
-		("has_teleports", runtype.to_string()),
-		("limit", 9999.to_string()),
+		("has_teleports", runtype),
+		("limit", "9999"),
 	];
 
-	match player {
-		NameOrSteamID::Name(name) => params.push(("player_name", name)),
-		NameOrSteamID::SteamID(steam_id) => params.push(("steam_id", steam_id)),
+	let player = match player {
+		NameOrSteamID::Name(name) => ("player_name", name),
+		NameOrSteamID::SteamID(steam_id) => ("steam_id", steam_id),
 	};
+
+	params.push((player.0, &player.1));
 
 	api_request::<Vec<Record>>("records/top?", params, client).await
 }
@@ -434,48 +445,23 @@ pub async fn get_times(
 pub async fn get_recent(player: NameOrSteamID, client: Client) -> Result<Record, APIError> {
 	let mut player_vars = vec![];
 	let mut client_vars = vec![];
-	for _ in 0..4 {
+	for _ in 0..5 {
 		player_vars.push(player.clone());
 		client_vars.push(client.clone());
 	}
 
 	let requests1 = vec![
-		get_times(
-			player_vars.remove(0),
-			String::from("kz_timer"),
-			true,
-			&client_vars[0],
-		),
-		get_times(
-			player_vars.remove(1),
-			String::from("kz_timer"),
-			false,
-			&client_vars[1],
-		),
-		get_times(
-			player_vars.remove(2),
-			String::from("kz_simple"),
-			true,
-			&client_vars[2],
-		),
+		get_times(player_vars.remove(0), "kz_timer", "true", &client_vars[0]),
+		get_times(player_vars.remove(0), "kz_timer", "false", &client_vars[1]),
+		get_times(player_vars.remove(0), "kz_simple", "true", &client_vars[2]),
 	];
 
 	let mut result1 = join_all(requests1).await;
 
 	let requests2 = vec![
-		get_times(
-			player_vars.remove(3),
-			String::from("kz_simple"),
-			false,
-			&client_vars[3],
-		),
-		get_times(
-			player_vars.remove(4),
-			String::from("kz_vanilla"),
-			true,
-			&client_vars[4],
-		),
-		get_times(player, String::from("kz_vanilla"), false, &client),
+		get_times(player_vars.remove(0), "kz_simple", "false", &client_vars[3]),
+		get_times(player_vars.remove(0), "kz_vanilla", "true", &client_vars[4]),
+		get_times(player, "kz_vanilla", "false", &client),
 	];
 
 	let mut result2 = join_all(requests2).await;
@@ -488,7 +474,7 @@ pub async fn get_recent(player: NameOrSteamID, client: Client) -> Result<Record,
 	for i in result {
 		match i {
 			Ok(mut data) => records.append(&mut data),
-			Err(err) => println!("error: {:#?}", err),
+			_ => (),
 		}
 	}
 
@@ -532,7 +518,7 @@ pub async fn api_status(client: &Client) -> Result<APIStatusShort, APIError> {
 			Ok(mut json) => Ok(APIStatusShort {
 				status: json.status.description,
 				frontend: json.components.remove(0).status,
-				backend: json.components.remove(1).status,
+				backend: json.components.remove(0).status,
 			}),
 			_ => Err("GlobalAPI returned invalid data.".into()),
 		},
@@ -541,7 +527,7 @@ pub async fn api_status(client: &Client) -> Result<APIStatusShort, APIError> {
 }
 
 #[allow(dead_code)]
-pub async fn is_steamid(input: String) -> bool {
+pub fn is_steamid(input: &str) -> bool {
 	let regex = Regex::new(r"STEAM_[0-1]:[0-1]:[0-9]+");
 	match regex {
 		Ok(r) => match r.find(&input) {
@@ -549,6 +535,22 @@ pub async fn is_steamid(input: String) -> bool {
 			None => false,
 		},
 		Err(_) => false,
+	}
+}
+
+#[allow(dead_code)]
+pub async fn to_steamid(player_identifier: &str) -> Result<NameOrSteamID, String> {
+	if is_steamid(&player_identifier) {
+		Ok(NameOrSteamID::SteamID(player_identifier.to_string()))
+	} else {
+		let client = Client::new();
+		match get_player(NameOrSteamID::Name(player_identifier.to_string()), &client).await {
+			Ok(player) => match player.steam_id {
+				Some(steam_id) => Ok(NameOrSteamID::SteamID(steam_id)),
+				None => Err("Couldn't convert to steamID.".to_string()),
+			},
+			_ => Err("Couldn't convert to steamID.".to_string()),
+		}
 	}
 }
 
@@ -573,7 +575,7 @@ pub async fn get_mapcycle(client: &Client) -> Result<Vec<String>, APIError> {
 }
 
 #[allow(dead_code)]
-pub async fn validate_map(map_name: String, map_list: Vec<Map>) -> Result<Map, APIError> {
+pub async fn validate_map(map_name: &str, map_list: Vec<Map>) -> Result<Map, APIError> {
 	for map in map_list {
 		if map.name.contains(map_name.to_lowercase().as_str()) {
 			return Ok(map);
@@ -583,7 +585,7 @@ pub async fn validate_map(map_name: String, map_list: Vec<Map>) -> Result<Map, A
 }
 
 #[allow(dead_code)]
-pub async fn get_tier(map_name: String, map_list: Vec<Map>) -> Result<u8, APIError> {
+pub async fn get_tier(map_name: &str, map_list: Vec<Map>) -> Result<u8, APIError> {
 	for map in map_list {
 		if map.name.contains(map_name.to_lowercase().as_str()) {
 			return Ok(map.difficulty);
@@ -608,7 +610,7 @@ pub async fn get_maps_kzgo(client: &Client) -> Result<Vec<KZGOMap>, APIError> {
 }
 
 #[allow(dead_code)]
-pub async fn get_map_kzgo(map_name: String, client: &Client) -> Result<KZGOMap, APIError> {
+pub async fn get_map_kzgo(map_name: &str, client: &Client) -> Result<KZGOMap, APIError> {
 	let url = format!("https://kzgo.eu/api/maps/{}", map_name);
 	let request = client.get(url).send().await?;
 

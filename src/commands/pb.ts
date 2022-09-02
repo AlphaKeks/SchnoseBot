@@ -2,10 +2,12 @@ import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from "
 import { reply } from "../lib/functions/discord";
 import { parseTime } from "../lib/functions/util";
 import { validateTarget } from "../lib/functions/schnose";
-import { getMaps, getPB, getPlace, validateMap } from "gokz.js";
+import { getPlace } from "gokz.js";
 import userSchema from "../lib/schemas/user";
 import modeMap from "gokz.js/lib/api";
 import SchnoseBot from "src/classes/Schnose";
+import { pb_wasm } from "../../rust/pkg/gokz_wasm";
+import * as W from "src/lib/types/wasm";
 
 export default {
 	data: new SlashCommandBuilder()
@@ -37,12 +39,6 @@ export default {
 		const inputMode = interaction.options.getString("mode") || null;
 		const inputTarget = interaction.options.getString("target") || null;
 
-		const globalMaps = await getMaps();
-		if (!globalMaps.success) return reply(interaction, { content: globalMaps.error });
-
-		const mapValidation = await validateMap(inputMap, globalMaps.data!);
-		if (!mapValidation.success) return reply(interaction, { content: mapValidation.error });
-
 		let mode: string;
 		if (inputMode) mode = inputMode;
 		else {
@@ -57,45 +53,54 @@ export default {
 		const targetValidation = await validateTarget(interaction, inputTarget);
 		if (!targetValidation.success) return reply(interaction, { content: targetValidation.error });
 
-		const req = await Promise.all([
-			await getPB(targetValidation.data!.value!, mapValidation.data!.name, 0, mode, true),
-			await getPB(targetValidation.data!.value!, mapValidation.data!.name, 0, mode, false)
-		]);
+		const request = await pb_wasm(inputMap, mode, targetValidation.data!.value!);
+
+		const result: W.pb_wasm[] = [null, null];
+		try {
+			const temp = JSON.parse(request);
+			for (let i = 0; i < temp.length; i++) {
+				try {
+					result[i] = JSON.parse(temp[i]) as W.pb_wasm;
+				} catch (_) {}
+			}
+		} catch (_) {
+			return reply(interaction, { content: request });
+		}
 
 		let tpPlace: any = null; // eslint-disable-line
-		let proPlace: any | null = null; // eslint-disable-line
-		if (req[0].success) tpPlace = await getPlace(req[0].data!);
-		if (req[1].success) proPlace = await getPlace(req[1].data!);
+		let proPlace: any = null; // eslint-disable-line
+		if (result[0]?.map_name) tpPlace = await getPlace(result[0]);
+		if (result[1]?.map_name) proPlace = await getPlace(result[1]);
 
 		const embed = new EmbedBuilder()
 			.setColor([116, 128, 194])
 			.setTitle(
 				`[PB] ${
-					req[0].data?.player_name || req[1].data?.player_name
-						? `${req[0].data?.player_name || req[1].data?.player_name} on ${
-								mapValidation.data!.name
+					result[0]?.player_name || result[1]?.player_name
+						? `${result[0]?.player_name || result[1]?.player_name} on ${
+								result[0]?.map_name || result[1]?.map_name // eslint-disable-line
 						  }` // eslint-disable-line
-						: `${mapValidation.data!.name}`
+						: `${result[0]?.map_name || result[1]?.map_name}`
 				}`
 			)
-			.setURL(`https://kzgo.eu/maps/${mapValidation.data!.name}`)
+			.setURL(`https://kzgo.eu/maps/${result[0]?.map_name || result[1]?.map_name}`)
 			.setThumbnail(
 				`https://raw.githubusercontent.com/KZGlobalTeam/map-images/master/images/${
-					mapValidation.data!.name
+					result[0]?.map_name || result[1]?.map_name
 				}.jpg`
 			)
 			.addFields([
 				{
 					name: "TP",
-					value: `${req[0].data?.time ? parseTime(req[0].data.time) : "😔"} ${
-						tpPlace && tpPlace.success ? `(#${tpPlace?.data})` : `${req[0].success ? "?" : ""}`
+					value: `${result[0]?.time ? parseTime(result[0].time) : "😔"} ${
+						tpPlace && tpPlace.success ? `(#${tpPlace?.data})` : `${result[0] ? "?" : ""}`
 					}`,
 					inline: true
 				},
 				{
 					name: "PRO",
-					value: `${req[1].data?.time ? parseTime(req[1].data.time) : "😔"} ${
-						proPlace && proPlace.success ? `(#${proPlace?.data})` : `${req[1].success ? "?" : ""}`
+					value: `${result[1]?.time ? parseTime(result[1].time) : "😔"} ${
+						proPlace && proPlace.success ? `(#${proPlace?.data})` : `${result[1] ? "?" : ""}`
 					}`,
 					inline: true
 				}

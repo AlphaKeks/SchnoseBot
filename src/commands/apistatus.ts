@@ -1,7 +1,8 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from "discord.js";
 import SchnoseBot from "src/classes/Schnose";
 import { reply } from "../lib/functions/discord";
-import { APIStatus } from "gokz.js";
+import { apistatus_wasm } from "../../rust/pkg/gokz_wasm";
+import * as W from "src/lib/types/wasm";
 
 export default {
 	data: new SlashCommandBuilder()
@@ -9,23 +10,30 @@ export default {
 		.setDescription("Check the GlobalAPI Status."),
 
 	async execute(interaction: ChatInputCommandInteraction, client: SchnoseBot) {
-		const statusRequest = await APIStatus();
+		const request = await apistatus_wasm();
+
+		let result;
+		try {
+			result = JSON.parse(request) as W.apistatus_wasm;
+		} catch (_) {
+			return reply(interaction, { content: request });
+		}
 
 		const statusEmbed = new EmbedBuilder()
 			.setColor([116, 128, 194])
-			.setTitle(`${statusRequest.status}`)
+			.setTitle(`${result.status}`)
 			.setThumbnail(
 				"https://dka575ofm4ao0.cloudfront.net/pages-transactional_logos/retina/74372/kz-icon.png"
 			)
 			.addFields([
 				{
 					name: "Frontend",
-					value: `${statusRequest.frontEnd}`,
+					value: `${result.frontend}`,
 					inline: true
 				},
 				{
 					name: "Backend",
-					value: `${statusRequest.backEnd}`,
+					value: `${result.backend}`,
 					inline: true
 				}
 			])

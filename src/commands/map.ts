@@ -1,7 +1,8 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from "discord.js";
 import SchnoseBot from "src/classes/Schnose";
 import { reply } from "../lib/functions/discord";
-import wasm from "../../rust/pkg/gokz_wasm.js";
+import { map_wasm } from "../../rust/pkg/gokz_wasm";
+import * as W from "src/lib/types/wasm";
 
 export default {
 	data: new SlashCommandBuilder()
@@ -13,22 +14,32 @@ export default {
 		await interaction.deferReply();
 		const inputMap = interaction.options.getString("map")!;
 
-		const data = JSON.parse(await wasm.get_map(inputMap)) as any;
+		const request = await map_wasm(inputMap);
+
+		let result;
+		try {
+			result = JSON.parse(request) as W.map_wasm;
+		} catch (_) {
+			return reply(interaction, { content: request });
+		}
+
+		if (!result) return reply(interaction, { content: request });
+
 		const embed = new EmbedBuilder()
 			.setColor([116, 128, 194])
-			.setTitle(data.title)
-			.setURL(data.url)
-			.setThumbnail(data.thumbnail)
+			.setTitle(result.title)
+			.setURL(result.url)
+			.setThumbnail(result.thumbnail)
 			.setDescription(
-				`🢂 API Tier: ${data.tier}
-		🢂 Mapper(s): ${data.mappers.join(", ")}
-		🢂 Bonuses: ${data.bonuses}
-		🢂 Global Date: ${data.date}
+				`🢂 API Tier: ${result.tier}
+		🢂 Mapper(s): ${result.mappers.join(", ")}
+		🢂 Bonuses: ${result.bonuses}
+		🢂 Global Date: ${result.date}
 
 		🢂 Filters:
 		`
 			)
-			.addFields(data.filters)
+			.addFields(result.filters)
 			.setFooter({
 				text: "(͡ ͡° ͜ つ ͡͡°)7 | <3 to kzgo.eu",
 				iconURL: client.icon

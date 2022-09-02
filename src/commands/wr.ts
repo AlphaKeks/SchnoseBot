@@ -1,10 +1,11 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from "discord.js";
 import { reply } from "../lib/functions/discord";
 import { parseTime } from "../lib/functions/util";
-import { getMaps, getWR, validateMap } from "gokz.js";
 import userSchema from "../lib/schemas/user";
 import modeMap from "gokz.js/lib/api";
 import SchnoseBot from "src/classes/Schnose";
+import { wr_wasm } from "../../rust/pkg/gokz_wasm";
+import * as W from "src/lib/types/wasm";
 
 export default {
 	data: new SlashCommandBuilder()
@@ -34,12 +35,6 @@ export default {
 		const inputMap = interaction.options.getString("map")!;
 		const inputMode = interaction.options.getString("mode") || null;
 
-		const globalMaps = await getMaps();
-		if (!globalMaps.success) return reply(interaction, { content: globalMaps.error });
-
-		const mapValidation = await validateMap(inputMap, globalMaps.data!);
-		if (!mapValidation.success) return reply(interaction, { content: mapValidation.error });
-
 		let mode: string;
 		if (inputMode) mode = inputMode;
 		else {
@@ -51,33 +46,44 @@ export default {
 			else mode = userDB[0].mode;
 		}
 
-		const req = await Promise.all([
-			await getWR(mapValidation.data!.name, 0, mode, true),
-			await getWR(mapValidation.data!.name, 0, mode, false)
-		]);
+		const request = await wr_wasm(inputMap, mode);
+
+		const result: W.wr_wasm[] = [null, null];
+		try {
+			const temp = JSON.parse(request);
+			for (let i = 0; i < temp.length; i++) {
+				try {
+					result[i] = JSON.parse(temp[i]) as W.wr_wasm;
+				} catch (_) {
+					result[i] = null;
+				}
+			}
+		} catch (_) {
+			return reply(interaction, { content: request });
+		}
 
 		const embed = new EmbedBuilder()
 			.setColor([116, 128, 194])
 			.setTitle(
-				`[WR] - ${mapValidation.data!.name} (${modeMap.get(
-					req[0].data?.mode || req[1].data?.mode
+				`[WR] - ${result[0]?.map_name || result[1]?.map_name} (${modeMap.get(
+					result[0]?.mode || result[1]?.mode
 				)})`
 			)
-			.setURL(`https://kzgo.eu/maps/${mapValidation.data!.name}`)
+			.setURL(`https://kzgo.eu/maps/${result[0]?.map_name || result[1]?.map_name}`)
 			.setThumbnail(
 				`https://raw.githubusercontent.com/KZGlobalTeam/map-images/master/images/${
-					mapValidation.data!.name
+					result[0]?.map_name || result[1]?.map_name
 				}.jpg`
 			)
 			.addFields([
 				{
 					name: "TP",
-					value: `${parseTime(req[0].data?.time || 0)} (${req[0].data?.player_name || "-"})`,
+					value: `${parseTime(result[0]?.time || 0)} (${result[0]?.player_name || "-"})`,
 					inline: true
 				},
 				{
 					name: "PRO",
-					value: `${parseTime(req[1].data?.time || 0)} (${req[1].data?.player_name || "-"})`,
+					value: `${parseTime(result[1]?.time || 0)} (${result[1]?.player_name || "-"})`,
 					inline: true
 				}
 			])

@@ -1,10 +1,11 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from "discord.js";
 import { reply } from "../lib/functions/discord";
 import { parseTime } from "../lib/functions/util";
-import { getMapKZGO, getMaps, getWR, validateCourse, validateMap } from "gokz.js";
 import userSchema from "../lib/schemas/user";
 import modeMap from "gokz.js/lib/api";
 import SchnoseBot from "src/classes/Schnose";
+import { bwr_wasm } from "../../rust/pkg/gokz_wasm";
+import * as W from "src/lib/types/wasm";
 
 export default {
 	data: new SlashCommandBuilder()
@@ -36,18 +37,6 @@ export default {
 		const inputCourse = interaction.options.getInteger("course") || 0;
 		const inputMode = interaction.options.getString("mode") || null;
 
-		const globalMaps = await getMaps();
-		if (!globalMaps.success) return reply(interaction, { content: globalMaps.error });
-
-		const mapValidation = await validateMap(inputMap, globalMaps.data!);
-		if (!mapValidation.success) return reply(interaction, { content: mapValidation.error });
-
-		const KZGOMap = await getMapKZGO(mapValidation.data!.name);
-		if (!KZGOMap.success) return reply(interaction, { content: KZGOMap.error });
-
-		const courseValidation = await validateCourse(KZGOMap.data!, inputCourse);
-		if (!courseValidation) return reply(interaction, { content: "Please specify a valid course." });
-
 		let mode: string;
 		if (inputMode) mode = inputMode;
 		else {
@@ -59,38 +48,47 @@ export default {
 			else mode = userDB[0].mode;
 		}
 
-		const req = await Promise.all([
-			await getWR(mapValidation.data!.name, inputCourse, mode, true),
-			await getWR(mapValidation.data!.name, inputCourse, mode, false)
-		]);
+		const request = await bwr_wasm(inputMap, inputCourse, mode);
+
+		const result: W.bwr_wasm[] = [null, null];
+		try {
+			const temp = JSON.parse(request);
+			for (let i = 0; i < temp.length; i++) {
+				try {
+					result[i] = JSON.parse(temp[i]) as W.bwr_wasm;
+				} catch (_) {
+					result[i] = null;
+				}
+			}
+		} catch (_) {
+			return reply(interaction, { content: request });
+		}
 
 		const embed = new EmbedBuilder()
 			.setColor([116, 128, 194])
-			.setTitle(
-				`[BWR ${inputCourse}] - ${mapValidation.data!.name} (${modeMap.get(
-					req[0].data?.mode || req[1].data?.mode
-				)})`
+			.setTitle(`[BWR ${inputCourse}] - ${result[0]?.map_name || result[1]?.map_name}`)
+			.setURL(
+				`https://kzgo.eu/maps/${result[0]?.map_name || result[1]?.map_name}&bonus=${inputCourse}`
 			)
-			.setURL(`https://kzgo.eu/maps/${mapValidation.data!.name}&bonus=${inputCourse}`)
 			.setThumbnail(
 				`https://raw.githubusercontent.com/KZGlobalTeam/map-images/master/images/${
-					mapValidation.data!.name
+					result[0]?.map_name || result[1]?.map_name
 				}.jpg`
 			)
 			.addFields([
 				{
 					name: "TP",
-					value: `${parseTime(req[0].data?.time || 0)} (${req[0].data?.player_name || "-"})`,
+					value: `${parseTime(result[0]?.time || 0)} (${result[0]?.player_name || "-"})`,
 					inline: true
 				},
 				{
 					name: "PRO",
-					value: `${parseTime(req[1].data?.time || 0)} (${req[1].data?.player_name || "-"})`,
+					value: `${parseTime(result[1]?.time || 0)} (${result[1]?.player_name || "-"})`,
 					inline: true
 				}
 			])
 			.setFooter({
-				text: "(͡ ͡° ͜ つ ͡͡°)7",
+				text: `(͡ ͡° ͜ つ ͡͡°)7 | Mode: ${modeMap.get(result[0]?.mode || result[1]?.mode)}`,
 				iconURL: client.icon
 			});
 

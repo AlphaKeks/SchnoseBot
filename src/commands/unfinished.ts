@@ -1,10 +1,10 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from "discord.js";
-import { getTimes, getFilterDist, getMaps } from "gokz.js";
 import { validateTarget } from "../lib/functions/schnose";
 import { reply } from "../lib/functions/discord";
 import userSchema from "../lib/schemas/user";
 import modeMap from "gokz.js/lib/api";
 import SchnoseBot from "src/classes/Schnose";
+import { unfinished_wasm } from "../../rust/pkg/gokz_wasm";
 
 export default {
 	data: new SlashCommandBuilder()
@@ -41,7 +41,7 @@ export default {
 	async execute(interaction: ChatInputCommandInteraction, client: SchnoseBot) {
 		await interaction.deferReply();
 
-		const inputTier = interaction.options.getInteger("tier") || null;
+		const inputTier = interaction.options.getInteger("tier") || undefined;
 		const inputMode = interaction.options.getString("mode") || null;
 		const inputRuntype = interaction.options.getString("runtype")
 			? interaction.options.getString("runtype") === "true"
@@ -71,61 +71,15 @@ export default {
 		const targetValidation = await validateTarget(interaction, inputTarget);
 		if (!targetValidation.success) return reply(interaction, { content: targetValidation.error });
 
-		let modeID: number;
-		switch (mode) {
-			case "kz_timer":
-				modeID = 200;
-				break;
-			case "kz_simple":
-				modeID = 201;
-				break;
-			case "kz_vanilla":
-				modeID = 202;
-				break;
-			default:
-				modeID = 200;
-		}
+		const request = await unfinished_wasm(
+			inputTier,
+			mode,
+			inputRuntype,
+			targetValidation.data!.value!
+		);
 
-		const doableMaps = await getFilterDist(modeID, inputRuntype);
-		if (!doableMaps.success) return reply(interaction, { content: doableMaps.error });
-
-		const completedMaps = await getTimes(targetValidation.data!.value!, mode, inputRuntype);
-		if (!completedMaps.success) return reply(interaction, { content: completedMaps.error });
-
-		const compIDs: number[] = [];
-		completedMaps.data!.forEach((map) => compIDs.push(map.map_id));
-
-		const uncompIDs: number[] = [];
-		doableMaps.data!.forEach((map) => {
-			if (!compIDs.includes(map.map_id)) uncompIDs.push(map.map_id);
-		});
-
-		const globalMaps = await getMaps();
-		if (!globalMaps.success) return reply(interaction, { content: globalMaps.error });
-
-		const uncompletedMaps: string[] = [];
-		globalMaps.data!.forEach((map) => {
-			if (
-				uncompIDs.includes(map.id) &&
-				(inputTier ? map.difficulty === inputTier : true) &&
-				(inputRuntype ? !map.name.startsWith("kzpro_") : true)
-			)
-				uncompletedMaps.push(map.name);
-		});
-
-		if (uncompletedMaps.length === 0)
-			return reply(interaction, {
-				content: "Congrats! You have no maps left to complete, good job 🎉"
-			});
-
-		let text = ``;
-		for (let i = 0; i < uncompletedMaps.length; i++) {
-			if (i === 10) {
-				text += `...${uncompletedMaps.length - 10} more 😔`;
-				break;
-			}
-			text += `> ${uncompletedMaps[i]}\n`;
-		}
+		if (!request.startsWith(">") || !request.startsWith("Congrats"))
+			return reply(interaction, { content: request });
 
 		const embed = new EmbedBuilder()
 			.setColor([116, 128, 194])
@@ -134,7 +88,7 @@ export default {
 					inputTier ? `[T${inputTier}]` : ""
 				}`
 			)
-			.setDescription(text)
+			.setDescription(request)
 			.setFooter({ text: "(͡ ͡° ͜ つ ͡͡°)7", iconURL: client.icon });
 
 		return reply(interaction, { embeds: [embed] });
