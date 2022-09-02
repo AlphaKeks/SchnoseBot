@@ -14,6 +14,11 @@ export default {
 	async execute(interaction: ChatInputCommandInteraction) {
 		const steamID = interaction.options.getString("steamid")!;
 
+		if (!steamID.toLowerCase().startsWith("steam_"))
+			return reply(interaction, {
+				content: "Please enter a valid steamID, e.g. 'STEAM_1:1:161178172'"
+			});
+
 		const player = await getPlayer(steamID);
 		if (!player.success) return reply(interaction, { content: player.error });
 		else {
