@@ -130,21 +130,26 @@ pub async fn map_wasm(map_name: String) -> JSResult {
 #[wasm_bindgen]
 pub async fn wr_wasm(map_name: String, mode_name: String) -> JSResult {
 	let client = Client::new();
+
+	let global_maps = match get_maps(&client).await {
+		Ok(maps) => maps,
+		Err(err) => return err.to_string(),
+	};
+
+	let map = match validate_map(&map_name, global_maps).await {
+		Ok(map) => map,
+		Err(err) => return err.to_string(),
+	};
+
 	let wrs = vec![
 		get_wr(
-			NameOrId::Name(map_name.to_string()),
+			NameOrId::Name(map.name.clone()),
 			"0",
 			&mode_name,
 			"true",
 			&client,
 		),
-		get_wr(
-			NameOrId::Name(map_name.to_string()),
-			"0",
-			&mode_name,
-			"false",
-			&client,
-		),
+		get_wr(NameOrId::Name(map.name), "0", &mode_name, "false", &client),
 	];
 
 	let wr_data = join_all(wrs.into_iter()).await;

@@ -62,6 +62,8 @@ export default {
 			return reply(interaction, { content: request });
 		}
 
+		if (!result[0] && !result[1]) return reply(interaction, { content: request });
+
 		const embed = new EmbedBuilder()
 			.setColor([116, 128, 194])
 			.setTitle(`[WR] - ${result[0]?.map_name || result[1]?.map_name}`)
