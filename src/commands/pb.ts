@@ -106,7 +106,7 @@ export default {
 				}
 			])
 			.setFooter({
-				text: `(͡ ͡° ͜ つ ͡͡°)7 | ${modeMap.get(mode)}`,
+				text: `(͡ ͡° ͜ つ ͡͡°)7 | Mode: ${modeMap.get(mode)}`,
 				iconURL: client.icon
 			});
 

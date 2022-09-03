@@ -64,11 +64,7 @@ export default {
 
 		const embed = new EmbedBuilder()
 			.setColor([116, 128, 194])
-			.setTitle(
-				`[WR] - ${result[0]?.map_name || result[1]?.map_name} (${modeMap.get(
-					result[0]?.mode || result[1]?.mode
-				)})`
-			)
+			.setTitle(`[WR] - ${result[0]?.map_name || result[1]?.map_name}`)
 			.setURL(`https://kzgo.eu/maps/${result[0]?.map_name || result[1]?.map_name}`)
 			.setThumbnail(
 				`https://raw.githubusercontent.com/KZGlobalTeam/map-images/master/images/${
@@ -88,7 +84,7 @@ export default {
 				}
 			])
 			.setFooter({
-				text: "(͡ ͡° ͜ つ ͡͡°)7",
+				text: `(͡ ͡° ͜ つ ͡͡°)7 | Mode: ${modeMap.get(result[0]?.mode || result[1]?.mode)}`,
 				iconURL: client.icon
 			});
 
