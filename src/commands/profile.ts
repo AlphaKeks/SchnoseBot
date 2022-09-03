@@ -58,6 +58,8 @@ export default {
 			return reply(interaction, { content: request });
 		}
 
+		if (!result?.name) return reply(interaction, { content: request });
+
 		let profileMode;
 		const playerDB = await userSchema.find({ steamID: result.steam_id });
 		if (!playerDB[0]?.mode) profileMode = "unknown";

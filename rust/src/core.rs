@@ -103,8 +103,7 @@ impl ModeInput {
 }
 
 /* GlobalAPI functions */
-// base function that gets called by all other
-// functions
+// base function that gets called by all other functions
 #[allow(dead_code)]
 async fn api_request<T>(
 	route: &str,

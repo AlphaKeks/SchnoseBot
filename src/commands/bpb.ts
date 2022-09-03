@@ -70,6 +70,8 @@ export default {
 			return reply(interaction, { content: request });
 		}
 
+		if (!result[0] && !result[1]) return reply(interaction, { content: request });
+
 		let tpPlace: any = null; // eslint-disable-line
 		let proPlace: any = null; // eslint-disable-line
 		if (result[0]?.map_name) tpPlace = await getPlace(result[0]);
