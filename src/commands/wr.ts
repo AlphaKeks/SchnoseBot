@@ -76,15 +76,15 @@ export default {
 			.addFields([
 				{
 					name: "TP",
-					value: `${result[0]?.time ? parseTime(result[0].time) : "😔"} (${
-						result[0]?.player_name || "-"
+					value: `${result[0]?.time ? parseTime(result[0].time) : "😔"} ${
+						`(${result[0]?.player_name})` || ""
 					})`,
 					inline: true
 				},
 				{
 					name: "PRO",
-					value: `${result[1]?.time ? parseTime(result[1].time) : "😔"} (${
-						result[1]?.player_name || "-"
+					value: `${result[1]?.time ? parseTime(result[1].time) : "😔"} ${
+						`(${result[1]?.player_name})` || ""
 					})`,
 					inline: true
 				}
