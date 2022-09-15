@@ -10,6 +10,8 @@ export default {
 		.setDescription("Check the GlobalAPI Status."),
 
 	async execute(interaction: ChatInputCommandInteraction, client: SchnoseBot) {
+		await interaction.deferReply();
+
 		const request = await apistatus_wasm();
 
 		let result;

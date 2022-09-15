@@ -78,7 +78,7 @@ export default {
 			targetValidation.data!.value!
 		);
 
-		if (!request.startsWith(">") || !request.startsWith("Congrats"))
+		if (!request.startsWith(">") && !request.startsWith("Congrats"))
 			return reply(interaction, { content: request });
 
 		const embed = new EmbedBuilder()

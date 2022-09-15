@@ -18,6 +18,8 @@ export default {
 		),
 
 	async execute(interaction: ChatInputCommandInteraction) {
+		await interaction.deferReply();
+
 		const mode = interaction.options.getString("mode");
 
 		const userDB = await userSchema.find({ discordID: interaction.user.id });

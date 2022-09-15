@@ -12,6 +12,8 @@ export default {
 		),
 
 	async execute(interaction: ChatInputCommandInteraction) {
+		await interaction.deferReply();
+
 		const steamID = interaction.options.getString("steamid")!;
 
 		const player = await getPlayer(steamID);

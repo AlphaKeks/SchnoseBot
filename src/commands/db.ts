@@ -9,6 +9,8 @@ export default {
 		.setDescription("Check your current database entries."),
 
 	async execute(interaction: ChatInputCommandInteraction, client: SchnoseBot) {
+		await interaction.deferReply();
+
 		const userDB = await userSchema.find({ discordID: interaction.user.id });
 		if (!userDB[0])
 			return reply(interaction, {
