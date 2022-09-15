@@ -72,7 +72,7 @@ export default {
                       TP                                               PRO
            \`${result.tp_runs![7]}/${result.doable[0][7]} (${result.tp_perc.toFixed(
 			2
-		)}%)\`                       \`${result.pro_runs![7]}/${
+		)}%)\`                    \`${result.pro_runs![7]}/${
 			result.doable[1][7]
 		} (${result.pro_perc.toFixed(2)}%)\`
 T1     ⌠ ${result.bars[0][0]} ⌡          ⌠ ${result.bars[1][0]} ⌡
