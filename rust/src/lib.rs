@@ -476,8 +476,8 @@ pub async fn profile_wasm(player_identifier: String, mode_name: String) -> JSRes
 		pro_points: u32,
 		tp_recs: u32,
 		pro_recs: u32,
-		tp_perc: u32,
-		pro_perc: u32,
+		tp_perc: f32,
+		pro_perc: f32,
 		tp_runs: [u32; 8],
 		pro_runs: [u32; 8],
 		steamid64: String,
@@ -498,8 +498,8 @@ pub async fn profile_wasm(player_identifier: String, mode_name: String) -> JSRes
 			pro_points: 0,
 			tp_recs: 0,
 			pro_recs: 0,
-			tp_perc: 0,
-			pro_perc: 0,
+			tp_perc: 0.0,
+			pro_perc: 0.0,
 			tp_runs: [0; 8],
 			pro_runs: [0; 8],
 			steamid64: data.steamid64,
@@ -824,7 +824,7 @@ pub async fn profile_wasm(player_identifier: String, mode_name: String) -> JSRes
 	}
 
 	let doable_request = match client
-		.get("https://kzgo.eu/api/completions/kz_timer")
+		.get(format!("https://kzgo.eu/api/completions/{}", mode_name))
 		.send()
 		.await
 	{
@@ -862,10 +862,10 @@ pub async fn profile_wasm(player_identifier: String, mode_name: String) -> JSRes
 	];
 
 	if player.tp_runs[7] > 0 {
-		player.tp_perc = (player.tp_runs[7] / player.doable[0][7]) * 100;
+		player.tp_perc = (player.tp_runs[7] as f32 / player.doable[0][7] as f32) * 100.0;
 	}
 	if player.pro_runs[7] > 0 {
-		player.pro_perc = (player.pro_runs[7] / player.doable[1][7]) * 100;
+		player.pro_perc = (player.pro_runs[7] as f32 / player.doable[1][7] as f32) * 100.0;
 	}
 
 	for i in 0..7 {

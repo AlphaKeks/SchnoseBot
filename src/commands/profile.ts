@@ -68,13 +68,13 @@ export default {
 		/* eslint-disable no-irregular-whitespace */
 		/* eslint-disable indent */
 		const text = `
-──────────────────────────────
+───────────────────────────
                       TP                                               PRO
-           \`${result.tp_runs![7]}/${result.doable[0][7]} (${
-			result.tp_perc
-		}%)\`                     \`${result.pro_runs![7]}/${result.doable[1][7]} (${
-			result.pro_perc
-		}%)\`
+           \`${result.tp_runs![7]}/${result.doable[0][7]} (${result.tp_perc.toFixed(
+			2
+		)}%)\`                       \`${result.pro_runs![7]}/${
+			result.doable[1][7]
+		} (${result.pro_perc.toFixed(2)}%)\`
 T1     ⌠ ${result.bars[0][0]} ⌡          ⌠ ${result.bars[1][0]} ⌡
 T2   ⌠ ${result.bars[0][1]} ⌡          ⌠ ${result.bars[1][1]} ⌡
 T3   ⌠ ${result.bars[0][2]} ⌡          ⌠ ${result.bars[1][2]} ⌡
@@ -82,9 +82,9 @@ T4  ⌠ ${result.bars[0][3]} ⌡          ⌠ ${result.b
 T5   ⌠ ${result.bars[0][4]} ⌡          ⌠ ${result.bars[1][4]} ⌡
 T6  ⌠ ${result.bars[0][5]} ⌡          ⌠ ${result.bars[1][5]} ⌡
 T7   ⌠ ${result.bars[0][6]} ⌡          ⌠ ${result.bars[1][6]} ⌡
-Records: \`${result.tp_recs}\` / \`${result.pro_recs}\`
-Points: \`${result.tp_points}\` / \`${result.pro_points}\`
-──────────────────────────────
+Records: \`${result.tp_recs}\` | \`${result.pro_recs}\`
+Points: \`${result.tp_points}\` | \`${result.pro_points}\`
+───────────────────────────
 Rank: **${result.rank}** (${result.tp_points! + result.pro_points!})
 Preferred Mode: ${profileMode}
 steamID: ${result.steam_id}
