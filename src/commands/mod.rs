@@ -4,5 +4,6 @@ pub mod db;
 pub mod mode;
 pub mod pb;
 pub mod ping;
+pub mod recent;
 pub mod setsteam;
 pub mod wr;

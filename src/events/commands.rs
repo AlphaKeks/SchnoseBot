@@ -47,6 +47,9 @@ pub async fn interaction_create(ctx: Context, interaction: Interaction) {
 			"bwr" => crate::commands::bwr::run(&cmd.user, &cmd.data.options, &mongo_client).await,
 			"pb" => crate::commands::pb::run(&cmd.user, &cmd.data.options, &mongo_client).await,
 			"bpb" => crate::commands::bpb::run(&cmd.user, &cmd.data.options, &mongo_client).await,
+			"recent" => {
+				crate::commands::recent::run(&cmd.user, &cmd.data.options, &mongo_client).await
+			}
 			_ => SchnoseCommand::Message(String::from("unknown command")),
 		};
 

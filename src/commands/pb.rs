@@ -102,32 +102,39 @@ pub async fn run(
 			},
 
 			"target" => match &opt.value {
-				Some(val) => {
-					if is_steamid(&val.to_string()) {
-						input_target = Some(Target::SteamID(val.to_string()));
-					} else if is_mention(&val.to_string()) {
-						let collection = mongo_client
-							.database("gokz")
-							.collection::<UserSchema>("users");
+				Some(val) => match val.to_owned() {
+					Value::String(str) => {
+						if is_steamid(&str) {
+							input_target = Some(Target::SteamID(str));
+						} else if is_mention(&str) {
+							let collection = mongo_client
+								.database("gokz")
+								.collection::<UserSchema>("users");
 
-						let id;
-						if let Some(s) = val.to_string().split_once(">") {
-							id = s.0.to_string();
-						} else {
-							id = String::new();
-						}
+							let id;
+							if let Some(s) = str.split_once(">") {
+								id = s.0.to_string();
+							} else {
+								id = String::new();
+							}
 
-						match retrieve_steam_id(id, collection).await {
+							match retrieve_steam_id(id, collection).await {
 							Ok(steam_id) => match steam_id {
 								Some(steam_id) => input_target = Some(Target::SteamID(steam_id)),
 								None => return SchnoseCommand::Message(String::from("You need to provide a target (steamID, name or mention) or set a default steamID with `/setsteam`."))
 							},
 							Err(why) => return SchnoseCommand::Message(why),
 						}
-					} else {
-						input_target = Some(Target::Name(val.to_string()));
+						} else {
+							input_target = Some(Target::Name(str));
+						}
 					}
-				}
+					_ => {
+						return SchnoseCommand::Message(String::from(
+							"Please input a valid target.",
+						))
+					}
+				},
 				None => (),
 			},
 
