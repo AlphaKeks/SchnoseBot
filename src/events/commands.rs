@@ -28,8 +28,12 @@ pub async fn interaction_create(ctx: Context, interaction: Interaction) {
 
 		let data: SchnoseCommand = match cmd.data.name.as_str() {
 			"ping" => crate::commands::ping::run(&cmd.data.options),
-			"wr" => crate::commands::wr::run(&cmd.data.options).await,
+			"wr" => crate::commands::wr::run(&cmd.user, &cmd.data.options, &mongo_client).await,
 			"db" => crate::commands::db::run(&cmd.user, &mongo_client).await,
+			"setsteam" => {
+				crate::commands::setsteam::run(&cmd.user, &cmd.data.options, &mongo_client).await
+			}
+			"mode" => crate::commands::mode::run(&cmd.user, &cmd.data.options, &mongo_client).await,
 			_ => SchnoseCommand::Message(String::from("unknown command")),
 		};
 

@@ -21,6 +21,10 @@ pub async fn ready(ctx: Context, ready: Ready) {
 							.create_application_command(|cmd| crate::commands::ping::register(cmd))
 							.create_application_command(|cmd| crate::commands::wr::register(cmd))
 							.create_application_command(|cmd| crate::commands::db::register(cmd))
+							.create_application_command(|cmd| {
+								crate::commands::setsteam::register(cmd)
+							})
+							.create_application_command(|cmd| crate::commands::mode::register(cmd))
 					})
 					.await;
 

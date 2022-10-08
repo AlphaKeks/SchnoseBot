@@ -1,6 +1,5 @@
+use crate::util::UserSchema;
 use bson::doc;
-use gokz_rs::global_api::GOKZModeName;
-use serde::{Deserialize, Serialize};
 use serenity::builder::{CreateApplicationCommand, CreateEmbed};
 use serenity::model::user::User;
 
@@ -12,14 +11,6 @@ pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCom
 }
 
 pub async fn run(user: &User, mongo_client: &mongodb::Client) -> SchnoseCommand {
-	#[derive(Debug, Serialize, Deserialize)]
-	#[allow(dead_code, non_snake_case)]
-	struct UserSchema {
-		name: String,
-		discordID: String,
-		steamID: Option<String>,
-		mode: Option<GOKZModeName>,
-	}
 	let database = mongo_client
 		.database("gokz")
 		.collection::<UserSchema>("users");

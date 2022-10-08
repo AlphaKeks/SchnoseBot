@@ -108,7 +108,7 @@ dependencies = [
  "serde_bytes",
  "serde_json",
  "time 0.3.15",
- "uuid 1.1.2",
+ "uuid 1.2.0",
 ]
 
 [[package]]
@@ -462,9 +462,9 @@ dependencies = [
 
 [[package]]
 name = "gokz_rs"
-version = "0.2.1"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "433c1a615e154eb43e30c6a4ae863e6f5851cc5f16b132980141c7e0c0df28b1"
+checksum = "1183276585be3f65a2bc4f2bf16e865fc3f589c6a3cb2de76922a9ed4e10ed1d"
 dependencies = [
  "chrono",
  "futures",
@@ -1300,6 +1300,7 @@ dependencies = [
  "futures",
  "gokz_rs",
  "mongodb",
+ "regex",
  "reqwest",
  "serde",
  "serenity",
@@ -1928,9 +1929,9 @@ dependencies = [
 
 [[package]]
 name = "uuid"
-version = "1.1.2"
+version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd6469f4314d5f1ffec476e05f17cc9a78bc7a27a6a857842170bdf8d6f98d2f"
+checksum = "683f0a095f6dcf74520a5f17a12452ae6f970abbd2443299a1e226fd38195f2b"
 dependencies = [
  "getrandom",
  "serde",
