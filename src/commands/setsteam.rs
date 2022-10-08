@@ -24,7 +24,7 @@ pub async fn run(
 	opts: &[CommandDataOption],
 	mongo_client: &mongodb::Client,
 ) -> SchnoseCommand {
-	let database = mongo_client
+	let collection = mongo_client
 		.database("gokz")
 		.collection::<UserSchema>("users");
 
@@ -60,7 +60,7 @@ pub async fn run(
 		Some(s) => s,
 	};
 
-	match database
+	match collection
 		.find_one(doc! { "discordID": user.id.to_string() }, None)
 		.await
 	{
@@ -70,7 +70,7 @@ pub async fn run(
 		// update
 		Ok(document) => match document {
 			Some(_) => {
-				match database
+				match collection
 					.find_one_and_update(
 						doc! { "discordID": user.id.to_string() },
 						doc! {
@@ -94,7 +94,7 @@ pub async fn run(
 				}
 			}
 			None => {
-				match database
+				match collection
 					.insert_one(
 						UserSchema {
 							name: user.name.clone(),

@@ -1,8 +1,10 @@
 use std::env;
 
 use bson::doc;
-use gokz_rs::global_api::{GOKZMapIdentifier, GOKZModeIdentifier, GOKZModeName};
-use gokz_rs::{get_maps, get_wr, validate_map};
+use gokz_rs::global_api::{
+	GOKZMapIdentifier, GOKZModeIdentifier, GOKZModeName, GOKZPlayerIdentifier,
+};
+use gokz_rs::{get_maps, get_pb, validate_map};
 use serenity::builder::CreateEmbed;
 use serenity::json::Value;
 use serenity::model::user::User;
@@ -13,12 +15,12 @@ use serenity::{
 	},
 };
 
-use crate::util::{timestring, UserSchema};
+use crate::util::{is_mention, is_steamid, retrieve_steam_id, timestring, Target, UserSchema};
 use crate::SchnoseCommand;
 
 pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
-	cmd.name("wr")
-		.description("Check the World Record of a map")
+	cmd.name("bpb")
+		.description("Check a player's personal best on a bonus")
 		.create_option(|opt| {
 			opt.kind(CommandOptionType::String)
 				.name("map_name")
@@ -34,6 +36,18 @@ pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCom
 				.add_string_choice("VNL", "kz_vanilla")
 				.required(false)
 		})
+		.create_option(|opt| {
+			opt.kind(CommandOptionType::Integer)
+				.name("course")
+				.description("Specify a course.")
+				.required(false)
+		})
+		.create_option(|opt| {
+			opt.kind(CommandOptionType::String)
+				.name("target")
+				.description("Specify a target.")
+				.required(false)
+		})
 }
 
 pub async fn run(
@@ -43,6 +57,8 @@ pub async fn run(
 ) -> SchnoseCommand {
 	let mut input_map = None;
 	let mut input_mode = None;
+	let mut input_target = None;
+	let mut course = 1;
 
 	let client = reqwest::Client::new();
 
@@ -92,7 +108,64 @@ pub async fn run(
 				None => unreachable!("Failed to access required command option"),
 			},
 
+			"course" => match &opt.value {
+				Some(val) => match val.to_owned() {
+					Value::Number(num) => match num.as_u64() {
+						Some(num) => course = num as u8,
+						None => (),
+					},
+					_ => (),
+				},
+				None => (),
+			},
+
+			"target" => match &opt.value {
+				Some(val) => {
+					if is_steamid(&val.to_string()) {
+						input_target = Some(Target::SteamID(val.to_string()));
+					} else if is_mention(&val.to_string()) {
+						let collection = mongo_client
+							.database("gokz")
+							.collection::<UserSchema>("users");
+
+						let id;
+						if let Some(s) = val.to_string().split_once(">") {
+							id = s.0.to_string();
+						} else {
+							id = String::new();
+						}
+
+						match retrieve_steam_id(id, collection).await {
+							Ok(steam_id) => match steam_id {
+								Some(steam_id) => input_target = Some(Target::SteamID(steam_id)),
+								None => return SchnoseCommand::Message(String::from("You need to provide a target (steamID, name or mention) or set a default steamID with `/setsteam`."))
+							},
+							Err(why) => return SchnoseCommand::Message(why),
+						}
+					} else {
+						input_target = Some(Target::Name(val.to_string()));
+					}
+				}
+				None => (),
+			},
+
 			_ => (),
+		}
+	}
+
+	if let None = input_target {
+		let collection = mongo_client
+			.database("gokz")
+			.collection::<UserSchema>("users");
+
+		match retrieve_steam_id(user.id.to_string(), collection).await {
+			Ok(steam_id) => match steam_id {
+				Some(steam_id) => input_target = Some(Target::SteamID(steam_id)),
+				None => return SchnoseCommand::Message(String::from(
+					"You need to provide a target (steamID, name or mention) or set a default steamID with `/setsteam`.",
+				)),
+			},
+			Err(why) => return SchnoseCommand::Message(why),
 		}
 	}
 
@@ -100,6 +173,13 @@ pub async fn run(
 	let name2;
 	let mode1;
 	let mode2;
+
+	let player1 = match input_target {
+		Some(Target::SteamID(steam_id)) => GOKZPlayerIdentifier::SteamID(steam_id),
+		Some(Target::Name(name)) => GOKZPlayerIdentifier::Name(name),
+		_ => return SchnoseCommand::Message(String::from("You need to provide a target (steamID, name or mention) or set a default steamID with `/setsteam`."))
+	};
+	let player2 = player1.clone();
 
 	match input_map {
 		Some(map) => {
@@ -150,9 +230,10 @@ pub async fn run(
 	}
 
 	let (tp, pro) = (
-		match get_wr(
+		match get_pb(
+			player1,
 			GOKZMapIdentifier::Name(name1),
-			0,
+			course,
 			GOKZModeIdentifier::Name(mode1),
 			true,
 			&client,
@@ -162,9 +243,10 @@ pub async fn run(
 			Ok(rec) => Some(rec),
 			Err(_) => None,
 		},
-		match get_wr(
+		match get_pb(
+			player2,
 			GOKZMapIdentifier::Name(name2),
-			0,
+			course,
 			GOKZModeIdentifier::Name(mode2),
 			false,
 			&client,
@@ -177,21 +259,20 @@ pub async fn run(
 	);
 
 	if let (&None, &None) = (&tp, &pro) {
-		return SchnoseCommand::Message(String::from("No WRs found."));
+		return SchnoseCommand::Message(String::from("No PB found."));
 	}
 
 	let mut map_name = None;
 	let mut tp_time = String::from("😔");
-	let mut tp_player = String::from("unknown");
 	let mut pro_time = String::from("😔");
-	let mut pro_player = String::from("unknown");
+	let mut player_name = String::from("unknown");
 
 	match tp {
 		Some(rec) => {
 			map_name = Some(rec.map_name);
 			tp_time = timestring(rec.time);
 			if let Some(name) = rec.player_name {
-				tp_player = name
+				player_name = name;
 			}
 		}
 		None => (),
@@ -202,7 +283,7 @@ pub async fn run(
 			map_name = Some(rec.map_name);
 			pro_time = timestring(rec.time);
 			if let Some(name) = rec.player_name {
-				pro_player = name
+				player_name = name;
 			}
 		}
 		None => (),
@@ -211,15 +292,18 @@ pub async fn run(
 	let embed = CreateEmbed::default()
 		.color((116, 128, 194))
 		.title(format!(
-			"[WR] {}",
+			"[BPB {}] {} on {}",
+			course,
+			player_name.clone(),
 			match &map_name {
 				Some(s) => s,
 				None => "unknown map",
 			}
 		))
 		.url(format!(
-			"https://kzgo.eu/maps/{}?{}=",
+			"https://kzgo.eu/maps/{}?bonus={}&{}=",
 			if let Some(s) = &map_name { s } else { "" },
+			course,
 			match input_mode.clone() {
 				Some(mode) => mode.fancy_short().to_lowercase(),
 				None => String::from("kzt"),
@@ -232,17 +316,18 @@ pub async fn run(
 			),
 			None => String::from("https://kzgo.eu/kz_default.png"),
 		})
-		.field("TP", format!("{} ({})", tp_time, tp_player), true)
-		.field("PRO", format!("{} ({})", pro_time, pro_player), true)
+		.field("TP", format!("{}", tp_time), true)
+		.field("PRO", format!("{}", pro_time), true)
 		.footer(|f| {
 			let icon_url = env::var("ICON").unwrap_or(String::from("unknown"));
 
 			f.text(format!(
-				"Mode: {}",
+				"Mode: {} | Player: {}",
 				match input_mode {
 					None => "unknown",
 					Some(mode) => mode.fancy(),
-				}
+				},
+				player_name
 			))
 			.icon_url(icon_url)
 		})

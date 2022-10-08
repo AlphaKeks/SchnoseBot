@@ -17,8 +17,8 @@ use crate::util::{timestring, UserSchema};
 use crate::SchnoseCommand;
 
 pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
-	cmd.name("wr")
-		.description("Check the World Record of a map")
+	cmd.name("bwr")
+		.description("Check the Bonus Record of a map")
 		.create_option(|opt| {
 			opt.kind(CommandOptionType::String)
 				.name("map_name")
@@ -34,6 +34,12 @@ pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCom
 				.add_string_choice("VNL", "kz_vanilla")
 				.required(false)
 		})
+		.create_option(|opt| {
+			opt.kind(CommandOptionType::Integer)
+				.name("course")
+				.description("Specify a course.")
+				.required(false)
+		})
 }
 
 pub async fn run(
@@ -43,6 +49,7 @@ pub async fn run(
 ) -> SchnoseCommand {
 	let mut input_map = None;
 	let mut input_mode = None;
+	let mut course = 1;
 
 	let client = reqwest::Client::new();
 
@@ -90,6 +97,17 @@ pub async fn run(
 					}
 				},
 				None => unreachable!("Failed to access required command option"),
+			},
+
+			"course" => match &opt.value {
+				Some(val) => match val.to_owned() {
+					Value::Number(num) => match num.as_u64() {
+						Some(num) => course = num as u8,
+						None => (),
+					},
+					_ => (),
+				},
+				None => (),
 			},
 
 			_ => (),
@@ -152,7 +170,7 @@ pub async fn run(
 	let (tp, pro) = (
 		match get_wr(
 			GOKZMapIdentifier::Name(name1),
-			0,
+			course,
 			GOKZModeIdentifier::Name(mode1),
 			true,
 			&client,
@@ -164,7 +182,7 @@ pub async fn run(
 		},
 		match get_wr(
 			GOKZMapIdentifier::Name(name2),
-			0,
+			course,
 			GOKZModeIdentifier::Name(mode2),
 			false,
 			&client,
@@ -211,15 +229,17 @@ pub async fn run(
 	let embed = CreateEmbed::default()
 		.color((116, 128, 194))
 		.title(format!(
-			"[WR] {}",
+			"[BWR {}] {}",
+			course,
 			match &map_name {
 				Some(s) => s,
 				None => "unknown map",
 			}
 		))
 		.url(format!(
-			"https://kzgo.eu/maps/{}?{}=",
+			"https://kzgo.eu/maps/{}?bonus={}&{}=",
 			if let Some(s) = &map_name { s } else { "" },
+			course,
 			match input_mode.clone() {
 				Some(mode) => mode.fancy_short().to_lowercase(),
 				None => String::from("kzt"),

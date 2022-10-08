@@ -18,13 +18,16 @@ pub async fn ready(ctx: Context, ready: Ready) {
 				let commands =
 					GuildId::set_application_commands(&dev_guild, &ctx.http, |commands| {
 						commands
-							.create_application_command(|cmd| crate::commands::ping::register(cmd))
-							.create_application_command(|cmd| crate::commands::wr::register(cmd))
-							.create_application_command(|cmd| crate::commands::db::register(cmd))
-							.create_application_command(|cmd| {
+							// .create_application_command(|cmd| crate::commands::ping::register(cmd))
+							// .create_application_command(|cmd| crate::commands::db::register(cmd))
+							/* .create_application_command(|cmd| {
 								crate::commands::setsteam::register(cmd)
-							})
-							.create_application_command(|cmd| crate::commands::mode::register(cmd))
+							}) */
+							// .create_application_command(|cmd| crate::commands::mode::register(cmd))
+							// .create_application_command(|cmd| crate::commands::wr::register(cmd))
+							// .create_application_command(|cmd| crate::commands::bwr::register(cmd))
+							// .create_application_command(|cmd| crate::commands::pb::register(cmd))
+							.create_application_command(|cmd| crate::commands::bpb::register(cmd))
 					})
 					.await;
 

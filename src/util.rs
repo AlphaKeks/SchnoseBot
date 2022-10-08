@@ -1,8 +1,18 @@
+#![allow(dead_code)]
 use std::fmt::Write;
 
+use bson::doc;
 use gokz_rs::global_api::GOKZModeName;
+use mongodb::Collection;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum Target {
+	SteamID(String),
+	Mention(String),
+	Name(String),
+}
 
 pub fn timestring(secs_float: f32) -> String {
 	let seconds = secs_float as u32;
@@ -38,10 +48,36 @@ pub fn is_steamid(steam_id: &str) -> bool {
 	if let Ok(r) = regex {
 		if let Some(_) = r.find(steam_id) {
 			return true;
-		} else {
-			return false;
 		}
 	}
 
 	false
+}
+
+pub fn is_mention(input: &str) -> bool {
+	let regex = Regex::new(r"<@[0-9]+>");
+
+	if let Ok(r) = regex {
+		if let Some(_) = r.find(input) {
+			return true;
+		}
+	}
+
+	false
+}
+
+pub async fn retrieve_steam_id(
+	user_id: String,
+	collection: Collection<UserSchema>,
+) -> Result<Option<String>, String> {
+	match collection
+		.find_one(doc! { "discordID": user_id }, None)
+		.await
+	{
+		Err(_) => Err(String::from("Failed to access database.")),
+		Ok(document) => match document {
+			Some(h) => Ok(h.steamID),
+			None => Err(String::from("User not in database.")),
+		},
+	}
 }
