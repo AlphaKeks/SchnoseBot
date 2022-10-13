@@ -1,6 +1,7 @@
 use std::env;
 
-use gokz_rs::functions::{get_place, get_recent};
+use bson::doc;
+use gokz_rs::functions::{get_player, get_unfinished};
 use gokz_rs::prelude::*;
 use serenity::builder::CreateEmbed;
 use serenity::model::user::User;
@@ -12,13 +13,44 @@ use serenity::{
 };
 
 use crate::util::{
-	get_string, is_mention, is_steamid, retrieve_steam_id, timestring, Target, UserSchema,
+	get_integer, get_string, is_mention, is_steamid, retrieve_mode, retrieve_steam_id, Target,
+	UserSchema,
 };
 use crate::SchnoseCommand;
 
 pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
-	cmd.name("recent")
-		.description("Check a player's most recent personal best")
+	cmd.name("unfinished")
+		.description("Check which maps you still need to complete")
+		.create_option(|opt| {
+			opt.kind(CommandOptionType::Integer)
+				.name("tier")
+				.description("Filter by tier")
+				.add_int_choice("1 (Very Easy)", 1)
+				.add_int_choice("2 (Easy)", 2)
+				.add_int_choice("3 (Medium)", 3)
+				.add_int_choice("4 (Hard)", 4)
+				.add_int_choice("5 (Very Hard)", 5)
+				.add_int_choice("6 (Extreme)", 6)
+				.add_int_choice("7 (Death)", 7)
+				.required(false)
+		})
+		.create_option(|opt| {
+			opt.kind(CommandOptionType::String)
+				.name("mode")
+				.description("Specify a mode.")
+				.add_string_choice("KZT", "kz_timer")
+				.add_string_choice("SKZ", "kz_simple")
+				.add_string_choice("VNL", "kz_vanilla")
+				.required(false)
+		})
+		.create_option(|opt| {
+			opt.kind(CommandOptionType::String)
+				.name("runtype")
+				.description("TP/PRO")
+				.add_string_choice("TP", true)
+				.add_string_choice("PRO", false)
+				.required(false)
+		})
 		.create_option(|opt| {
 			opt.kind(CommandOptionType::String)
 				.name("target")
@@ -33,6 +65,42 @@ pub async fn run(
 	mongo_client: &mongodb::Client,
 ) -> SchnoseCommand {
 	let client = reqwest::Client::new();
+
+	let tier = match get_integer("tier", opts) {
+		Some(int) => Some(int as u8),
+		None => None,
+	};
+
+	let mode = if let Some(mode_name) = get_string("mode", opts) {
+		Mode::from(mode_name)
+	} else {
+		let collection = mongo_client
+			.database("gokz")
+			.collection::<UserSchema>("users");
+
+		match retrieve_mode(doc! { "discordID": user.id.to_string() }, collection).await {
+			Ok(mode) => match mode {
+				Some(mode) => mode,
+				None => {
+					return SchnoseCommand::Message(String::from(
+						"You need to specify a mode or set a default steamID with `/mode`.",
+					))
+				}
+			},
+			Err(why) => return SchnoseCommand::Message(why),
+		}
+	};
+
+	let runtype = match get_string("runtype", opts) {
+		Some(runtype) => {
+			if runtype == "false" {
+				false
+			} else {
+				true
+			}
+		}
+		None => true,
+	};
 
 	let target = if let Some(target) = get_string("target", opts) {
 		if is_steamid(&target) {
@@ -100,63 +168,44 @@ pub async fn run(
 		}
 	};
 
-	let recent = match get_recent(&player, &client).await {
-		Ok(rec) => rec,
+	let request = match get_unfinished(&player, &mode, runtype, tier, &client).await {
+		Ok(map_names) => map_names,
 		Err(why) => return SchnoseCommand::Message(why.tldr),
 	};
 
-	let mode = Mode::from(recent.mode.clone());
-	let (discord_timestamp, fancy) =
-		match chrono::NaiveDateTime::parse_from_str(&recent.created_on, "%Y-%m-%dT%H:%M:%S") {
-			Ok(parsed_time) => (
-				format!("<t:{}:R>", parsed_time.timestamp()),
-				format!("{} GMT", parsed_time.format("%d/%m/%Y - %H:%H:%S")),
-			),
-			Err(_) => (String::from(" "), String::from(" ")),
-		};
+	let player = match get_player(&player, &client).await {
+		Ok(player) => player,
+		Err(why) => return SchnoseCommand::Message(why.tldr),
+	};
 
-	let place = match get_place(&recent, &client).await {
-		Ok(place) => format!("[#{}]", place.0),
-		Err(_) => String::from(" "),
+	let description = if request.len() <= 10 {
+		request.join("\n")
+	} else {
+		format!(
+			"{}\n...{} more",
+			(request[0..10]).join("\n"),
+			request.len() - 10
+		)
 	};
 
 	let embed = CreateEmbed::default()
 		.color((116, 128, 194))
 		.title(format!(
-			"[PB] {} on {}",
-			match &recent.player_name {
-				Some(name) => name,
-				None => "unknown",
-			},
-			&recent.map_name
+			"Uncompleted Maps - {} {} {}",
+			&mode.fancy_short(),
+			if runtype { "TP" } else { "PRO" },
+			if let Some(tier) = tier {
+				format!("[T{}]", tier)
+			} else {
+				String::from(" ")
+			}
 		))
-		.url(format!(
-			"https://kzgo.eu/maps/{}?{}=",
-			&recent.map_name,
-			&mode.fancy_short().to_lowercase()
-		))
-		.thumbnail(format!(
-			"https://raw.githubusercontent.com/KZGlobalTeam/map-images/master/images/{}.jpg",
-			&recent.map_name
-		))
-		.field(
-			format!(
-				"{} {}",
-				mode.fancy_short(),
-				if &recent.teleports > &0 { "TP" } else { "PRO" }
-			),
-			format!(
-				"> {} {}\n> {}",
-				timestring(recent.time),
-				place,
-				discord_timestamp
-			),
-			true,
-		)
+		.description(description)
 		.footer(|f| {
 			let icon_url = env::var("ICON").unwrap_or(String::from("unknown"));
 
-			f.text(fancy).icon_url(icon_url)
+			f.text(format!("Player: {}", player.name))
+				.icon_url(icon_url)
 		})
 		.to_owned();
 

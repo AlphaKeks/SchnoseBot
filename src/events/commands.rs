@@ -26,7 +26,7 @@ pub async fn interaction_create(ctx: Context, interaction: Interaction) {
 
 	if let Interaction::ApplicationCommand(cmd) = interaction {
 		match cmd.data.name.as_str() {
-			"db" => (),
+			"ping" | "invite" | "nocrouch" => (),
 			_ => {
 				if let Err(_) = cmd.defer(&ctx.http).await {
 					return;
@@ -38,17 +38,28 @@ pub async fn interaction_create(ctx: Context, interaction: Interaction) {
 
 		let data: SchnoseCommand = match cmd.data.name.as_str() {
 			"ping" => crate::commands::ping::run(&cmd.data.options),
-			"db" => crate::commands::db::run(&cmd.user, &mongo_client).await,
+			"invite" => crate::commands::invite::run(&cmd.data.options),
 			"setsteam" => {
 				crate::commands::setsteam::run(&cmd.user, &cmd.data.options, &mongo_client).await
 			}
 			"mode" => crate::commands::mode::run(&cmd.user, &cmd.data.options, &mongo_client).await,
-			"wr" => crate::commands::wr::run(&cmd.user, &cmd.data.options, &mongo_client).await,
-			"bwr" => crate::commands::bwr::run(&cmd.user, &cmd.data.options, &mongo_client).await,
-			"pb" => crate::commands::pb::run(&cmd.user, &cmd.data.options, &mongo_client).await,
+			"db" => crate::commands::db::run(&cmd.user, &mongo_client).await,
+			"nocrouch" => crate::commands::nocrouch::run(&cmd.data.options),
+			"apistatus" => crate::commands::apistatus::run(&cmd.data.options).await,
 			"bpb" => crate::commands::bpb::run(&cmd.user, &cmd.data.options, &mongo_client).await,
+			"pb" => crate::commands::pb::run(&cmd.user, &cmd.data.options, &mongo_client).await,
+			"bwr" => crate::commands::bwr::run(&cmd.user, &cmd.data.options, &mongo_client).await,
+			"wr" => crate::commands::wr::run(&cmd.user, &cmd.data.options, &mongo_client).await,
 			"recent" => {
 				crate::commands::recent::run(&cmd.user, &cmd.data.options, &mongo_client).await
+			}
+			"unfinished" => {
+				crate::commands::unfinished::run(&cmd.user, &cmd.data.options, &mongo_client).await
+			}
+			"random" => crate::commands::random::run(&cmd.data.options).await,
+			"map" => crate::commands::map::run(&cmd.data.options).await,
+			"profile" => {
+				crate::commands::profile::run(&cmd.user, &cmd.data.options, &mongo_client).await
 			}
 			_ => SchnoseCommand::Message(String::from("unknown command")),
 		};

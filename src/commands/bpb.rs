@@ -1,12 +1,10 @@
 use std::env;
 
 use bson::doc;
-use gokz_rs::global_api::{
-	GOKZMapIdentifier, GOKZModeIdentifier, GOKZModeName, GOKZPlayerIdentifier,
-};
-use gokz_rs::{get_maps, get_pb, validate_map};
+use futures::future::join_all;
+use gokz_rs::functions::{get_maps, get_pb, get_place, is_global};
+use gokz_rs::prelude::*;
 use serenity::builder::CreateEmbed;
-use serenity::json::Value;
 use serenity::model::user::User;
 use serenity::{
 	builder::CreateApplicationCommand,
@@ -15,7 +13,10 @@ use serenity::{
 	},
 };
 
-use crate::util::{is_mention, is_steamid, retrieve_steam_id, timestring, Target, UserSchema};
+use crate::util::{
+	get_integer, get_string, is_mention, is_steamid, retrieve_mode, retrieve_steam_id, timestring,
+	Target, UserSchema,
+};
 use crate::SchnoseCommand;
 
 pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
@@ -55,288 +56,213 @@ pub async fn run(
 	opts: &[CommandDataOption],
 	mongo_client: &mongodb::Client,
 ) -> SchnoseCommand {
-	let mut input_map = None;
-	let mut input_mode = None;
-	let mut input_target = None;
-	let mut course = 1;
-
 	let client = reqwest::Client::new();
 
-	for opt in opts {
-		match opt.name.as_str() {
-			"map_name" => match &opt.value {
-				Some(val) => match val.to_owned() {
-					Value::String(str) => {
-						let global_maps = match get_maps(&client).await {
-							Ok(maps) => maps,
-							Err(why) => return SchnoseCommand::Message(why.tldr),
-						};
+	let map = match get_string("map_name", opts) {
+		Some(map_name) => {
+			let global_maps = match get_maps(&client).await {
+				Ok(maps) => maps,
+				Err(why) => return SchnoseCommand::Message(why.tldr),
+			};
 
-						input_map =
-							match validate_map(GOKZMapIdentifier::Name(str), global_maps).await {
-								Ok(map) => Some(map),
-								Err(why) => {
-									return SchnoseCommand::Message(why.tldr);
-								}
-							}
-					}
-					_ => {
-						return SchnoseCommand::Message(String::from(
-							"Failed to deserialize input map.",
-						))
-					}
-				},
-				None => unreachable!("Failed to access required command option"),
-			},
-
-			"mode" => match &opt.value {
-				Some(val) => match val.to_owned() {
-					Value::String(mode_val) => {
-						input_mode = match mode_val.as_str() {
-							"kz_timer" => Some(GOKZModeName::kz_timer),
-							"kz_simple" => Some(GOKZModeName::kz_simple),
-							"kz_vanilla" => Some(GOKZModeName::kz_vanilla),
-							_ => unreachable!("Invalid input mode"),
-						}
-					}
-					_ => {
-						return SchnoseCommand::Message(String::from(
-							"Failed to deserialize input mode.",
-						))
-					}
-				},
-				None => unreachable!("Failed to access required command option"),
-			},
-
-			"course" => match &opt.value {
-				Some(val) => match val.to_owned() {
-					Value::Number(num) => match num.as_u64() {
-						Some(num) => course = num as u8,
-						None => (),
-					},
-					_ => (),
-				},
-				None => (),
-			},
-
-			"target" => match &opt.value {
-				Some(val) => match val.to_owned() {
-					Value::String(str) => {
-						if is_steamid(&str) {
-							input_target = Some(Target::SteamID(str));
-						} else if is_mention(&str) {
-							let collection = mongo_client
-								.database("gokz")
-								.collection::<UserSchema>("users");
-
-							let id;
-							if let Some(s) = str.split_once(">") {
-								id = s.0.to_string();
-							} else {
-								id = String::new();
-							}
-
-							match retrieve_steam_id(id, collection).await {
-							Ok(steam_id) => match steam_id {
-								Some(steam_id) => input_target = Some(Target::SteamID(steam_id)),
-								None => return SchnoseCommand::Message(String::from("You need to provide a target (steamID, name or mention) or set a default steamID with `/setsteam`."))
-							},
-							Err(why) => return SchnoseCommand::Message(why),
-						}
-						} else {
-							input_target = Some(Target::Name(str));
-						}
-					}
-					_ => {
-						return SchnoseCommand::Message(String::from(
-							"Please input a valid target.",
-						))
-					}
-				},
-				None => (),
-			},
-
-			_ => (),
+			match is_global(&MapIdentifier::Name(map_name), &global_maps).await {
+				Ok(map) => map,
+				Err(why) => return SchnoseCommand::Message(why.tldr),
+			}
 		}
-	}
+		None => unreachable!("Failed to access required command option"),
+	};
 
-	if let None = input_target {
+	let mode = if let Some(mode_name) = get_string("mode", opts) {
+		Mode::from(mode_name)
+	} else {
+		let collection = mongo_client
+			.database("gokz")
+			.collection::<UserSchema>("users");
+
+		match retrieve_mode(doc! { "discordID": user.id.to_string() }, collection).await {
+			Ok(mode) => match mode {
+				Some(mode) => mode,
+				None => {
+					return SchnoseCommand::Message(String::from(
+						"You need to specify a mode or set a default steamID with `/mode`.",
+					))
+				}
+			},
+			Err(why) => return SchnoseCommand::Message(why),
+		}
+	};
+
+	let target = if let Some(target) = get_string("target", opts) {
+		if is_steamid(&target) {
+			Target::SteamID(SteamId(target))
+		} else if is_mention(&target) {
+			let collection = mongo_client
+				.database("gokz")
+				.collection::<UserSchema>("users");
+
+			let id;
+			if let Some(s) = target.split_once(">") {
+				if let Some(s) = s.0.split_once("@") {
+					id = s.1.to_owned();
+				} else {
+					id = String::new();
+				}
+			} else {
+				id = String::new();
+			}
+
+			match retrieve_steam_id(id, collection).await {
+				Ok(steam_id) => match steam_id {
+					Some(steam_id) => Target::SteamID(steam_id),
+					None => return SchnoseCommand::Message(String::from("You need to provide a target (steamID, name or mention) or set a default steamID with `/setsteam`."))
+				}
+				Err(why) => return SchnoseCommand::Message(why)
+			}
+		} else {
+			Target::Name(target)
+		}
+	} else {
 		let collection = mongo_client
 			.database("gokz")
 			.collection::<UserSchema>("users");
 
 		match retrieve_steam_id(user.id.to_string(), collection).await {
-			Ok(steam_id) => match steam_id {
-				Some(steam_id) => input_target = Some(Target::SteamID(steam_id)),
-				None => return SchnoseCommand::Message(String::from(
-					"You need to provide a target (steamID, name or mention) or set a default steamID with `/setsteam`.",
-				)),
-			},
-			Err(why) => return SchnoseCommand::Message(why),
-		}
-	}
-
-	let name1;
-	let name2;
-	let mode1;
-	let mode2;
-
-	let player1 = match input_target {
-		Some(Target::SteamID(steam_id)) => GOKZPlayerIdentifier::SteamID(steam_id),
-		Some(Target::Name(name)) => GOKZPlayerIdentifier::Name(name),
-		_ => return SchnoseCommand::Message(String::from("You need to provide a target (steamID, name or mention) or set a default steamID with `/setsteam`."))
+				Ok(steam_id) => match steam_id {
+					Some(steam_id) => Target::SteamID(steam_id),
+					None => return SchnoseCommand::Message(String::from("You need to provide a target (steamID, name or mention) or set a default steamID with `/setsteam`."))
+				},
+				Err(why) => return SchnoseCommand::Message(why),
+			}
 	};
-	let player2 = player1.clone();
 
-	match input_map {
-		Some(map) => {
-			name1 = map.name.clone();
-			name2 = map.name;
-		}
-		_ => unreachable!("Failed to access required command options"),
-	}
+	let course = match get_integer("course", opts) {
+		Some(course) => course as u8,
+		None => 1,
+	};
 
-	match input_mode.clone() {
-		Some(mode) => {
-			mode1 = mode.clone();
-			mode2 = mode;
-		}
-		None => {
-			let database = mongo_client
+	let player = match target {
+		Target::SteamID(steam_id) => PlayerIdentifier::SteamId(steam_id),
+		Target::Name(name) => match SteamId::get(&PlayerIdentifier::Name(name), &client).await {
+			Ok(steam_id) => PlayerIdentifier::SteamId(steam_id),
+			Err(why) => return SchnoseCommand::Message(why.tldr.to_owned()),
+		},
+		Target::Mention(mention) => {
+			let collection = mongo_client
 				.database("gokz")
 				.collection::<UserSchema>("users");
 
-			match database
-				.find_one(doc! { "discordID": user.id.to_string() }, None)
-				.await
-			{
-				Err(_) => {
-					return SchnoseCommand::Message(String::from("Failed to access database."))
-				}
-				Ok(document) => match document {
-					None => {
-						return SchnoseCommand::Message(String::from(
-							"You need to specify a mode or set a default one with `/mode`.",
-						));
-					}
-					Some(doc) => match doc.mode {
-						Some(mode) => {
-							mode1 = mode.clone();
-							mode2 = mode.clone();
-							input_mode = Some(mode);
-						}
-						None => {
-							return SchnoseCommand::Message(String::from(
-								"You need to specify a mode or set a default one with `/mode`.",
-							));
-						}
+			match retrieve_steam_id(mention, collection).await {
+					Ok(steam_id) => match steam_id {
+						Some(steam_id) => PlayerIdentifier::SteamId(steam_id),
+						None => return SchnoseCommand::Message(String::from(
+							"You need to provide a target (steamID, name or mention) or set a default steamID with `/setsteam`.",
+						)),
 					},
-				},
-			}
+					Err(why) => return SchnoseCommand::Message(why),
+				}
 		}
-	}
+	};
 
-	let (tp, pro) = (
-		match get_pb(
-			player1,
-			GOKZMapIdentifier::Name(name1),
-			course,
-			GOKZModeIdentifier::Name(mode1),
-			true,
-			&client,
-		)
-		.await
-		{
-			Ok(rec) => Some(rec),
-			Err(_) => None,
-		},
-		match get_pb(
-			player2,
-			GOKZMapIdentifier::Name(name2),
-			course,
-			GOKZModeIdentifier::Name(mode2),
-			false,
-			&client,
-		)
-		.await
-		{
-			Ok(rec) => Some(rec),
-			Err(_) => None,
-		},
-	);
+	let requests = join_all(
+		vec![
+			get_pb(
+				&player,
+				&MapIdentifier::Id(map.id),
+				&mode,
+				course,
+				true,
+				&client,
+			),
+			get_pb(
+				&player,
+				&MapIdentifier::Id(map.id),
+				&mode,
+				course,
+				false,
+				&client,
+			),
+		]
+		.into_iter(),
+	)
+	.await;
 
-	if let (&None, &None) = (&tp, &pro) {
+	if let (&Err(_), &Err(_)) = (&requests[0], &requests[1]) {
 		return SchnoseCommand::Message(String::from("No PB found."));
 	}
 
-	let mut map_name = None;
-	let mut tp_time = String::from("😔");
-	let mut pro_time = String::from("😔");
-	let mut player_name = String::from("unknown");
-
-	match tp {
-		Some(rec) => {
-			map_name = Some(rec.map_name);
-			tp_time = timestring(rec.time);
-			if let Some(name) = rec.player_name {
-				player_name = name;
-			}
-		}
-		None => (),
+	let player = match &requests[0] {
+		Ok(rec) => match &rec.player_name {
+			Some(name) => name.to_owned(),
+			None => String::from("unknown"),
+		},
+		Err(_) => match &requests[1] {
+			Ok(rec) => match &rec.player_name {
+				Some(name) => name.to_owned(),
+				None => String::from("unknown"),
+			},
+			Err(_) => String::from("unknown"),
+		},
 	};
 
-	match pro {
-		Some(rec) => {
-			map_name = Some(rec.map_name);
-			pro_time = timestring(rec.time);
-			if let Some(name) = rec.player_name {
-				player_name = name;
-			}
-		}
-		None => (),
-	};
+	let places = (
+		match &requests[0] {
+			Ok(rec) => match get_place(rec, &client).await {
+				Ok(place) => format!("[#{}]", place.0),
+				Err(_) => String::from(" "),
+			},
+			Err(_) => String::from(" "),
+		},
+		match &requests[1] {
+			Ok(rec) => match get_place(rec, &client).await {
+				Ok(place) => format!("[#{}]", place.0),
+				Err(_) => String::from(" "),
+			},
+			Err(_) => String::from(" "),
+		},
+	);
 
 	let embed = CreateEmbed::default()
 		.color((116, 128, 194))
-		.title(format!(
-			"[BPB {}] {} on {}",
-			course,
-			player_name.clone(),
-			match &map_name {
-				Some(s) => s,
-				None => "unknown map",
-			}
-		))
+		.title(format!("[BPB {}] {} on {}", &course, &player, &map.name))
 		.url(format!(
 			"https://kzgo.eu/maps/{}?bonus={}&{}=",
-			if let Some(s) = &map_name { s } else { "" },
+			&map.name,
 			course,
-			match input_mode.clone() {
-				Some(mode) => mode.fancy_short().to_lowercase(),
-				None => String::from("kzt"),
-			}
+			&mode.fancy_short().to_lowercase()
 		))
-		.thumbnail(match &map_name {
-			Some(s) => format!(
-				"https://raw.githubusercontent.com/KZGlobalTeam/map-images/master/images/{}.jpg",
-				s
+		.thumbnail(format!(
+			"https://raw.githubusercontent.com/KZGlobalTeam/map-images/master/images/{}.jpg",
+			&map.name
+		))
+		.field(
+			"TP",
+			format!(
+				"{} {}",
+				match &requests[0] {
+					Ok(rec) => timestring(rec.time),
+					Err(_) => String::from("😔"),
+				},
+				places.0
 			),
-			None => String::from("https://kzgo.eu/kz_default.png"),
-		})
-		.field("TP", format!("{}", tp_time), true)
-		.field("PRO", format!("{}", pro_time), true)
+			true,
+		)
+		.field(
+			"PRO",
+			format!(
+				"{} {}",
+				match &requests[1] {
+					Ok(rec) => timestring(rec.time),
+					Err(_) => String::from("😔"),
+				},
+				places.1
+			),
+			true,
+		)
 		.footer(|f| {
 			let icon_url = env::var("ICON").unwrap_or(String::from("unknown"));
 
-			f.text(format!(
-				"Mode: {} | Player: {}",
-				match input_mode {
-					None => "unknown",
-					Some(mode) => mode.fancy(),
-				},
-				player_name
-			))
-			.icon_url(icon_url)
+			f.text(format!("Mode: {}", mode.fancy())).icon_url(icon_url)
 		})
 		.to_owned();
 

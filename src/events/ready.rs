@@ -18,17 +18,11 @@ pub async fn ready(ctx: Context, ready: Ready) {
 				let commands =
 					GuildId::set_application_commands(&dev_guild, &ctx.http, |commands| {
 						commands
-							// .create_application_command(|cmd| crate::commands::ping::register(cmd))
-							// .create_application_command(|cmd| crate::commands::db::register(cmd))
+							.create_application_command(|cmd| crate::commands::ping::register(cmd))
 							.create_application_command(|cmd| {
 								crate::commands::setsteam::register(cmd)
 							})
-							// .create_application_command(|cmd| crate::commands::mode::register(cmd))
-							// .create_application_command(|cmd| crate::commands::wr::register(cmd))
-							// .create_application_command(|cmd| crate::commands::bwr::register(cmd))
-							// .create_application_command(|cmd| crate::commands::pb::register(cmd))
-							// .create_application_command(|cmd| crate::commands::bpb::register(cmd))
-							.create_application_command(|cmd| crate::commands::recent::register(cmd))
+							.create_application_command(|cmd| crate::commands::mode::register(cmd))
 					})
 					.await;
 
@@ -43,8 +37,26 @@ pub async fn ready(ctx: Context, ready: Ready) {
 			}
 
 			"PROD" => {
-				let commands = Command::create_global_application_command(&ctx.http, |cmd| {
-					crate::commands::ping::register(cmd)
+				let commands = Command::set_global_application_commands(&ctx.http, |commands| {
+					commands
+						.create_application_command(|cmd| crate::commands::ping::register(cmd))
+						.create_application_command(|cmd| crate::commands::invite::register(cmd))
+						.create_application_command(|cmd| crate::commands::setsteam::register(cmd))
+						.create_application_command(|cmd| crate::commands::mode::register(cmd))
+						.create_application_command(|cmd| crate::commands::db::register(cmd))
+						.create_application_command(|cmd| crate::commands::nocrouch::register(cmd))
+						.create_application_command(|cmd| crate::commands::apistatus::register(cmd))
+						.create_application_command(|cmd| crate::commands::bpb::register(cmd))
+						.create_application_command(|cmd| crate::commands::pb::register(cmd))
+						.create_application_command(|cmd| crate::commands::bwr::register(cmd))
+						.create_application_command(|cmd| crate::commands::wr::register(cmd))
+						.create_application_command(|cmd| crate::commands::recent::register(cmd))
+						.create_application_command(|cmd| {
+							crate::commands::unfinished::register(cmd)
+						})
+						.create_application_command(|cmd| crate::commands::random::register(cmd))
+						.create_application_command(|cmd| crate::commands::map::register(cmd))
+						.create_application_command(|cmd| crate::commands::profile::register(cmd))
 				})
 				.await;
 

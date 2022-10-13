@@ -35,11 +35,14 @@ pub async fn run(user: &User, mongo_client: &mongodb::Client) -> SchnoseCommand 
 						mode: {}
 						",
 						data.discordID,
-						data.steamID.unwrap_or(String::from("none")),
+						match data.steamID {
+							Some(steam_id) => steam_id.to_string(),
+							None => String::from("none"),
+						},
 						if let Some(mode) = data.mode {
-							mode.as_str()
+							mode
 						} else {
-							"none"
+							String::from("none")
 						}
 					))
 					.to_owned();

@@ -1,6 +1,6 @@
 use crate::util::UserSchema;
 use bson::doc;
-use gokz_rs::global_api::GOKZModeName;
+use gokz_rs::prelude::*;
 use serenity::builder::CreateApplicationCommand;
 use serenity::json::Value;
 use serenity::model::prelude::command::CommandOptionType;
@@ -39,15 +39,7 @@ pub async fn run(
 		match opt.name.as_str() {
 			"mode" => match &opt.value {
 				Some(val) => match val.to_owned() {
-					Value::String(mode_val) => {
-						input = match mode_val.as_str() {
-							"kz_timer" => Some(GOKZModeName::kz_timer),
-							"kz_simple" => Some(GOKZModeName::kz_simple),
-							"kz_vanilla" => Some(GOKZModeName::kz_vanilla),
-							"none" => None,
-							_ => unreachable!("Invalid input mode"),
-						}
-					}
+					Value::String(mode_val) => input = Some(Mode::from(mode_val)),
 					_ => {
 						return SchnoseCommand::Message(String::from(
 							"Failed to deserialize input mode.",
@@ -90,7 +82,7 @@ pub async fn run(
 							user.name,
 							match input {
 								Some(mode) => mode.fancy_short(),
-								None => "none",
+								None => String::from("none"),
 							}
 						))
 					}
@@ -108,7 +100,10 @@ pub async fn run(
 							name: user.name.clone(),
 							discordID: user.id.to_string(),
 							steamID: None,
-							mode: input.clone(),
+							mode: match input.clone() {
+								Some(mode) => Some(mode.as_str().to_owned()),
+								None => None,
+							},
 						},
 						None,
 					)
@@ -119,7 +114,7 @@ pub async fn run(
 							"Successfully set mode `{}` for `{}`.",
 							match input {
 								Some(mode) => mode.fancy_short(),
-								None => "none",
+								None => String::from("none"),
 							},
 							user.name
 						))

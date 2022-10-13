@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 tokio = { version = "1", features = ["full"] }
 dotenv = "0.15"
-gokz_rs = "0.2.1"
+gokz_rs = "0.4"
 reqwest = { version = "0.11", features = ["json"] }
 futures = "0.3.24"
 chrono = "0.4"
@@ -16,6 +16,8 @@ mongodb = "2.1"
 bson = { version = "2", features = ["chrono-0_4"] }
 serde = "1"
 regex = "1.6.0"
+rand = "0.8.5"
+num-format = "0.4.3"
 
 [dependencies.serenity]
 version = "0.11"

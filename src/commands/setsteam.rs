@@ -55,7 +55,7 @@ pub async fn run(
 		}
 	}
 
-	let input = match input {
+	let mut input = match input {
 		None => return SchnoseCommand::Message(String::from("Please input a valid steamID.")),
 		Some(s) => s,
 	};
@@ -64,12 +64,14 @@ pub async fn run(
 		.find_one(doc! { "discordID": user.id.to_string() }, None)
 		.await
 	{
-		// create new one
 		Err(_) => return SchnoseCommand::Message(String::from("Failed to access database.")),
 
-		// update
 		Ok(document) => match document {
 			Some(_) => {
+				if input.starts_with("STEAM_0") {
+					input.replace_range(0..7, "STEAM_1")
+				}
+
 				match collection
 					.find_one_and_update(
 						doc! { "discordID": user.id.to_string() },

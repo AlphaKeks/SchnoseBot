@@ -1,9 +1,9 @@
 use std::env;
 
 use bson::doc;
-use futures::future::join_all;
-use gokz_rs::functions::{get_maps, get_pb, get_place, is_global};
-use gokz_rs::prelude::*;
+use gokz_rs::functions::get_profile;
+use gokz_rs::{kzgo, prelude::*};
+use num_format::{Locale, ToFormattedString};
 use serenity::builder::CreateEmbed;
 use serenity::model::user::User;
 use serenity::{
@@ -14,20 +14,14 @@ use serenity::{
 };
 
 use crate::util::{
-	get_string, is_mention, is_steamid, retrieve_mode, retrieve_steam_id, timestring, Target,
+	get_steam_avatar, get_string, is_mention, is_steamid, retrieve_mode, retrieve_steam_id, Target,
 	UserSchema,
 };
 use crate::SchnoseCommand;
 
 pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
-	cmd.name("pb")
-		.description("Check a player's personal best on a map")
-		.create_option(|opt| {
-			opt.kind(CommandOptionType::String)
-				.name("map_name")
-				.description("Specify a map.")
-				.required(true)
-		})
+	cmd.name("profile")
+		.description("Check a player's completion and rank")
 		.create_option(|opt| {
 			opt.kind(CommandOptionType::String)
 				.name("mode")
@@ -51,21 +45,6 @@ pub async fn run(
 	mongo_client: &mongodb::Client,
 ) -> SchnoseCommand {
 	let client = reqwest::Client::new();
-
-	let map = match get_string("map_name", opts) {
-		Some(map_name) => {
-			let global_maps = match get_maps(&client).await {
-				Ok(maps) => maps,
-				Err(why) => return SchnoseCommand::Message(why.tldr),
-			};
-
-			match is_global(&MapIdentifier::Name(map_name), &global_maps).await {
-				Ok(map) => map,
-				Err(why) => return SchnoseCommand::Message(why.tldr),
-			}
-		}
-		None => unreachable!("Failed to access required command option"),
-	};
 
 	let mode = if let Some(mode_name) = get_string("mode", opts) {
 		Mode::from(mode_name)
@@ -153,104 +132,141 @@ pub async fn run(
 		}
 	};
 
-	let requests = join_all(
-		vec![
-			get_pb(
-				&player,
-				&MapIdentifier::Name(map.name.clone()),
-				&mode,
-				0,
-				true,
-				&client,
-			),
-			get_pb(
-				&player,
-				&MapIdentifier::Name(map.name.clone()),
-				&mode,
-				0,
-				false,
-				&client,
-			),
-		]
-		.into_iter(),
-	)
-	.await;
+	let profile = match get_profile(&player, &mode, &client).await {
+		Ok(profile) => profile,
+		Err(why) => return SchnoseCommand::Message(why.tldr),
+	};
 
-	if let (&Err(_), &Err(_)) = (&requests[0], &requests[1]) {
-		return SchnoseCommand::Message(String::from("No PB found."));
-	}
+	let picture = get_steam_avatar(&profile.steam_id64, &client).await;
 
-	let player = match &requests[0] {
-		Ok(rec) => match &rec.player_name {
-			Some(name) => name.to_owned(),
-			None => String::from("unknown"),
-		},
-		Err(_) => match &requests[1] {
-			Ok(rec) => match &rec.player_name {
-				Some(name) => name.to_owned(),
+	let pref_mode = if let Some(steam_id) = &profile.steam_id {
+		let collection = mongo_client
+			.database("gokz")
+			.collection::<UserSchema>("users");
+
+		match retrieve_mode(doc! { "steamID": steam_id }, collection).await {
+			Ok(mode) => match mode {
+				Some(mode) => mode.fancy(),
 				None => String::from("unknown"),
 			},
 			Err(_) => String::from("unknown"),
-		},
+		}
+	} else {
+		String::from("unknown")
 	};
 
-	let places = (
-		match &requests[0] {
-			Ok(rec) => match get_place(rec, &client).await {
-				Ok(place) => format!("[#{}]", place.0),
-				Err(_) => String::from(" "),
-			},
-			Err(_) => String::from(" "),
-		},
-		match &requests[1] {
-			Ok(rec) => match get_place(rec, &client).await {
-				Ok(place) => format!("[#{}]", place.0),
-				Err(_) => String::from(" "),
-			},
-			Err(_) => String::from(" "),
-		},
-	);
+	let mut bars = [[""; 7]; 2].map(|a| a.map(|s| s.to_owned()));
+
+	for i in 0..7 {
+		{
+			let amount = (&profile.completion_percentage[i].0 / 10.0) as u32;
+
+			for _ in 0..amount {
+				bars[0][i].push_str("█");
+			}
+
+			for _ in 0..(10 - amount) {
+				bars[0][i].push_str("░");
+			}
+		}
+
+		{
+			let amount = (&profile.completion_percentage[i].1 / 10.0) as u32;
+
+			for _ in 0..amount {
+				bars[1][i].push_str("█");
+			}
+
+			for _ in 0..(10 - amount) {
+				bars[1][i].push_str("░");
+			}
+		}
+	}
+
+	let doable = match kzgo::completion::get_completion_count(&mode, &client).await {
+		Ok(data) => (data.tp.total, data.pro.total),
+		Err(why) => return SchnoseCommand::Message(why.tldr),
+	};
 
 	let embed = CreateEmbed::default()
 		.color((116, 128, 194))
-		.title(format!("[PB] {} on {}", &player, &map.name))
+		.title(format!(
+			"{} - {} Profile",
+			match &profile.name {
+				Some(name) => name,
+				None => "unknown",
+			},
+			&mode.fancy()
+		))
 		.url(format!(
-			"https://kzgo.eu/maps/{}?{}=",
-			&map.name,
+			"https://kzgo.eu/players/{}?{}=",
+			match &profile.steam_id {
+				Some(steam_id) => steam_id,
+				None => "",
+			},
 			&mode.fancy_short().to_lowercase()
 		))
-		.thumbnail(format!(
-			"https://raw.githubusercontent.com/KZGlobalTeam/map-images/master/images/{}.jpg",
-			&map.name
+		.thumbnail(picture)
+		.description(format!(
+			r"
+🏆 **World Records: {} (TP) || {} (PRO)**
+────────────────────────
+                      TP                                               PRO
+         `{}/{} ({:.2}%)`              `{}/{} ({:.2}%)`
+T1     ⌠ {} ⌡          ⌠ {} ⌡
+T2   ⌠ {} ⌡          ⌠ {} ⌡
+T3   ⌠ {} ⌡          ⌠ {} ⌡
+T4  ⌠ {} ⌡          ⌠ {} ⌡
+T5   ⌠ {} ⌡          ⌠ {} ⌡
+T6  ⌠ {} ⌡          ⌠ {} ⌡
+T7   ⌠ {} ⌡          ⌠ {} ⌡
+
+Points: **{}**
+────────────────────────
+Rank: **{}**
+Preferred Mode: {}
+			",
+			&profile.records.0,
+			&profile.records.1,
+			&profile.completion[7].0,
+			&doable.0,
+			&profile.completion_percentage[7].0,
+			&profile.completion[7].1,
+			&doable.1,
+			&profile.completion_percentage[7].1,
+			&bars[0][0],
+			&bars[1][0],
+			&bars[0][1],
+			&bars[1][1],
+			&bars[0][2],
+			&bars[1][2],
+			&bars[0][3],
+			&bars[1][3],
+			&bars[0][4],
+			&bars[1][4],
+			&bars[0][5],
+			&bars[1][5],
+			&bars[0][6],
+			&bars[1][6],
+			(&profile.points.0 + &profile.points.1).to_formatted_string(&Locale::en),
+			match &profile.rank {
+				Some(rank) => rank.to_string(),
+				None => String::from("unknown"),
+			},
+			pref_mode
 		))
-		.field(
-			"TP",
-			format!(
-				"{} {}",
-				match &requests[0] {
-					Ok(rec) => timestring(rec.time),
-					Err(_) => String::from("😔"),
-				},
-				places.0
-			),
-			true,
-		)
-		.field(
-			"PRO",
-			format!(
-				"{} {}",
-				match &requests[1] {
-					Ok(rec) => timestring(rec.time),
-					Err(_) => String::from("😔"),
-				},
-				places.1
-			),
-			true,
-		)
+		// .description("hi")
 		.footer(|f| {
 			let icon_url = env::var("ICON").unwrap_or(String::from("unknown"));
 
-			f.text(format!("Mode: {}", mode.fancy())).icon_url(icon_url)
+			f.text(format!(
+				"steamID: {}",
+				match &profile.steam_id {
+					Some(steam_id) => steam_id,
+					None => "unknown",
+				}
+			))
+			.icon_url(icon_url)
 		})
 		.to_owned();
 
