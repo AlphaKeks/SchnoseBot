@@ -33,7 +33,11 @@ pub async fn ready(ctx: Context, ready: Ready) {
 					}
 				}
 
-				println!("[{}] registered commands: {:#?}", var, command_names);
+				println!(
+					"[{}] registered commands: \n> {}",
+					var,
+					command_names.join("\n> ")
+				);
 			}
 
 			"PROD" => {
@@ -60,7 +64,15 @@ pub async fn ready(ctx: Context, ready: Ready) {
 				})
 				.await;
 
-				println!("[{}] registered commands: {:#?}", var, commands);
+				println!(
+					"[{}] registered commands: \n> {}",
+					var,
+					(match commands {
+						Ok(cmds) => cmds.into_iter().map(|cmd| cmd.name).collect(),
+						_ => vec![],
+					})
+					.join("\n> ")
+				);
 			}
 
 			_ => panic!(
