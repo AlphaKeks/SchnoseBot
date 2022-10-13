@@ -18,6 +18,7 @@ serde = "1"
 regex = "1.6.0"
 rand = "0.8.5"
 num-format = "0.4.3"
+tracing = "0.1.37"
 
 [dependencies.serenity]
 version = "0.11"

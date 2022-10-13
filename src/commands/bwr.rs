@@ -53,12 +53,20 @@ pub async fn run(
 		Some(map_name) => {
 			let global_maps = match get_maps(&client).await {
 				Ok(maps) => maps,
-				Err(why) => return SchnoseCommand::Message(why.tldr),
+				Err(why) => {
+					tracing::error!("`get_maps`: {:#?}", why);
+
+					return SchnoseCommand::Message(why.tldr);
+				}
 			};
 
 			match is_global(&MapIdentifier::Name(map_name), &global_maps).await {
 				Ok(map) => map,
-				Err(why) => return SchnoseCommand::Message(why.tldr),
+				Err(why) => {
+					tracing::error!("`is_global`: {:#?}", why);
+
+					return SchnoseCommand::Message(why.tldr);
+				}
 			}
 		}
 		None => unreachable!("Failed to access required command option"),
@@ -80,7 +88,11 @@ pub async fn run(
 					))
 				}
 			},
-			Err(why) => return SchnoseCommand::Message(why),
+			Err(why) => {
+				tracing::error!("`retrieve_mode`: {:#?}", why);
+
+				return SchnoseCommand::Message(why);
+			}
 		}
 	};
 

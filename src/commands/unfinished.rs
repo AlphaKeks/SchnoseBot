@@ -87,7 +87,11 @@ pub async fn run(
 					))
 				}
 			},
-			Err(why) => return SchnoseCommand::Message(why),
+			Err(why) => {
+				tracing::error!("`retrieve_mode`: {:#?}", why);
+
+				return SchnoseCommand::Message(why);
+			}
 		}
 	};
 
@@ -126,7 +130,11 @@ pub async fn run(
 					Some(steam_id) => Target::SteamID(steam_id),
 					None => return SchnoseCommand::Message(String::from("You need to provide a target (steamID, name or mention) or set a default steamID with `/setsteam`."))
 				}
-				Err(why) => return SchnoseCommand::Message(why)
+				Err(why) => {
+					tracing::error!("`retrieve_steam_id`: {:#?}", why);
+
+					return SchnoseCommand::Message(why)
+				}
 			}
 		} else {
 			Target::Name(target)
@@ -141,7 +149,11 @@ pub async fn run(
 					Some(steam_id) => Target::SteamID(steam_id),
 					None => return SchnoseCommand::Message(String::from("You need to provide a target (steamID, name or mention) or set a default steamID with `/setsteam`."))
 				},
-				Err(why) => return SchnoseCommand::Message(why),
+				Err(why) => {
+					tracing::error!("`retrieve_steam_id`: {:#?}", why);
+
+					return SchnoseCommand::Message(why)
+				}
 			}
 	};
 
@@ -149,7 +161,11 @@ pub async fn run(
 		Target::SteamID(steam_id) => PlayerIdentifier::SteamId(steam_id),
 		Target::Name(name) => match SteamId::get(&PlayerIdentifier::Name(name), &client).await {
 			Ok(steam_id) => PlayerIdentifier::SteamId(steam_id),
-			Err(why) => return SchnoseCommand::Message(why.tldr.to_owned()),
+			Err(why) => {
+				tracing::error!("`SteamId::get()`: {:#?}", why);
+
+				return SchnoseCommand::Message(why.tldr.to_owned());
+			}
 		},
 		Target::Mention(mention) => {
 			let collection = mongo_client
@@ -163,19 +179,31 @@ pub async fn run(
 							"You need to provide a target (steamID, name or mention) or set a default steamID with `/setsteam`.",
 						)),
 					},
-					Err(why) => return SchnoseCommand::Message(why),
+					Err(why) => {
+						tracing::error!("`retrieve_steam_id`: {:#?}", why);
+
+						return SchnoseCommand::Message(why)
+					},
 				}
 		}
 	};
 
 	let request = match get_unfinished(&player, &mode, runtype, tier, &client).await {
 		Ok(map_names) => map_names,
-		Err(why) => return SchnoseCommand::Message(why.tldr),
+		Err(why) => {
+			tracing::error!("`get_unfinished`: {:#?}", why);
+
+			return SchnoseCommand::Message(why.tldr);
+		}
 	};
 
 	let player = match get_player(&player, &client).await {
 		Ok(player) => player,
-		Err(why) => return SchnoseCommand::Message(why.tldr),
+		Err(why) => {
+			tracing::error!("`get_player`: {:#?}", why);
+
+			return SchnoseCommand::Message(why.tldr);
+		}
 	};
 
 	let description = if request.len() <= 10 {

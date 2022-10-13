@@ -70,16 +70,24 @@ pub async fn retrieve_steam_id(
 	collection: Collection<UserSchema>,
 ) -> Result<Option<SteamId>, String> {
 	match collection
-		.find_one(doc! { "discordID": user_id }, None)
+		.find_one(doc! { "discordID": user_id.clone() }, None)
 		.await
 	{
-		Err(_) => Err(String::from("Failed to access database.")),
+		Err(why) => {
+			tracing::error!("`retrieve_steam_id`: {:#?}", why);
+
+			Err(String::from("Failed to access database."))
+		}
 		Ok(document) => match document {
 			Some(entry) => match entry.steamID {
 				Some(steam_id) => Ok(Some(SteamId(steam_id))),
 				None => Ok(None),
 			},
-			None => Err(String::from("User not in database.")),
+			None => {
+				tracing::error!("`retrieve_steam_id`: {} wasn't found in database", user_id);
+
+				Err(String::from("User not in database."))
+			}
 		},
 	}
 }
@@ -88,14 +96,22 @@ pub async fn retrieve_mode(
 	query: bson::Document,
 	collection: Collection<UserSchema>,
 ) -> Result<Option<Mode>, String> {
-	match collection.find_one(query, None).await {
-		Err(_) => Err(String::from("Failed to access database.")),
+	match collection.find_one(query.clone(), None).await {
+		Err(why) => {
+			tracing::error!("`retrieve_mode`: {:#?}", why);
+
+			Err(String::from("Failed to access database."))
+		}
 		Ok(document) => match document {
 			Some(entry) => match entry.mode {
 				Some(mode) => Ok(Some(Mode::from(mode))),
 				None => Ok(None),
 			},
-			None => Err(String::from("User not in database.")),
+			None => {
+				tracing::error!("`retrieve_mode`: {} wasn't found in database", query);
+
+				Err(String::from("User not in database."))
+			}
 		},
 	}
 }
@@ -196,7 +212,9 @@ pub async fn get_steam_avatar(steamid64: &Option<String>, client: &reqwest::Clie
 
 	let api_key: String = match env::var("STEAM_API") {
 		Ok(key) => key,
-		Err(_) => {
+		Err(why) => {
+			tracing::error!("`get_steam_avatar`: {:#?}", why);
+
 			return default_url;
 		}
 	};
@@ -219,11 +237,15 @@ pub async fn get_steam_avatar(steamid64: &Option<String>, client: &reqwest::Clie
 
 				return player.avatarfull.to_owned();
 			}
-			Err(_) => {
+			Err(why) => {
+				tracing::error!("`get_steam_avatar`: {:#?}", why);
+
 				return default_url;
 			}
 		},
-		Err(_) => {
+		Err(why) => {
+			tracing::error!("`get_steam_avatar`: {:#?}", why);
+
 			return default_url;
 		}
 	}

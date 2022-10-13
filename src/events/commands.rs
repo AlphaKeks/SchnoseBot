@@ -28,7 +28,9 @@ pub async fn interaction_create(ctx: Context, interaction: Interaction) {
 		match cmd.data.name.as_str() {
 			"ping" | "invite" | "nocrouch" => (),
 			_ => {
-				if let Err(_) = cmd.defer(&ctx.http).await {
+				if let Err(why) = cmd.defer(&ctx.http).await {
+					tracing::error!("`failed to defer command: {:#?}`", why);
+
 					return;
 				}
 			}
@@ -78,7 +80,7 @@ pub async fn interaction_create(ctx: Context, interaction: Interaction) {
 					})
 					.await
 				{
-					println!("interaction failed: {:#?}", why);
+					tracing::error!("`responding to interaction failed`: {:#?}", why);
 				}
 			}
 			_ => {
@@ -93,7 +95,7 @@ pub async fn interaction_create(ctx: Context, interaction: Interaction) {
 					})
 					.await
 				{
-					println!("interaction failed: {:#?}", why);
+					tracing::error!("`responding to interaction failed`: {:#?}", why);
 				}
 			}
 		}

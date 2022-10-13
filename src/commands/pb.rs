@@ -56,12 +56,20 @@ pub async fn run(
 		Some(map_name) => {
 			let global_maps = match get_maps(&client).await {
 				Ok(maps) => maps,
-				Err(why) => return SchnoseCommand::Message(why.tldr),
+				Err(why) => {
+					tracing::error!("`get_maps`: {:#?}", why);
+
+					return SchnoseCommand::Message(why.tldr);
+				}
 			};
 
 			match is_global(&MapIdentifier::Name(map_name), &global_maps).await {
 				Ok(map) => map,
-				Err(why) => return SchnoseCommand::Message(why.tldr),
+				Err(why) => {
+					tracing::error!("`is_global`: {:#?}", why);
+
+					return SchnoseCommand::Message(why.tldr);
+				}
 			}
 		}
 		None => unreachable!("Failed to access required command option"),
@@ -83,7 +91,11 @@ pub async fn run(
 					))
 				}
 			},
-			Err(why) => return SchnoseCommand::Message(why),
+			Err(why) => {
+				tracing::error!("`retrieve_mode`: {:#?}", why);
+
+				return SchnoseCommand::Message(why);
+			}
 		}
 	};
 
@@ -111,7 +123,11 @@ pub async fn run(
 					Some(steam_id) => Target::SteamID(steam_id),
 					None => return SchnoseCommand::Message(String::from("You need to provide a target (steamID, name or mention) or set a default steamID with `/setsteam`."))
 				}
-				Err(why) => return SchnoseCommand::Message(why)
+				Err(why) => {
+					tracing::error!("`retrieve_steam_id`: {:#?}", why);
+
+					return SchnoseCommand::Message(why)
+				}
 			}
 		} else {
 			Target::Name(target)
@@ -126,7 +142,11 @@ pub async fn run(
 					Some(steam_id) => Target::SteamID(steam_id),
 					None => return SchnoseCommand::Message(String::from("You need to provide a target (steamID, name or mention) or set a default steamID with `/setsteam`."))
 				},
-				Err(why) => return SchnoseCommand::Message(why),
+				Err(why) => {
+					tracing::error!("`retrieve_steam_id`: {:#?}", why);
+
+					return SchnoseCommand::Message(why)
+				}
 			}
 	};
 
@@ -134,7 +154,11 @@ pub async fn run(
 		Target::SteamID(steam_id) => PlayerIdentifier::SteamId(steam_id),
 		Target::Name(name) => match SteamId::get(&PlayerIdentifier::Name(name), &client).await {
 			Ok(steam_id) => PlayerIdentifier::SteamId(steam_id),
-			Err(why) => return SchnoseCommand::Message(why.tldr.to_owned()),
+			Err(why) => {
+				tracing::error!("`SteamId::get()`: {:#?}", why);
+
+				return SchnoseCommand::Message(why.tldr.to_owned());
+			}
 		},
 		Target::Mention(mention) => {
 			let collection = mongo_client
@@ -148,7 +172,11 @@ pub async fn run(
 							"You need to provide a target (steamID, name or mention) or set a default steamID with `/setsteam`.",
 						)),
 					},
-					Err(why) => return SchnoseCommand::Message(why),
+					Err(why) => {
+						tracing::error!("`retrieve_steam_id`: {:#?}", why);
+
+						return SchnoseCommand::Message(why)
+					},
 				}
 		}
 	};
