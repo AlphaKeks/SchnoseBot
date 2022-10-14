@@ -55,6 +55,13 @@ async fn main() {
 		.await
 		.expect("fuck you thats why");
 
+	if let Err(why) = simple_logger::SimpleLogger::new()
+		.with_level(log::LevelFilter::Warn)
+		.init()
+	{
+		println!("Failed to initialize logging: {:#?}", why);
+	}
+
 	if let Err(why) = client.start().await {
 		panic!("client crashed: {:#?}", why);
 	}

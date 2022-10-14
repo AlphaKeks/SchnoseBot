@@ -63,7 +63,7 @@ pub async fn run(
 				}
 			},
 			Err(why) => {
-				tracing::error!("`retrieve_mode`: {:#?}", why);
+				log::error!("`retrieve_mode`: {:#?}", why);
 
 				return SchnoseCommand::Message(why);
 			}
@@ -95,7 +95,7 @@ pub async fn run(
 					None => return SchnoseCommand::Message(String::from("You need to provide a target (steamID, name or mention) or set a default steamID with `/setsteam`."))
 				}
 				Err(why) => {
-					tracing::error!("`retrieve_steam_id`: {:#?}", why);
+					log::error!("`retrieve_steam_id`: {:#?}", why);
 
 					return SchnoseCommand::Message(why)
 				}
@@ -114,7 +114,7 @@ pub async fn run(
 					None => return SchnoseCommand::Message(String::from("You need to provide a target (steamID, name or mention) or set a default steamID with `/setsteam`."))
 				},
 				Err(why) => {
-					tracing::error!("`retrieve_steam_id`: {:#?}", why);
+					log::error!("`retrieve_steam_id`: {:#?}", why);
 
 					return SchnoseCommand::Message(why)
 				}
@@ -126,7 +126,7 @@ pub async fn run(
 		Target::Name(name) => match SteamId::get(&PlayerIdentifier::Name(name), &client).await {
 			Ok(steam_id) => PlayerIdentifier::SteamId(steam_id),
 			Err(why) => {
-				tracing::error!("`SteamId::get()`: {:#?}", why);
+				log::error!("`SteamId::get()`: {:#?}", why);
 
 				return SchnoseCommand::Message(why.tldr.to_owned());
 			}
@@ -144,7 +144,7 @@ pub async fn run(
 						)),
 					},
 					Err(why) => {
-						tracing::error!("`retrieve_steam_id`: {:#?}", why);
+						log::error!("`retrieve_steam_id`: {:#?}", why);
 
 						return SchnoseCommand::Message(why)
 					},
@@ -155,7 +155,7 @@ pub async fn run(
 	let profile = match get_profile(&player, &mode, &client).await {
 		Ok(profile) => profile,
 		Err(why) => {
-			tracing::error!("`get_profile`: {:#?}", why);
+			log::error!("`get_profile`: {:#?}", why);
 
 			return SchnoseCommand::Message(why.tldr);
 		}
@@ -210,7 +210,7 @@ pub async fn run(
 	let doable = match kzgo::completion::get_completion_count(&mode, &client).await {
 		Ok(data) => (data.tp.total, data.pro.total),
 		Err(why) => {
-			tracing::error!("`kzgo::completion::get_completion_count()`: {:#?}", why);
+			log::error!("`kzgo::completion::get_completion_count()`: {:#?}", why);
 
 			return SchnoseCommand::Message(why.tldr);
 		}

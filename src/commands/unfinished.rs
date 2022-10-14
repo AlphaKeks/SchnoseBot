@@ -88,7 +88,7 @@ pub async fn run(
 				}
 			},
 			Err(why) => {
-				tracing::error!("`retrieve_mode`: {:#?}", why);
+				log::error!("`retrieve_mode`: {:#?}", why);
 
 				return SchnoseCommand::Message(why);
 			}
@@ -131,7 +131,7 @@ pub async fn run(
 					None => return SchnoseCommand::Message(String::from("You need to provide a target (steamID, name or mention) or set a default steamID with `/setsteam`."))
 				}
 				Err(why) => {
-					tracing::error!("`retrieve_steam_id`: {:#?}", why);
+					log::error!("`retrieve_steam_id`: {:#?}", why);
 
 					return SchnoseCommand::Message(why)
 				}
@@ -150,7 +150,7 @@ pub async fn run(
 					None => return SchnoseCommand::Message(String::from("You need to provide a target (steamID, name or mention) or set a default steamID with `/setsteam`."))
 				},
 				Err(why) => {
-					tracing::error!("`retrieve_steam_id`: {:#?}", why);
+					log::error!("`retrieve_steam_id`: {:#?}", why);
 
 					return SchnoseCommand::Message(why)
 				}
@@ -162,7 +162,7 @@ pub async fn run(
 		Target::Name(name) => match SteamId::get(&PlayerIdentifier::Name(name), &client).await {
 			Ok(steam_id) => PlayerIdentifier::SteamId(steam_id),
 			Err(why) => {
-				tracing::error!("`SteamId::get()`: {:#?}", why);
+				log::error!("`SteamId::get()`: {:#?}", why);
 
 				return SchnoseCommand::Message(why.tldr.to_owned());
 			}
@@ -180,7 +180,7 @@ pub async fn run(
 						)),
 					},
 					Err(why) => {
-						tracing::error!("`retrieve_steam_id`: {:#?}", why);
+						log::error!("`retrieve_steam_id`: {:#?}", why);
 
 						return SchnoseCommand::Message(why)
 					},
@@ -191,7 +191,7 @@ pub async fn run(
 	let request = match get_unfinished(&player, &mode, runtype, tier, &client).await {
 		Ok(map_names) => map_names,
 		Err(why) => {
-			tracing::error!("`get_unfinished`: {:#?}", why);
+			log::error!("`get_unfinished`: {:#?}", why);
 
 			return SchnoseCommand::Message(why.tldr);
 		}
@@ -200,7 +200,7 @@ pub async fn run(
 	let player = match get_player(&player, &client).await {
 		Ok(player) => player,
 		Err(why) => {
-			tracing::error!("`get_player`: {:#?}", why);
+			log::error!("`get_player`: {:#?}", why);
 
 			return SchnoseCommand::Message(why.tldr);
 		}

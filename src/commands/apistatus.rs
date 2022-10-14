@@ -34,7 +34,7 @@ pub async fn run(_opts: &[CommandDataOption]) -> SchnoseCommand {
 			return SchnoseCommand::Embed(embed);
 		}
 		Err(why) => {
-			tracing::error!("`check_api`: {:#?}", why);
+			log::error!("`check_api`: {:#?}", why);
 
 			return SchnoseCommand::Message(why.tldr);
 		}

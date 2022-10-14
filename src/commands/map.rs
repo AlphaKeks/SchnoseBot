@@ -33,7 +33,7 @@ pub async fn run(opts: &[CommandDataOption]) -> SchnoseCommand {
 			let global_maps = match get_maps(&client).await {
 				Ok(maps) => maps,
 				Err(why) => {
-					tracing::error!("`get_maps`: {:#?}", why);
+					log::error!("`get_maps`: {:#?}", why);
 
 					return SchnoseCommand::Message(why.tldr);
 				}
@@ -42,7 +42,7 @@ pub async fn run(opts: &[CommandDataOption]) -> SchnoseCommand {
 			let global_api = match is_global(&MapIdentifier::Name(map_name), &global_maps).await {
 				Ok(map) => map,
 				Err(why) => {
-					tracing::error!("`is_global`: {:#?}", why);
+					log::error!("`is_global`: {:#?}", why);
 
 					return SchnoseCommand::Message(why.tldr);
 				}
@@ -54,7 +54,7 @@ pub async fn run(opts: &[CommandDataOption]) -> SchnoseCommand {
 				{
 					Ok(map) => map,
 					Err(why) => {
-						tracing::error!("`kzgo::maps::get_map`: {:#?}", why);
+						log::error!("`kzgo::maps::get_map`: {:#?}", why);
 
 						return SchnoseCommand::Message(why.tldr);
 					}
@@ -98,7 +98,7 @@ pub async fn run(opts: &[CommandDataOption]) -> SchnoseCommand {
 			res
 		}
 		Err(why) => {
-			tracing::error!("`get_filters`: {:#?}", why);
+			log::error!("`get_filters`: {:#?}", why);
 
 			return SchnoseCommand::Message(why.tldr);
 		}

@@ -57,7 +57,7 @@ pub async fn run(
 			let global_maps = match get_maps(&client).await {
 				Ok(maps) => maps,
 				Err(why) => {
-					tracing::error!("`get_maps`: {:#?}", why);
+					log::error!("`get_maps`: {:#?}", why);
 
 					return SchnoseCommand::Message(why.tldr);
 				}
@@ -66,7 +66,7 @@ pub async fn run(
 			match is_global(&MapIdentifier::Name(map_name), &global_maps).await {
 				Ok(map) => map,
 				Err(why) => {
-					tracing::error!("`is_global`: {:#?}", why);
+					log::error!("`is_global`: {:#?}", why);
 
 					return SchnoseCommand::Message(why.tldr);
 				}
@@ -92,7 +92,7 @@ pub async fn run(
 				}
 			},
 			Err(why) => {
-				tracing::error!("`retrieve_mode`: {:#?}", why);
+				log::error!("`retrieve_mode`: {:#?}", why);
 
 				return SchnoseCommand::Message(why);
 			}
@@ -124,7 +124,7 @@ pub async fn run(
 					None => return SchnoseCommand::Message(String::from("You need to provide a target (steamID, name or mention) or set a default steamID with `/setsteam`."))
 				}
 				Err(why) => {
-					tracing::error!("`retrieve_steam_id`: {:#?}", why);
+					log::error!("`retrieve_steam_id`: {:#?}", why);
 
 					return SchnoseCommand::Message(why)
 				}
@@ -143,7 +143,7 @@ pub async fn run(
 					None => return SchnoseCommand::Message(String::from("You need to provide a target (steamID, name or mention) or set a default steamID with `/setsteam`."))
 				},
 				Err(why) => {
-					tracing::error!("`retrieve_steam_id`: {:#?}", why);
+					log::error!("`retrieve_steam_id`: {:#?}", why);
 
 					return SchnoseCommand::Message(why)
 				}
@@ -155,7 +155,7 @@ pub async fn run(
 		Target::Name(name) => match SteamId::get(&PlayerIdentifier::Name(name), &client).await {
 			Ok(steam_id) => PlayerIdentifier::SteamId(steam_id),
 			Err(why) => {
-				tracing::error!("`SteamId::get()`: {:#?}", why);
+				log::error!("`SteamId::get()`: {:#?}", why);
 
 				return SchnoseCommand::Message(why.tldr.to_owned());
 			}
@@ -173,7 +173,7 @@ pub async fn run(
 						)),
 					},
 					Err(why) => {
-						tracing::error!("`retrieve_steam_id`: {:#?}", why);
+						log::error!("`retrieve_steam_id`: {:#?}", why);
 
 						return SchnoseCommand::Message(why)
 					},

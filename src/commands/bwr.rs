@@ -54,7 +54,7 @@ pub async fn run(
 			let global_maps = match get_maps(&client).await {
 				Ok(maps) => maps,
 				Err(why) => {
-					tracing::error!("`get_maps`: {:#?}", why);
+					log::error!("`get_maps`: {:#?}", why);
 
 					return SchnoseCommand::Message(why.tldr);
 				}
@@ -63,7 +63,7 @@ pub async fn run(
 			match is_global(&MapIdentifier::Name(map_name), &global_maps).await {
 				Ok(map) => map,
 				Err(why) => {
-					tracing::error!("`is_global`: {:#?}", why);
+					log::error!("`is_global`: {:#?}", why);
 
 					return SchnoseCommand::Message(why.tldr);
 				}
@@ -89,7 +89,7 @@ pub async fn run(
 				}
 			},
 			Err(why) => {
-				tracing::error!("`retrieve_mode`: {:#?}", why);
+				log::error!("`retrieve_mode`: {:#?}", why);
 
 				return SchnoseCommand::Message(why);
 			}

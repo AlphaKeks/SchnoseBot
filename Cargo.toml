@@ -1,6 +1,6 @@
 [package]
 name = "schnose"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -18,7 +18,8 @@ serde = "1"
 regex = "1.6.0"
 rand = "0.8.5"
 num-format = "0.4.3"
-tracing = "0.1.37"
+log = "0.4.17"
+simple_logger = "2.3.0"
 
 [dependencies.serenity]
 version = "0.11"

@@ -74,7 +74,7 @@ pub async fn retrieve_steam_id(
 		.await
 	{
 		Err(why) => {
-			tracing::error!("`retrieve_steam_id`: {:#?}", why);
+			log::error!("`retrieve_steam_id`: {:#?}", why);
 
 			Err(String::from("Failed to access database."))
 		}
@@ -84,7 +84,7 @@ pub async fn retrieve_steam_id(
 				None => Ok(None),
 			},
 			None => {
-				tracing::error!("`retrieve_steam_id`: {} wasn't found in database", user_id);
+				log::error!("`retrieve_steam_id`: {} wasn't found in database", user_id);
 
 				Err(String::from("User not in database."))
 			}
@@ -98,7 +98,7 @@ pub async fn retrieve_mode(
 ) -> Result<Option<Mode>, String> {
 	match collection.find_one(query.clone(), None).await {
 		Err(why) => {
-			tracing::error!("`retrieve_mode`: {:#?}", why);
+			log::error!("`retrieve_mode`: {:#?}", why);
 
 			Err(String::from("Failed to access database."))
 		}
@@ -108,7 +108,7 @@ pub async fn retrieve_mode(
 				None => Ok(None),
 			},
 			None => {
-				tracing::error!("`retrieve_mode`: {} wasn't found in database", query);
+				log::error!("`retrieve_mode`: {} wasn't found in database", query);
 
 				Err(String::from("User not in database."))
 			}
@@ -213,7 +213,7 @@ pub async fn get_steam_avatar(steamid64: &Option<String>, client: &reqwest::Clie
 	let api_key: String = match env::var("STEAM_API") {
 		Ok(key) => key,
 		Err(why) => {
-			tracing::error!("`get_steam_avatar`: {:#?}", why);
+			log::error!("`get_steam_avatar`: {:#?}", why);
 
 			return default_url;
 		}
@@ -238,13 +238,13 @@ pub async fn get_steam_avatar(steamid64: &Option<String>, client: &reqwest::Clie
 				return player.avatarfull.to_owned();
 			}
 			Err(why) => {
-				tracing::error!("`get_steam_avatar`: {:#?}", why);
+				log::error!("`get_steam_avatar`: {:#?}", why);
 
 				return default_url;
 			}
 		},
 		Err(why) => {
-			tracing::error!("`get_steam_avatar`: {:#?}", why);
+			log::error!("`get_steam_avatar`: {:#?}", why);
 
 			return default_url;
 		}

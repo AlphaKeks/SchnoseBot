@@ -33,7 +33,7 @@ pub async fn run(opts: &[CommandDataOption]) -> SchnoseCommand {
 	let mut global_maps = match get_maps(&client).await {
 		Ok(maps) => maps,
 		Err(why) => {
-			tracing::error!("`get_maps`: {:#?}", why);
+			log::error!("`get_maps`: {:#?}", why);
 
 			return SchnoseCommand::Message(why.tldr);
 		}

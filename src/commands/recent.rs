@@ -59,7 +59,7 @@ pub async fn run(
 					None => return SchnoseCommand::Message(String::from("You need to provide a target (steamID, name or mention) or set a default steamID with `/setsteam`."))
 				}
 				Err(why) => {
-					tracing::error!("`retrieve_steam_id`: {:#?}", why);
+					log::error!("`retrieve_steam_id`: {:#?}", why);
 
 					return SchnoseCommand::Message(why)
 				}
@@ -78,7 +78,7 @@ pub async fn run(
 					None => return SchnoseCommand::Message(String::from("You need to provide a target (steamID, name or mention) or set a default steamID with `/setsteam`."))
 				},
 				Err(why) => {
-					tracing::error!("`retrieve_steam_id`: {:#?}", why);
+					log::error!("`retrieve_steam_id`: {:#?}", why);
 
 					return SchnoseCommand::Message(why)
 				}
@@ -90,7 +90,7 @@ pub async fn run(
 		Target::Name(name) => match SteamId::get(&PlayerIdentifier::Name(name), &client).await {
 			Ok(steam_id) => PlayerIdentifier::SteamId(steam_id),
 			Err(why) => {
-				tracing::error!("`SteamId::get()`: {:#?}", why);
+				log::error!("`SteamId::get()`: {:#?}", why);
 
 				return SchnoseCommand::Message(why.tldr.to_owned());
 			}
@@ -108,7 +108,7 @@ pub async fn run(
 						)),
 					},
 					Err(why) => {
-						tracing::error!("`retrieve_steam_id`: {:#?}", why);
+						log::error!("`retrieve_steam_id`: {:#?}", why);
 
 						return SchnoseCommand::Message(why)
 					},
@@ -119,7 +119,7 @@ pub async fn run(
 	let recent = match get_recent(&player, &client).await {
 		Ok(rec) => rec,
 		Err(why) => {
-			tracing::error!("`get_recent`: {:#?}", why);
+			log::error!("`get_recent`: {:#?}", why);
 
 			return SchnoseCommand::Message(why.tldr);
 		}
