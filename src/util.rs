@@ -179,23 +179,23 @@ pub fn get_bool(input: &str, opts: &[CommandDataOption]) -> Option<bool> {
 pub async fn get_steam_avatar(steamid64: &Option<String>, client: &reqwest::Client) -> String {
 	#[derive(Debug, Serialize, Deserialize)]
 	struct Player {
-		pub steamid: String,
-		pub communityvisibilitystate: i32,
-		pub profilestate: i32,
-		pub personaname: String,
-		pub commentpermission: i32,
-		pub profileurl: String,
-		pub avatar: String,
-		pub avatarmedium: String,
-		pub avatarfull: String,
-		pub avatarhash: String,
-		pub lastlogoff: i32,
-		pub personastate: i32,
+		pub steamid: Option<String>,
+		pub communityvisibilitystate: Option<i32>,
+		pub profilestate: Option<i32>,
+		pub personaname: Option<String>,
+		pub commentpermission: Option<i32>,
+		pub profileurl: Option<String>,
+		pub avatar: Option<String>,
+		pub avatarmedium: Option<String>,
+		pub avatarfull: Option<String>,
+		pub avatarhash: Option<String>,
+		pub lastlogoff: Option<i32>,
+		pub personastate: Option<i32>,
 		pub realname: Option<String>,
-		pub primaryclanid: String,
-		pub timecreated: i32,
-		pub personastateflags: i32,
-		pub loccountrycode: String,
+		pub primaryclanid: Option<String>,
+		pub timecreated: Option<i32>,
+		pub personastateflags: Option<i32>,
+		pub loccountrycode: Option<String>,
 	}
 
 	#[derive(Debug, Serialize, Deserialize)]
@@ -224,9 +224,7 @@ pub async fn get_steam_avatar(steamid64: &Option<String>, client: &reqwest::Clie
 		api_key,
 		match steamid64 {
 			Some(id) => id,
-			None => {
-				return default_url;
-			}
+			None => return default_url,
 		}
 	);
 
@@ -235,7 +233,10 @@ pub async fn get_steam_avatar(steamid64: &Option<String>, client: &reqwest::Clie
 			Ok(json) => {
 				let player = &json.response.players[0];
 
-				return player.avatarfull.to_owned();
+				match &player.avatarfull {
+					Some(avatar) => return avatar.to_owned(),
+					None => return default_url,
+				}
 			}
 			Err(why) => {
 				log::error!("`get_steam_avatar`: {:#?}", why);
