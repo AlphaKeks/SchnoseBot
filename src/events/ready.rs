@@ -1,7 +1,7 @@
 use std::env;
 
 use serenity::model::application::command::Command;
-use serenity::model::gateway::Ready;
+use serenity::model::gateway::{Activity, Ready};
 use serenity::{model::prelude::GuildId, prelude::Context};
 
 pub async fn ready(ctx: Context, ready: Ready) {
@@ -82,6 +82,8 @@ pub async fn ready(ctx: Context, ready: Ready) {
 		},
 		Err(why) => panic!("{:#?}", why),
 	};
+
+	ctx.set_activity(Activity::playing("kz_epiphany_v2")).await;
 
 	println!("connected as {}.", ready.user.tag());
 }
