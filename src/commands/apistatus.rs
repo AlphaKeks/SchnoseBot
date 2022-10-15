@@ -14,21 +14,39 @@ pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCom
 pub async fn run(_opts: &[CommandDataOption]) -> SchnoseCommand {
 	match check_api(&reqwest::Client::new()).await {
 		Ok(data) => {
-			let color = if data.frontend == "operational" && data.backend == "operational" {
-				(166, 227, 161)
-			} else if data.frontend == "operational" || data.backend == "operational" {
-				(250, 179, 135)
-			} else {
-				(243, 139, 168)
-			};
+			let success = (data.successful_responses + data.fast_responses) as f32 / 2.0;
+			let (mut status, mut color) = ("we good", (166, 227, 161));
+
+			if success < 9.0 {
+				status = "<:schnosesus:947467755727241287>";
+				color = (249, 226, 175);
+			}
+
+			if success < 6.6 {
+				status = "everything is on fire";
+				color = (250, 179, 135);
+			}
+
+			if success < 3.3 {
+				status = "gc wanted to be funny and pulled the usb stick again";
+				color = (243, 139, 168);
+			}
 
 			let embed = CreateEmbed::default()
-				.title(data.status)
-				.url("https://status.global-api.com/")
+				.title(status)
+				.url("https://health.global-api.com/endpoints/_globalapi")
 				.thumbnail("https://dka575ofm4ao0.cloudfront.net/pages-transactional_logos/retina/74372/kz-icon.png")
 				.color(color)
-				.field("frontend", data.frontend, true)
-				.field("backend", data.backend, true)
+				.field(
+					"Successful healthchecks",
+					format!("{} / {}", data.successful_responses, 10),
+					true,
+				)
+				.field(
+					"Fast responses",
+					format!("{} / {}", data.fast_responses, 10),
+					true,
+				)
 				.to_owned();
 
 			return SchnoseCommand::Embed(embed);
