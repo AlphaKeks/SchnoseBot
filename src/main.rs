@@ -8,6 +8,7 @@ use serenity::builder::CreateEmbed;
 use serenity::framework::standard::macros::group;
 use serenity::framework::StandardFramework;
 use serenity::model::application::interaction::Interaction;
+use serenity::model::channel::Message;
 use serenity::model::gateway::Ready;
 use serenity::prelude::GatewayIntents;
 use serenity::Client;
@@ -31,6 +32,10 @@ impl EventHandler for Handler {
 
 	async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
 		events::commands::interaction_create(ctx, interaction).await
+	}
+
+	async fn message(&self, ctx: Context, message: Message) {
+		events::bing::message(ctx, message).await
 	}
 }
 
