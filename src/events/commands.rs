@@ -25,15 +25,10 @@ pub async fn interaction_create(ctx: Context, interaction: Interaction) {
 	};
 
 	if let Interaction::ApplicationCommand(cmd) = interaction {
-		match cmd.data.name.as_str() {
-			"ping" | "invite" | "nocrouch" => (),
-			_ => {
-				if let Err(why) = cmd.defer(&ctx.http).await {
-					log::error!("`failed to defer command: {:#?}`", why);
+		if let Err(why) = cmd.defer(&ctx.http).await {
+			log::error!("`failed to defer command: {:#?}`", why);
 
-					return;
-				}
-			}
+			return;
 		}
 
 		println!("received interaction: {}", cmd.data.name);

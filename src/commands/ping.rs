@@ -10,5 +10,5 @@ pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCom
 }
 
 pub fn run(_opts: &[CommandDataOption]) -> SchnoseCommand {
-	SchnoseCommand::Message(String::from("balls"))
+	SchnoseCommand::Message(String::from("pong!"))
 }
