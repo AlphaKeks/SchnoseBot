@@ -3,7 +3,6 @@ use std::env;
 use crate::SchnoseCommand;
 use mongodb::options::{ClientOptions, ResolverConfig};
 use serenity::model::application::interaction::Interaction;
-use serenity::model::prelude::interaction::InteractionResponseType;
 use serenity::prelude::Context;
 
 pub async fn interaction_create(ctx: Context, interaction: Interaction) {
@@ -61,38 +60,16 @@ pub async fn interaction_create(ctx: Context, interaction: Interaction) {
 			_ => SchnoseCommand::Message(String::from("unknown command")),
 		};
 
-		match cmd.data.name.as_str() {
-			"db" => {
-				if let Err(why) = cmd
-					.create_interaction_response(&ctx.http, |h| {
-						h.kind(InteractionResponseType::ChannelMessageWithSource)
-							.interaction_response_data(|msg| match data {
-								SchnoseCommand::Embed(embed) => {
-									msg.ephemeral(true).set_embed(embed)
-								}
-								_ => unreachable!("This should always return an embed."),
-							})
-					})
-					.await
-				{
-					log::error!("`responding to interaction failed`: {:#?}", why);
-				}
-			}
-			_ => {
-				if let Err(why) = cmd
-					.edit_original_interaction_response(&ctx.http, |res| {
-						match cmd.data.name.as_str() {
-							_ => match data {
-								SchnoseCommand::Message(message) => res.content(message),
-								SchnoseCommand::Embed(embed) => res.set_embed(embed),
-							},
-						}
-					})
-					.await
-				{
-					log::error!("`responding to interaction failed`: {:#?}", why);
-				}
-			}
+		if let Err(why) = cmd
+			.edit_original_interaction_response(&ctx.http, |res| match cmd.data.name.as_str() {
+				_ => match data {
+					SchnoseCommand::Message(message) => res.content(message),
+					SchnoseCommand::Embed(embed) => res.set_embed(embed),
+				},
+			})
+			.await
+		{
+			log::error!("`responding to interaction failed`: {:#?}", why);
 		}
 	}
 }
