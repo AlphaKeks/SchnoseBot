@@ -1,4 +1,4 @@
-use gokz_rs::functions::get_maps;
+use gokz_rs::global_api::get_maps;
 use rand::seq::SliceRandom;
 use serenity::{
 	builder::CreateApplicationCommand,

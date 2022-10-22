@@ -1,8 +1,9 @@
 use std::env;
+use std::str::FromStr;
 
 use bson::doc;
 use futures::future::join_all;
-use gokz_rs::functions::{get_maps, get_pb, get_place, is_global};
+use gokz_rs::global_api::{get_maps, get_pb, get_place, get_player, is_global};
 use gokz_rs::prelude::*;
 use serenity::builder::CreateEmbed;
 use serenity::model::user::User;
@@ -82,7 +83,10 @@ pub async fn run(
 	};
 
 	let mode = if let Some(mode_name) = get_string("mode", opts) {
-		Mode::from(mode_name)
+		match Mode::from_str(&mode_name) {
+			Err(why) => return SchnoseCommand::Message(why.tldr),
+			Ok(mode) => mode,
+		}
 	} else {
 		let collection = mongo_client
 			.database("gokz")
@@ -107,7 +111,7 @@ pub async fn run(
 
 	let target = if let Some(target) = get_string("target", opts) {
 		if is_steamid(&target) {
-			Target::SteamID(SteamId(target))
+			Target::SteamID(SteamID(target))
 		} else if is_mention(&target) {
 			let collection = mongo_client
 				.database("gokz")
@@ -162,9 +166,9 @@ pub async fn run(
 	};
 
 	let player = match target {
-		Target::SteamID(steam_id) => PlayerIdentifier::SteamId(steam_id),
-		Target::Name(name) => match SteamId::get(&PlayerIdentifier::Name(name), &client).await {
-			Ok(steam_id) => PlayerIdentifier::SteamId(steam_id),
+		Target::SteamID(steam_id) => PlayerIdentifier::SteamID(steam_id),
+		Target::Name(name) => match get_player(&PlayerIdentifier::Name(name), &client).await {
+			Ok(player) => PlayerIdentifier::SteamID(SteamID(player.steam_id)),
 			Err(why) => {
 				log::error!("`SteamId::get()`: {:#?}", why);
 
@@ -178,7 +182,7 @@ pub async fn run(
 
 			match retrieve_steam_id(mention, collection).await {
 					Ok(steam_id) => match steam_id {
-						Some(steam_id) => PlayerIdentifier::SteamId(steam_id),
+						Some(steam_id) => PlayerIdentifier::SteamID(steam_id),
 						None => return SchnoseCommand::Message(String::from(
 							"You need to provide a target (steamID, name or mention) or set a default steamID with `/setsteam`.",
 						)),
@@ -196,18 +200,18 @@ pub async fn run(
 		vec![
 			get_pb(
 				&player,
-				&MapIdentifier::Id(map.id),
+				&MapIdentifier::ID(map.id),
 				&mode,
-				course,
 				true,
+				course,
 				&client,
 			),
 			get_pb(
 				&player,
-				&MapIdentifier::Id(map.id),
+				&MapIdentifier::ID(map.id),
 				&mode,
-				course,
 				false,
+				course,
 				&client,
 			),
 		]
@@ -235,14 +239,14 @@ pub async fn run(
 
 	let places = (
 		match &requests[0] {
-			Ok(rec) => match get_place(rec, &client).await {
+			Ok(rec) => match get_place(&rec.id, &client).await {
 				Ok(place) => format!("[#{}]", place.0),
 				Err(_) => String::from(" "),
 			},
 			Err(_) => String::from(" "),
 		},
 		match &requests[1] {
-			Ok(rec) => match get_place(rec, &client).await {
+			Ok(rec) => match get_place(&rec.id, &client).await {
 				Ok(place) => format!("[#{}]", place.0),
 				Err(_) => String::from(" "),
 			},

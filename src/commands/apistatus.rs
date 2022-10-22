@@ -1,4 +1,4 @@
-use gokz_rs::functions::check_api;
+use gokz_rs::global_api::health_check;
 use serenity::{
 	builder::{CreateApplicationCommand, CreateEmbed},
 	model::prelude::interaction::application_command::CommandDataOption,
@@ -12,7 +12,7 @@ pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCom
 }
 
 pub async fn run(_opts: &[CommandDataOption]) -> SchnoseCommand {
-	match check_api(&reqwest::Client::new()).await {
+	match health_check(&reqwest::Client::new()).await {
 		Ok(data) => {
 			let success = (data.successful_responses + data.fast_responses) as f32 / 2.0;
 			let (mut status, mut color) = ("we good", (166, 227, 161));

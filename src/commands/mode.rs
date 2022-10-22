@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use crate::util::UserSchema;
 use bson::doc;
 use gokz_rs::prelude::*;
@@ -39,7 +41,12 @@ pub async fn run(
 		match opt.name.as_str() {
 			"mode" => match &opt.value {
 				Some(val) => match val.to_owned() {
-					Value::String(mode_val) => input = Some(Mode::from(mode_val)),
+					Value::String(mode_val) => {
+						input = Some(match Mode::from_str(&mode_val) {
+							Ok(mode) => mode,
+							Err(why) => return SchnoseCommand::Message(why.tldr),
+						})
+					}
 					_ => {
 						return SchnoseCommand::Message(String::from(
 							"Failed to deserialize input mode.",
@@ -66,8 +73,8 @@ pub async fn run(
 					.find_one_and_update(
 						doc! { "discordID": user.id.to_string() },
 						doc! {
-							"$set": { "mode": match input.clone() {
-									Some(mode) => Some(mode.as_str().to_string()),
+							"$set": { "mode": match &input {
+									Some(mode) => Some(mode.as_str()),
 									None => None
 								}
 							}
@@ -100,7 +107,7 @@ pub async fn run(
 							name: user.name.clone(),
 							discordID: user.id.to_string(),
 							steamID: None,
-							mode: match input.clone() {
+							mode: match &input {
 								Some(mode) => Some(mode.as_str().to_owned()),
 								None => None,
 							},

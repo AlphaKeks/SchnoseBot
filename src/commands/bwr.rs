@@ -1,8 +1,9 @@
 use std::env;
+use std::str::FromStr;
 
 use bson::doc;
 use futures::future::join_all;
-use gokz_rs::functions::{get_maps, get_wr, is_global};
+use gokz_rs::global_api::{get_maps, get_wr, is_global};
 use gokz_rs::prelude::*;
 use serenity::builder::CreateEmbed;
 use serenity::model::user::User;
@@ -73,7 +74,10 @@ pub async fn run(
 	};
 
 	let mode = if let Some(mode_name) = get_string("mode", opts) {
-		Mode::from(mode_name)
+		match Mode::from_str(&mode_name) {
+			Err(why) => return SchnoseCommand::Message(why.tldr),
+			Ok(mode) => mode,
+		}
 	} else {
 		let collection = mongo_client
 			.database("gokz")
@@ -103,8 +107,8 @@ pub async fn run(
 
 	let requests = join_all(
 		vec![
-			get_wr(&MapIdentifier::Id(map.id), &mode, course, true, &client),
-			get_wr(&MapIdentifier::Id(map.id), &mode, course, false, &client),
+			get_wr(&MapIdentifier::ID(map.id), &mode, true, course, &client),
+			get_wr(&MapIdentifier::ID(map.id), &mode, false, course, &client),
 		]
 		.into_iter(),
 	)

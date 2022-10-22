@@ -1,7 +1,7 @@
 use std::env;
 
 use gokz_rs::{
-	functions::{get_filters, get_maps, is_global},
+	global_api::{get_filters, get_maps, is_global},
 	kzgo,
 	prelude::MapIdentifier,
 };
@@ -65,24 +65,30 @@ pub async fn run(opts: &[CommandDataOption]) -> SchnoseCommand {
 		None => unreachable!("Failed to access required command option"),
 	};
 
-	let mappers = {
-		let mut v = vec![];
-		for i in 0..kzgo.mapperNames.len() {
-			v.push(format!(
-				"[{}](https://steamcommunity.com/profiles/{})",
-				kzgo.mapperNames[i], kzgo.mapperIds[i]
-			))
-		}
+	let mappers = if let Some(names) = kzgo.mapperNames {
+		if let Some(ids) = kzgo.mapperIds {
+			let mut v = vec![];
+			for i in 0..names.len() {
+				v.push(format!(
+					"[{}](https://steamcommunity.com/profiles/{})",
+					names[i], ids[i]
+				))
+			}
 
-		v.join(", ")
+			v.join(", ")
+		} else {
+			String::from("unknown")
+		}
+	} else {
+		String::from("unknown")
 	};
 
-	let filters = match get_filters(&MapIdentifier::Id(global_api.id), &client).await {
+	let filters = match get_filters(&MapIdentifier::ID(global_api.id), &client).await {
 		Ok(filters) => {
 			let filters = filters
 				.into_iter()
 				.filter(|f| f.stage == 0)
-				.collect::<Vec<gokz_rs::global_api::record_filters::base::Response>>();
+				.collect::<Vec<gokz_rs::global_api::record_filters::Response>>();
 
 			let mut res = ("❌", "❌", "❌");
 
@@ -123,7 +129,10 @@ pub async fn run(opts: &[CommandDataOption]) -> SchnoseCommand {
 			",
 			&global_api.difficulty,
 			mappers,
-			&kzgo.bonuses,
+			match &kzgo.bonuses {
+				Some(n) => n,
+				None => &0,
+			},
 			match chrono::NaiveDateTime::parse_from_str(&global_api.updated_on, "%Y-%m-%dT%H:%M:%S")
 			{
 				Ok(parsed_time) => parsed_time.format("%d/%m/%Y").to_string(),

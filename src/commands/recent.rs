@@ -1,6 +1,7 @@
 use std::env;
+use std::str::FromStr;
 
-use gokz_rs::functions::{get_place, get_recent};
+use gokz_rs::global_api::{get_place, get_player, get_recent};
 use gokz_rs::prelude::*;
 use serenity::builder::CreateEmbed;
 use serenity::model::user::User;
@@ -36,7 +37,7 @@ pub async fn run(
 
 	let target = if let Some(target) = get_string("target", opts) {
 		if is_steamid(&target) {
-			Target::SteamID(SteamId(target))
+			Target::SteamID(SteamID(target))
 		} else if is_mention(&target) {
 			let collection = mongo_client
 				.database("gokz")
@@ -86,9 +87,9 @@ pub async fn run(
 	};
 
 	let player = match target {
-		Target::SteamID(steam_id) => PlayerIdentifier::SteamId(steam_id),
-		Target::Name(name) => match SteamId::get(&PlayerIdentifier::Name(name), &client).await {
-			Ok(steam_id) => PlayerIdentifier::SteamId(steam_id),
+		Target::SteamID(steam_id) => PlayerIdentifier::SteamID(steam_id),
+		Target::Name(name) => match get_player(&PlayerIdentifier::Name(name), &client).await {
+			Ok(player) => PlayerIdentifier::SteamID(SteamID(player.steam_id)),
 			Err(why) => {
 				log::error!("`SteamId::get()`: {:#?}", why);
 
@@ -102,7 +103,7 @@ pub async fn run(
 
 			match retrieve_steam_id(mention, collection).await {
 					Ok(steam_id) => match steam_id {
-						Some(steam_id) => PlayerIdentifier::SteamId(steam_id),
+						Some(steam_id) => PlayerIdentifier::SteamID(steam_id),
 						None => return SchnoseCommand::Message(String::from(
 							"You need to provide a target (steamID, name or mention) or set a default steamID with `/setsteam`.",
 						)),
@@ -125,7 +126,10 @@ pub async fn run(
 		}
 	};
 
-	let mode = Mode::from(recent.mode.clone());
+	let mode = match Mode::from_str(&recent.mode) {
+		Err(why) => return SchnoseCommand::Message(why.tldr),
+		Ok(mode) => mode,
+	};
 	let (discord_timestamp, fancy) =
 		match chrono::NaiveDateTime::parse_from_str(&recent.created_on, "%Y-%m-%dT%H:%M:%S") {
 			Ok(parsed_time) => (
@@ -135,7 +139,7 @@ pub async fn run(
 			Err(_) => (String::from(" "), String::from(" ")),
 		};
 
-	let place = match get_place(&recent, &client).await {
+	let place = match get_place(&recent.id, &client).await {
 		Ok(place) => format!("[#{}]", place.0),
 		Err(_) => String::from(" "),
 	};

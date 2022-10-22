@@ -1,8 +1,8 @@
 #![allow(dead_code)]
-use std::{env, fmt::Write};
+use std::{env, fmt::Write, str::FromStr};
 
 use bson::doc;
-use gokz_rs::prelude::{Mode, SteamId};
+use gokz_rs::prelude::*;
 use mongodb::Collection;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -10,7 +10,7 @@ use serenity::{json::Value, model::prelude::interaction::application_command::Co
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Target {
-	SteamID(SteamId),
+	SteamID(SteamID),
 	Mention(String),
 	Name(String),
 }
@@ -68,7 +68,7 @@ pub fn is_mention(input: &str) -> bool {
 pub async fn retrieve_steam_id(
 	user_id: String,
 	collection: Collection<UserSchema>,
-) -> Result<Option<SteamId>, String> {
+) -> Result<Option<SteamID>, String> {
 	match collection
 		.find_one(doc! { "discordID": user_id.clone() }, None)
 		.await
@@ -80,7 +80,7 @@ pub async fn retrieve_steam_id(
 		}
 		Ok(document) => match document {
 			Some(entry) => match entry.steamID {
-				Some(steam_id) => Ok(Some(SteamId(steam_id))),
+				Some(steam_id) => Ok(Some(SteamID(steam_id))),
 				None => Ok(None),
 			},
 			None => {
@@ -104,7 +104,10 @@ pub async fn retrieve_mode(
 		}
 		Ok(document) => match document {
 			Some(entry) => match entry.mode {
-				Some(mode) => Ok(Some(Mode::from(mode))),
+				Some(mode) => Ok(Some(match Mode::from_str(&mode) {
+					Ok(mode) => mode,
+					Err(why) => return Err(why.tldr),
+				})),
 				None => Ok(None),
 			},
 			None => {
