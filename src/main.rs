@@ -1,11 +1,9 @@
 mod commands;
-mod events;
+mod event_handler;
 mod util;
 
 use std::env;
 
-use serenity::builder::CreateEmbed;
-use serenity::framework::standard::macros::group;
 use serenity::framework::StandardFramework;
 use serenity::model::application::interaction::Interaction;
 use serenity::model::channel::Message;
@@ -17,57 +15,78 @@ use serenity::{
 	prelude::{Context, EventHandler},
 };
 
-pub enum SchnoseCommand {
-	Message(String),
-	Embed(CreateEmbed),
+const DEFAULT_ICON_URL: &str = "https://cdn.discordapp.com/attachments/981130651094900756/981130719537545286/churchOfSchnose.png";
+
+pub struct Schnose {
+	pub token: String,
+	pub intents: GatewayIntents,
+	pub icon: String,
 }
 
-struct Handler;
+impl Schnose {
+	pub fn new(token: String, icon_url: String) -> Self {
+		Schnose {
+			token,
+			icon: icon_url,
+			intents: GatewayIntents::GUILDS
+				| GatewayIntents::GUILD_MEMBERS
+				| GatewayIntents::GUILD_MESSAGES
+				| GatewayIntents::GUILD_MESSAGE_REACTIONS
+				| GatewayIntents::MESSAGE_CONTENT,
+		}
+	}
+}
 
 #[async_trait]
-impl EventHandler for Handler {
+impl EventHandler for Schnose {
+	// 1. registers commands to Discord's API
+	// 2. sets the bot's activity status
+	// 3. prints connection confirmation message
 	async fn ready(&self, ctx: Context, ready: Ready) {
-		events::ready::ready(ctx, ready).await
+		event_handler::ready::handle(ctx, ready).await;
 	}
 
+	// 1. handles commands
 	async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
-		events::commands::interaction_create(ctx, interaction).await
+		event_handler::interaction_create::handle(&self, ctx, interaction).await;
 	}
 
-	async fn message(&self, ctx: Context, message: Message) {
-		events::bing::message(ctx, message).await
-	}
+	// 1. replies to "bing?"
+	async fn message(&self, _ctx: Context, _msg: Message) {}
 }
-
-#[group]
-struct General;
 
 #[tokio::main]
 async fn main() {
-	dotenv::dotenv().expect("Failed to load env file");
+	// load .env file
+	dotenv::dotenv().expect("Failed to load environment variables.");
 
-	let token = env::var("DISCORD_TOKEN").expect("no discord token found");
+	// instantiate metadata
+	let schnose = match env::var("DISCORD_TOKEN") {
+		Err(why) => panic!("No Discord API Token found. {:#?}", why),
+		Ok(token) => match env::var("ICON") {
+			Ok(icon) => Schnose::new(token, icon),
+			Err(_) => Schnose::new(token, DEFAULT_ICON_URL.to_owned()),
+		},
+	};
 
-	let framework = StandardFramework::new();
-
-	let intents = GatewayIntents::GUILD_MESSAGES
-		| GatewayIntents::DIRECT_MESSAGES
-		| GatewayIntents::MESSAGE_CONTENT;
-
-	let mut client = Client::builder(&token, intents)
-		.framework(framework)
-		.event_handler(Handler)
+	// instantiate new serenity client
+	let mut schnose = Client::builder(&schnose.token, schnose.intents)
+		.framework(StandardFramework::new())
+		.event_handler(schnose)
 		.await
-		.expect("fuck you thats why");
+		.expect("Failed to create new client.");
 
+	// instantiate logging
 	if let Err(why) = simple_logger::SimpleLogger::new()
+		.with_colors(true)
 		.with_level(log::LevelFilter::Warn)
 		.init()
 	{
-		println!("Failed to initialize logging: {:#?}", why);
+		println!("Failed to initialize logging {:#?}", why)
 	}
 
-	if let Err(why) = client.start().await {
-		panic!("client crashed: {:#?}", why);
+	// start the client
+	if let Err(why) = schnose.start().await {
+		panic!("Failed to start client. {:#?}", why);
 	}
 }

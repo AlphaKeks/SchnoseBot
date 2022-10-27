@@ -15,7 +15,7 @@ pub enum Target {
 	Name(String),
 }
 
-pub fn timestring(secs_float: f32) -> String {
+pub fn format_time(secs_float: f32) -> String {
 	let seconds = secs_float as u32;
 	let hours = ((seconds / 3600) % 24) as u8;
 	let seconds = seconds % 3600;
@@ -57,9 +57,7 @@ pub fn is_mention(input: &str) -> bool {
 	let regex = Regex::new(r"<@[0-9]+>");
 
 	if let Ok(r) = regex {
-		if let Some(_) = r.find(input) {
-			return true;
-		}
+		return r.is_match(input);
 	}
 
 	false
@@ -69,25 +67,28 @@ pub async fn retrieve_steam_id(
 	user_id: String,
 	collection: Collection<UserSchema>,
 ) -> Result<Option<SteamID>, String> {
-	match collection
-		.find_one(doc! { "discordID": user_id.clone() }, None)
-		.await
-	{
+	match collection.find_one(doc! { "discordID": user_id.clone() }, None).await {
 		Err(why) => {
-			log::error!("`retrieve_steam_id`: {:#?}", why);
+			log::error!(
+				"[{}]: {} => {}\n{:#?}",
+				file!(),
+				line!(),
+				"Failed to access database.",
+				why
+			);
 
 			Err(String::from("Failed to access database."))
-		}
+		},
 		Ok(document) => match document {
 			Some(entry) => match entry.steamID {
 				Some(steam_id) => Ok(Some(SteamID(steam_id))),
 				None => Ok(None),
 			},
 			None => {
-				log::error!("`retrieve_steam_id`: {} wasn't found in database", user_id);
+				log::error!("[{}]: {} => {}", file!(), line!(), "User not found in database.",);
 
-				Err(String::from("User not in database."))
-			}
+				Err(String::from("User not found in database."))
+			},
 		},
 	}
 }
@@ -101,7 +102,7 @@ pub async fn retrieve_mode(
 			log::error!("`retrieve_mode`: {:#?}", why);
 
 			Err(String::from("Failed to access database."))
-		}
+		},
 		Ok(document) => match document {
 			Some(entry) => match entry.mode {
 				Some(mode) => Ok(Some(match Mode::from_str(&mode) {
@@ -114,7 +115,7 @@ pub async fn retrieve_mode(
 				log::error!("`retrieve_mode`: {} wasn't found in database", query);
 
 				Err(String::from("User not in database."))
-			}
+			},
 		},
 	}
 }
@@ -219,7 +220,7 @@ pub async fn get_steam_avatar(steamid64: &Option<String>, client: &reqwest::Clie
 			log::error!("`get_steam_avatar`: {:#?}", why);
 
 			return default_url;
-		}
+		},
 	};
 
 	let url = format!(
@@ -240,17 +241,17 @@ pub async fn get_steam_avatar(steamid64: &Option<String>, client: &reqwest::Clie
 					Some(avatar) => return avatar.to_owned(),
 					None => return default_url,
 				}
-			}
+			},
 			Err(why) => {
 				log::error!("`get_steam_avatar`: {:#?}", why);
 
 				return default_url;
-			}
+			},
 		},
 		Err(why) => {
 			log::error!("`get_steam_avatar`: {:#?}", why);
 
 			return default_url;
-		}
+		},
 	}
 }
