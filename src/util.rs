@@ -6,13 +6,13 @@ use gokz_rs::prelude::*;
 use mongodb::Collection;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use serenity::{json::Value, model::prelude::interaction::application_command::CommandDataOption};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Target {
 	SteamID(SteamID),
 	Mention(String),
 	Name(String),
+	None,
 }
 
 pub fn format_time(secs_float: f32) -> String {
@@ -63,9 +63,32 @@ pub fn is_mention(input: &str) -> bool {
 	false
 }
 
+pub fn get_id_from_mention(mention: String) -> Result<u64, String> {
+	match mention.split_once(">") {
+		Some((s, _)) => match s.split_once("@") {
+			Some((_, id)) => match id.parse::<u64>() {
+				Ok(id) => return Ok(id),
+				Err(why) => return Err(format!("Failed to parse mention: {}", why)),
+			},
+			None => return Err(String::from("Failed to parse mention.")),
+		},
+		None => return Err(String::from("Failed to parse mention.")),
+	}
+}
+
+pub fn sanitize_target(target: String) -> Target {
+	if is_steamid(&target) {
+		Target::SteamID(SteamID(target))
+	} else if is_mention(&target) {
+		Target::Mention(target)
+	} else {
+		Target::Name(target)
+	}
+}
+
 pub async fn retrieve_steam_id(
 	user_id: String,
-	collection: Collection<UserSchema>,
+	collection: &Collection<UserSchema>,
 ) -> Result<Option<SteamID>, String> {
 	match collection.find_one(doc! { "discordID": user_id.clone() }, None).await {
 		Err(why) => {
@@ -95,11 +118,17 @@ pub async fn retrieve_steam_id(
 
 pub async fn retrieve_mode(
 	query: bson::Document,
-	collection: Collection<UserSchema>,
+	collection: &Collection<UserSchema>,
 ) -> Result<Option<Mode>, String> {
 	match collection.find_one(query.clone(), None).await {
 		Err(why) => {
-			log::error!("`retrieve_mode`: {:#?}", why);
+			log::error!(
+				"[{}]: {} => {}\n{:#?}",
+				file!(),
+				line!(),
+				"Failed to access database.",
+				why
+			);
 
 			Err(String::from("Failed to access database."))
 		},
@@ -112,72 +141,17 @@ pub async fn retrieve_mode(
 				None => Ok(None),
 			},
 			None => {
-				log::error!("`retrieve_mode`: {} wasn't found in database", query);
+				log::error!(
+					"[{}]: {} => {}",
+					file!(),
+					line!(),
+					query.to_string() + " wasn't found in database.",
+				);
 
 				Err(String::from("User not in database."))
 			},
 		},
 	}
-}
-
-pub fn get_string(input: &str, opts: &[CommandDataOption]) -> Option<String> {
-	for opt in opts {
-		if let Some(value) = &opt.value {
-			if input == &opt.name {
-				if let Value::String(string) = value {
-					return Some(string.to_owned());
-				}
-			}
-		}
-	}
-
-	None
-}
-
-pub fn get_integer(input: &str, opts: &[CommandDataOption]) -> Option<i64> {
-	for opt in opts {
-		if let Some(value) = &opt.value {
-			if input == &opt.name {
-				if let Value::Number(number) = value {
-					if let Some(int) = number.as_i64() {
-						return Some(int);
-					}
-				}
-			}
-		}
-	}
-
-	None
-}
-
-pub fn get_float(input: &str, opts: &[CommandDataOption]) -> Option<f64> {
-	for opt in opts {
-		if let Some(value) = &opt.value {
-			if input == &opt.name {
-				if let Value::Number(number) = value {
-					if let Some(float) = number.as_f64() {
-						return Some(float);
-					}
-				}
-			}
-		}
-	}
-
-	None
-}
-
-pub fn get_bool(input: &str, opts: &[CommandDataOption]) -> Option<bool> {
-	for opt in opts {
-		if let Some(value) = &opt.value {
-			if input == &opt.name {
-				if let Value::Bool(bool) = value {
-					return Some(bool.to_owned());
-				}
-			}
-		}
-	}
-
-	None
 }
 
 pub async fn get_steam_avatar(steamid64: &Option<String>, client: &reqwest::Client) -> String {
@@ -217,7 +191,13 @@ pub async fn get_steam_avatar(steamid64: &Option<String>, client: &reqwest::Clie
 	let api_key: String = match env::var("STEAM_API") {
 		Ok(key) => key,
 		Err(why) => {
-			log::error!("`get_steam_avatar`: {:#?}", why);
+			log::error!(
+				"[{}]: {} => {}\n{:#?}",
+				file!(),
+				line!(),
+				"Failed to get Steam Avatar.",
+				why
+			);
 
 			return default_url;
 		},
@@ -243,13 +223,25 @@ pub async fn get_steam_avatar(steamid64: &Option<String>, client: &reqwest::Clie
 				}
 			},
 			Err(why) => {
-				log::error!("`get_steam_avatar`: {:#?}", why);
+				log::error!(
+					"[{}]: {} => {}\n{:#?}",
+					file!(),
+					line!(),
+					"Failed to get Steam Avatar.",
+					why
+				);
 
 				return default_url;
 			},
 		},
 		Err(why) => {
-			log::error!("`get_steam_avatar`: {:#?}", why);
+			log::error!(
+				"[{}]: {} => {}\n{:#?}",
+				file!(),
+				line!(),
+				"Failed to get Steam Avatar.",
+				why
+			);
 
 			return default_url;
 		},

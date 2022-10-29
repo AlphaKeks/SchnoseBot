@@ -34,6 +34,20 @@ pub async fn handle(ctx: Context, ready: Ready) {
 						commands
 							.create_application_command(|cmd| commands::ping::register(cmd))
 							.create_application_command(|cmd| commands::invite::register(cmd))
+							.create_application_command(|cmd| commands::setsteam::register(cmd))
+							.create_application_command(|cmd| commands::mode::register(cmd))
+							.create_application_command(|cmd| commands::db::register(cmd))
+						// .create_application_command(|cmd| commands::nocrouch::register(cmd))
+						// .create_application_command(|cmd| commands::apistatus::register(cmd))
+						// .create_application_command(|cmd| commands::bpb::register(cmd))
+						// .create_application_command(|cmd| commands::pb::register(cmd))
+						// .create_application_command(|cmd| commands::bwr::register(cmd))
+						// .create_application_command(|cmd| commands::wr::register(cmd))
+						// .create_application_command(|cmd| commands::recent::register(cmd))
+						// .create_application_command(|cmd| commands::unfinished::register(cmd))
+						// .create_application_command(|cmd| commands::random::register(cmd))
+						// .create_application_command(|cmd| commands::map::register(cmd))
+						// .create_application_command(|cmd| commands::profile::register(cmd))
 					})
 					.await;
 
@@ -66,6 +80,20 @@ pub async fn handle(ctx: Context, ready: Ready) {
 					commands
 						.create_application_command(|cmd| commands::ping::register(cmd))
 						.create_application_command(|cmd| commands::invite::register(cmd))
+						.create_application_command(|cmd| commands::setsteam::register(cmd))
+						.create_application_command(|cmd| commands::mode::register(cmd))
+						.create_application_command(|cmd| commands::db::register(cmd))
+						.create_application_command(|cmd| commands::nocrouch::register(cmd))
+						.create_application_command(|cmd| commands::apistatus::register(cmd))
+						.create_application_command(|cmd| commands::bpb::register(cmd))
+						.create_application_command(|cmd| commands::pb::register(cmd))
+						.create_application_command(|cmd| commands::bwr::register(cmd))
+						.create_application_command(|cmd| commands::wr::register(cmd))
+						.create_application_command(|cmd| commands::recent::register(cmd))
+						.create_application_command(|cmd| commands::unfinished::register(cmd))
+						.create_application_command(|cmd| commands::random::register(cmd))
+						.create_application_command(|cmd| commands::map::register(cmd))
+						.create_application_command(|cmd| commands::profile::register(cmd))
 				})
 				.await;
 

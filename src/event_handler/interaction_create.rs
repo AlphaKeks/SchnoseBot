@@ -9,7 +9,7 @@ use serenity::{
 	builder::CreateEmbed, json, model::application::interaction::Interaction, prelude::Context,
 };
 
-use crate::commands;
+use crate::{commands, util::UserSchema};
 
 // TODO: make this more flexible
 pub enum SchnoseResponseData {
@@ -70,8 +70,8 @@ impl<'a> CommandOptions<'a> {
 	}
 }
 
-pub async fn handle(_root: &crate::Schnose, ctx: Context, interaction: Interaction) {
-	let _mongodb_client = match env::var("MONGODB") {
+pub async fn handle(root: &crate::Schnose, ctx: Context, interaction: Interaction) {
+	let mongodb_client = match env::var("MONGODB") {
 		Err(_) => panic!("No `MONGODB` variable found."),
 		Ok(token) => {
 			match ClientOptions::parse_with_resolver_config(token, ResolverConfig::cloudflare())
@@ -109,13 +109,33 @@ pub async fn handle(_root: &crate::Schnose, ctx: Context, interaction: Interacti
 				}
 			}
 
+			let collection = mongodb_client.database("gokz").collection::<UserSchema>("users");
+
+			// prepare response
 			let data = match cmd.data.name.as_str() {
 				"ping" => commands::ping::run(),
 				"invite" => commands::invite::run(),
+				"setsteam" => commands::setsteam::run(cmd_opts, &collection, &cmd.user).await,
+				"mode" => commands::mode::run(cmd_opts, &collection, &cmd.user).await,
+				"db" => commands::db::run(&collection, &cmd.user).await,
+				"nocrouch" => commands::nocrouch::run(cmd_opts),
+				"apistatus" => commands::apistatus::run().await,
+				"bpb" => commands::bpb::run(cmd_opts, &collection, &cmd.user, root).await,
+				"pb" => commands::pb::run(cmd_opts, &collection, &cmd.user, root).await,
+				"bwr" => commands::bwr::run(cmd_opts, &collection, &cmd.user, root).await,
+				"wr" => commands::wr::run(cmd_opts, &collection, &cmd.user, root).await,
+				"recent" => commands::recent::run(cmd_opts, &collection, &cmd.user, root).await,
+				"unfinished" => {
+					commands::unfinished::run(cmd_opts, &collection, &cmd.user, root).await
+				},
+				"random" => commands::random::run(cmd_opts).await,
+				"map" => commands::map::run(cmd_opts).await,
+				"profile" => commands::profile::run(cmd_opts, &collection, &cmd.user, root).await,
 				unknown_command => unimplemented!("Command `{}` not found.", unknown_command),
 			};
 
 			if let Err(why) = cmd
+				// respond to user
 				.edit_original_interaction_response(&ctx.http, |response| match data {
 					SchnoseResponseData::Message(msg) => response.content(msg),
 					SchnoseResponseData::Embed(embed) => response.set_embed(embed),
