@@ -7,6 +7,8 @@ use mongodb::Collection;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
+use crate::DEFAULT_ICON_URL;
+
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Target {
 	SteamID(SteamID),
@@ -87,10 +89,10 @@ pub fn sanitize_target(target: String) -> Target {
 }
 
 pub async fn retrieve_steam_id(
-	user_id: String,
+	query: bson::Document,
 	collection: &Collection<UserSchema>,
 ) -> Result<Option<SteamID>, String> {
-	match collection.find_one(doc! { "discordID": user_id.clone() }, None).await {
+	match collection.find_one(query, None).await {
 		Err(why) => {
 			log::error!(
 				"[{}]: {} => {}\n{:#?}",
@@ -186,18 +188,12 @@ pub async fn get_steam_avatar(steamid64: &Option<String>, client: &reqwest::Clie
 		pub response: Response,
 	}
 
-	let default_url = String::from("https://cdn.discordapp.com/attachments/981130651094900756/981130719537545286/churchOfSchnose.png");
+	let default_url = DEFAULT_ICON_URL.to_owned();
 
 	let api_key: String = match env::var("STEAM_API") {
 		Ok(key) => key,
 		Err(why) => {
-			log::error!(
-				"[{}]: {} => {}\n{:#?}",
-				file!(),
-				line!(),
-				"Failed to get Steam Avatar.",
-				why
-			);
+			log::error!("[{}]: {} => {}\n{:#?}", file!(), line!(), "No Steam API Key found.", why);
 
 			return default_url;
 		},

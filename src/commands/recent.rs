@@ -1,5 +1,7 @@
 use std::str::FromStr;
 
+use bson::doc;
+
 use gokz_rs::{
 	global_api::{get_place, get_player, get_recent},
 	prelude::*,
@@ -42,26 +44,30 @@ pub async fn run<'a>(
 	let client = reqwest::Client::new();
 
 	let steam_id = match target_input {
-		Target::None => match retrieve_steam_id(user.id.to_string(), collection).await {
-			Err(why) => {
-				log::error!("[{}]: {} => {}", file!(), line!(), why,);
+		Target::None => {
+			match retrieve_steam_id(doc! { "discordID": user.id.to_string() }, collection).await {
+				Err(why) => {
+					log::error!("[{}]: {} => {}", file!(), line!(), why,);
 
-				return SchnoseResponseData::Message(String::from(
-					"You must either specify a target or save your SteamID with `/setsteam`.",
-				));
-			},
-			Ok(steam_id) => match steam_id {
-				Some(steam_id) => steam_id,
-				None => {
-					log::error!("[{}]: {} => {}", file!(), line!(), "Failed to parse mode.",);
 					return SchnoseResponseData::Message(String::from(
 						"You must either specify a target or save your SteamID with `/setsteam`.",
 					));
 				},
-			},
+				Ok(steam_id) => match steam_id {
+					Some(steam_id) => steam_id,
+					None => {
+						log::error!("[{}]: {} => {}", file!(), line!(), "Failed to parse mode.",);
+						return SchnoseResponseData::Message(String::from(
+						"You must either specify a target or save your SteamID with `/setsteam`.",
+					));
+					},
+				},
+			}
 		},
 		Target::Mention(mention) => match get_id_from_mention(mention) {
-			Ok(id) => match retrieve_steam_id(id.to_string(), collection).await {
+			Ok(id) => match retrieve_steam_id(doc! { "discordID": id.to_string() }, collection)
+				.await
+			{
 				Err(why) => {
 					log::error!("[{}]: {} => {}", file!(), line!(), why,);
 
@@ -143,7 +149,7 @@ pub async fn run<'a>(
 			&recent.map_name
 		))
 		.url(
-			format!("https://kzgo.eu/maps/{}", &recent.map_name,)
+			format!("https://kzgo.eu/maps/{}", &recent.map_name)
 				+ &(match &mode {
 					Ok(mode) => format!("?{}=", mode.fancy_short().to_lowercase()),
 					Err(_) => String::new(),

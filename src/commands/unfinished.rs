@@ -123,26 +123,30 @@ pub async fn run<'a>(
 	};
 
 	let steam_id = match target_input {
-		Target::None => match retrieve_steam_id(user.id.to_string(), collection).await {
-			Err(why) => {
-				log::error!("[{}]: {} => {}", file!(), line!(), why,);
+		Target::None => {
+			match retrieve_steam_id(doc! { "discordID": user.id.to_string() }, collection).await {
+				Err(why) => {
+					log::error!("[{}]: {} => {}", file!(), line!(), why,);
 
-				return SchnoseResponseData::Message(String::from(
-					"You must either specify a target or save your SteamID with `/setsteam`.",
-				));
-			},
-			Ok(steam_id) => match steam_id {
-				Some(steam_id) => steam_id,
-				None => {
-					log::error!("[{}]: {} => {}", file!(), line!(), "Failed to parse mode.",);
 					return SchnoseResponseData::Message(String::from(
 						"You must either specify a target or save your SteamID with `/setsteam`.",
 					));
 				},
-			},
+				Ok(steam_id) => match steam_id {
+					Some(steam_id) => steam_id,
+					None => {
+						log::error!("[{}]: {} => {}", file!(), line!(), "Failed to parse mode.",);
+						return SchnoseResponseData::Message(String::from(
+						"You must either specify a target or save your SteamID with `/setsteam`.",
+					));
+					},
+				},
+			}
 		},
 		Target::Mention(mention) => match get_id_from_mention(mention) {
-			Ok(id) => match retrieve_steam_id(id.to_string(), collection).await {
+			Ok(id) => match retrieve_steam_id(doc! { "discordID": id.to_string() }, collection)
+				.await
+			{
 				Err(why) => {
 					log::error!("[{}]: {} => {}", file!(), line!(), why,);
 
