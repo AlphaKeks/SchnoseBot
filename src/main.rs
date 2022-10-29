@@ -52,7 +52,9 @@ impl EventHandler for Schnose {
 	}
 
 	// 1. replies to "bing?"
-	async fn message(&self, _ctx: Context, _msg: Message) {}
+	async fn message(&self, ctx: Context, msg: Message) {
+		event_handler::message::handle(ctx, msg).await;
+	}
 }
 
 #[tokio::main]
