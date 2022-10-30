@@ -3,7 +3,7 @@ use std::str::FromStr;
 use bson::doc;
 
 use gokz_rs::{
-	global_api::{get_place, get_player, get_recent, get_replay},
+	global_api::{get_map, get_place, get_player, get_recent, get_replay},
 	prelude::*,
 };
 use serenity::{
@@ -140,12 +140,16 @@ pub async fn run<'a>(
 	let embed = CreateEmbed::default()
 		.color((116, 128, 194))
 		.title(format!(
-			"[PB] {} on {}",
+			"[PB] {} on {}{}",
 			match &recent.player_name {
 				Some(name) => name,
 				None => "unknown",
 			},
-			&recent.map_name
+			&recent.map_name,
+			match get_map(&MapIdentifier::ID(recent.map_id), &client).await {
+				Err(_) => String::new(),
+				Ok(map) => format!(" (T{})", map.difficulty),
+			}
 		))
 		.url(
 			format!("https://kzgo.eu/maps/{}", &recent.map_name)

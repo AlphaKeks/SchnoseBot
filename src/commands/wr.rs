@@ -126,7 +126,7 @@ pub async fn run<'a>(
 
 	let mut embed = CreateEmbed::default()
 		.color((116, 128, 194))
-		.title(format!("[WR] {}", &map.name))
+		.title(format!("[WR] {} (T{})", &map.name, &map.difficulty))
 		.url(format!(
 			"https://kzgo.eu/maps/{}?&{}=",
 			&map.name,

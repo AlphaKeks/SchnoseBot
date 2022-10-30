@@ -257,7 +257,10 @@ pub async fn run<'a>(
 
 	let mut embed = CreateEmbed::default()
 		.color((116, 128, 194))
-		.title(format!("[BPB {}] {} on {}", &course, &player_name, &map.name))
+		.title(format!(
+			"[BPB {}] {} on {} (T{})",
+			&course, &player_name, &map.name, &map.difficulty
+		))
 		.url(format!(
 			"https://kzgo.eu/maps/{}?bonus={}&{}=",
 			&map.name,
