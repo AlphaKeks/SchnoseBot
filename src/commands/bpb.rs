@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use futures::future::join_all;
 use gokz_rs::{
-	global_api::{get_maps, get_pb, get_place, get_player, is_global},
+	global_api::{get_maps, get_pb, get_place, get_player, get_replay, is_global},
 	prelude::*,
 };
 use serenity::{
@@ -256,7 +256,7 @@ pub async fn run<'a>(
 		},
 	);
 
-	let embed = CreateEmbed::default()
+	let mut embed = CreateEmbed::default()
 		.color((116, 128, 194))
 		.title(format!("[BPB {}] {} on {}", &course, &player_name, &map.name))
 		.url(format!(
@@ -295,6 +295,44 @@ pub async fn run<'a>(
 		)
 		.footer(|f| f.text(format!("Mode: {}", mode.fancy())).icon_url(&root.icon))
 		.to_owned();
+
+	let link = {
+		let mut temp = [String::new(), String::new()];
+
+		if let Ok(record) = &requests[0] {
+			if record.replay_id != 0 {
+				match get_replay(record.replay_id).await {
+					Ok(link) => temp[0] = link,
+					Err(_) => (),
+				}
+			}
+		}
+
+		if let Ok(record) = &requests[1] {
+			if record.replay_id != 0 {
+				match get_replay(record.replay_id).await {
+					Ok(link) => temp[1] = link,
+					Err(_) => (),
+				}
+			}
+		}
+
+		temp
+	};
+
+	if link[0].len() > 0 || link[1].len() > 0 {
+		let mut description = String::from("Download Replays:");
+
+		if link[0].len() > 0 {
+			description.push_str(&format!(" [TP]({}) |", link[0]))
+		}
+
+		if link[1].len() > 0 {
+			description.push_str(&format!(" [PRO]({})", link[1]))
+		}
+
+		embed.description(description);
+	}
 
 	return SchnoseResponseData::Embed(embed);
 }

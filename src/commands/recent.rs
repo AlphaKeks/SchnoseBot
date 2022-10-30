@@ -3,7 +3,7 @@ use std::str::FromStr;
 use bson::doc;
 
 use gokz_rs::{
-	global_api::{get_place, get_player, get_recent},
+	global_api::{get_place, get_player, get_recent, get_replay},
 	prelude::*,
 };
 use serenity::{
@@ -168,7 +168,26 @@ pub async fn run<'a>(
 				},
 				if &recent.teleports > &0 { "TP" } else { "PRO" }
 			),
-			format!("> {} {}\n> {}", format_time(recent.time), place, discord_timestamp),
+			format!("> {} {}\n> {}{}", format_time(recent.time), place, discord_timestamp, {
+				if &recent.replay_id != &0 {
+					match get_replay(recent.replay_id).await {
+						Ok(link) => format!("\n> [Download Replay]({})", link),
+						Err(why) => {
+							log::error!(
+								"[{}]: {} => {}\n{:#?}",
+								file!(),
+								line!(),
+								format!("Failed to get replay link for id {}", &recent.replay_id),
+								why
+							);
+
+							String::new()
+						},
+					}
+				} else {
+					String::new()
+				}
+			}),
 			true,
 		)
 		.footer(|f| f.text(fancy).icon_url(&root.icon))
