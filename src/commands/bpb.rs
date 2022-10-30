@@ -167,9 +167,8 @@ pub async fn run<'a>(
 			{
 				Err(why) => {
 					log::error!("[{}]: {} => {}", file!(), line!(), why,);
-
 					return SchnoseResponseData::Message(String::from(
-						"You must either specify a target or save your SteamID with `/setsteam`.",
+						"The person you @metion'd didn't save their SteamID in the database.",
 					));
 				},
 				Ok(steam_id) => match steam_id {
@@ -177,8 +176,8 @@ pub async fn run<'a>(
 					None => {
 						log::error!("[{}]: {} => {}", file!(), line!(), "No SteamID specified.",);
 						return SchnoseResponseData::Message(String::from(
-						"You must either specify a target or save your SteamID with `/setsteam`.",
-					));
+							"The person you @metion'd didn't save their SteamID in the database.",
+						));
 					},
 				},
 			},
