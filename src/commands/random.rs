@@ -1,8 +1,8 @@
 use gokz_rs::global_api::get_maps;
-use rand::seq::SliceRandom;
+use rand::Rng;
 use serenity::{builder::CreateApplicationCommand, model::prelude::command::CommandOptionType};
 
-use crate::event_handler::interaction_create::{CommandOptions, SchnoseResponseData};
+use crate::event_handler::interaction_create::{Metadata, SchnoseResponseData};
 
 pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
 	cmd.name("random").description("Get a random KZ map.").create_option(|opt| {
@@ -20,7 +20,7 @@ pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCom
 	})
 }
 
-pub async fn run<'a>(opts: CommandOptions<'a>) -> SchnoseResponseData {
+pub async fn run(metadata: Metadata) {
 	let client = reqwest::Client::new();
 
 	let global_maps = match get_maps(&client).await {
@@ -32,10 +32,9 @@ pub async fn run<'a>(opts: CommandOptions<'a>) -> SchnoseResponseData {
 				"Failed to get global maps.",
 				why
 			);
-
-			return SchnoseResponseData::Message(why.tldr);
+			return metadata.reply(SchnoseResponseData::Message(why.tldr)).await;
 		},
-		Ok(maps) => match opts.get_int("tier") {
+		Ok(maps) => match metadata.opts.get_int("tier") {
 			Some(tier) => maps
 				.into_iter()
 				.filter(|map| map.difficulty == (tier as u8))
@@ -44,17 +43,11 @@ pub async fn run<'a>(opts: CommandOptions<'a>) -> SchnoseResponseData {
 		},
 	};
 
-	match global_maps.choose(&mut rand::thread_rng()) {
-		Some(result) => {
-			return SchnoseResponseData::Message(format!(
-				"🎲 {} (T{})",
-				result.name, result.difficulty
-			))
-		},
-		None => {
-			log::error!("[{}]: {} => {}", file!(), line!(), "Failed to select random map.",);
-
-			return SchnoseResponseData::Message(String::from("Failed to select random map."));
-		},
-	}
+	let rng = rand::thread_rng().gen_range(0..global_maps.len());
+	return metadata
+		.reply(SchnoseResponseData::Message(format!(
+			"🎲 {} (T{})",
+			global_maps[rng].name, global_maps[rng].difficulty
+		)))
+		.await;
 }

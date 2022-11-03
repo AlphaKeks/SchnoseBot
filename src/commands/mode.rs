@@ -1,7 +1,5 @@
-use std::str::FromStr;
-
 use crate::{
-	event_handler::interaction_create::{CommandOptions, SchnoseResponseData},
+	event_handler::interaction_create::{Metadata, SchnoseResponseData},
 	util::UserSchema,
 };
 
@@ -9,10 +7,7 @@ use bson::doc;
 
 use gokz_rs::prelude::Mode;
 
-use serenity::{
-	builder::CreateApplicationCommand,
-	model::{prelude::command::CommandOptionType, user::User},
-};
+use serenity::{builder::CreateApplicationCommand, model::prelude::command::CommandOptionType};
 
 pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
 	cmd.name("mode")
@@ -29,19 +24,18 @@ pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCom
 		})
 }
 
-pub async fn run<'a>(
-	opts: CommandOptions<'a>,
-	collection: &mongodb::Collection<UserSchema>,
-	user: &User,
-) -> SchnoseResponseData {
+pub async fn run(metadata: Metadata, collection: &mongodb::Collection<UserSchema>) {
 	// sanitize user input
-	let user_input = match opts.get_string("mode") {
+	let user_input = match metadata.opts.get_string("mode") {
 		Some(mode_str) => mode_str,
 		None => unreachable!("option is required"),
 	};
 
 	// try to access database
-	match collection.find_one(doc! { "discordID": user.id.to_string() }, None).await {
+	match collection
+		.find_one(doc! { "discordID": metadata.cmd.user.id.to_string() }, None)
+		.await
+	{
 		Err(why) => {
 			log::error!(
 				"[{}]: {} => {}\n{:#?}",
@@ -51,7 +45,9 @@ pub async fn run<'a>(
 				why
 			);
 
-			return SchnoseResponseData::Message(String::from("Failed to access database."));
+			return metadata
+				.reply(SchnoseResponseData::Message(String::from("Failed to access database.")))
+				.await;
 		},
 		Ok(document) => match document {
 			// user does not have a database entry yet, so we create a new one
@@ -59,8 +55,8 @@ pub async fn run<'a>(
 				match collection
 					.insert_one(
 						UserSchema {
-							name: user.name.clone(),
-							discordID: user.id.to_string(),
+							name: metadata.cmd.user.name.clone(),
+							discordID: metadata.cmd.user.id.to_string(),
 							steamID: None,
 							mode: if user_input == "none" {
 								None
@@ -81,13 +77,18 @@ pub async fn run<'a>(
 							why
 						);
 
-						return SchnoseResponseData::Message(String::from(
-							"Failed to create new database entry.",
-						));
+						return metadata
+							.reply(SchnoseResponseData::Message(String::from(
+								"Failed to create new database entry.",
+							)))
+							.await;
 					},
 					Ok(_) => {
-						return SchnoseResponseData::Message(if user_input == "none" {
-							format!("Successfully cleared Mode for <@{}>.", user.id.as_u64())
+						return metadata.reply(SchnoseResponseData::Message(if user_input == "none" {
+							format!(
+								"Successfully cleared Mode for <@{}>.",
+								metadata.cmd.user.id.as_u64()
+							)
 						} else {
 							let mode = match Mode::from_str(&user_input) {
 										Ok(mode) => mode,
@@ -95,10 +96,10 @@ pub async fn run<'a>(
 									};
 							format!(
 								"Successfully set Mode `{}` for <@{}>.",
-								mode.fancy(),
-								user.id.as_u64()
+								mode.to_fancy(),
+								metadata.cmd.user.id.as_u64()
 							)
-						})
+						})).await;
 					},
 				}
 			},
@@ -107,7 +108,7 @@ pub async fn run<'a>(
 				// try to update database entry
 				match collection
 					.find_one_and_update(
-						doc! { "discordID": user.id.to_string() },
+						doc! { "discordID": metadata.cmd.user.id.to_string() },
 						doc! { "$set": { "mode": &user_input } },
 						None,
 					)
@@ -122,25 +123,33 @@ pub async fn run<'a>(
 							why
 						);
 
-						return SchnoseResponseData::Message(String::from(
-							"Failed to update database entry.",
-						));
+						return metadata
+							.reply(SchnoseResponseData::Message(String::from(
+								"Failed to update database entry.",
+							)))
+							.await;
 					},
 					Ok(_) => {
-						return SchnoseResponseData::Message(format!(
-							"Successfully {}",
-							if user_input == "none" {
-								format!("cleared Mode for <@{}>", user.id.as_u64())
-							} else {
-								let mode = match Mode::from_str(&user_input) {
-									Ok(mode) => mode,
-									Err(_) => unreachable!(
+						return metadata
+							.reply(SchnoseResponseData::Message(format!(
+								"Successfully {}",
+								if user_input == "none" {
+									format!("cleared Mode for <@{}>", metadata.cmd.user.id.as_u64())
+								} else {
+									let mode = match Mode::from_str(&user_input) {
+										Ok(mode) => mode,
+										Err(_) => unreachable!(
 										"can only be valid or `none` => `none` already covered by the if statement above"
 									),
-								};
-								format!("set Mode `{}` for <@{}>", mode.fancy(), user.id.as_u64())
-							}
-						))
+									};
+									format!(
+										"set Mode `{}` for <@{}>",
+										mode.to_fancy(),
+										metadata.cmd.user.id.as_u64()
+									)
+								}
+							)))
+							.await;
 					},
 				}
 			},

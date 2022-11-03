@@ -1,19 +1,22 @@
-use crate::{event_handler::interaction_create::SchnoseResponseData, util::UserSchema};
+use crate::{
+	event_handler::interaction_create::{Metadata, SchnoseResponseData},
+	util::UserSchema,
+};
 
 use bson::doc;
 
-use serenity::{
-	builder::{CreateApplicationCommand, CreateEmbed},
-	model::user::User,
-};
+use serenity::builder::{CreateApplicationCommand, CreateEmbed};
 
 pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
 	cmd.name("db").description("Check your current database entries.")
 }
 
-pub async fn run(collection: &mongodb::Collection<UserSchema>, user: &User) -> SchnoseResponseData {
+pub async fn run(metadata: Metadata, collection: &mongodb::Collection<UserSchema>) {
 	// try to access database
-	match collection.find_one(doc! { "discordID": user.id.to_string() }, None).await {
+	match collection
+		.find_one(doc! { "discordID": metadata.cmd.user.id.to_string() }, None)
+		.await
+	{
 		Err(why) => {
 			log::error!(
 				"[{}]: {} => {}\n{:#?}",
@@ -23,18 +26,22 @@ pub async fn run(collection: &mongodb::Collection<UserSchema>, user: &User) -> S
 				why
 			);
 
-			return SchnoseResponseData::Message(String::from("Failed to access database."));
+			return metadata
+				.reply(SchnoseResponseData::Message(String::from("Failed to access database.")))
+				.await;
 		},
 		Ok(document) => match document {
 			None => {
-				return SchnoseResponseData::Message(String::from(
-					"You don't have any database entries yet.",
-				));
+				return metadata
+					.reply(SchnoseResponseData::Message(String::from(
+						"You don't have any database entries yet.",
+					)))
+					.await;
 			},
 			Some(db_entry) => {
 				let embed = CreateEmbed::default()
 					.color((116, 128, 194))
-					.title(format!("{}'s database entries", &user.name))
+					.title(format!("{}'s database entries", &metadata.cmd.user.name))
 					.description(format!(
 						"
 						> discordID: {}
@@ -53,7 +60,7 @@ pub async fn run(collection: &mongodb::Collection<UserSchema>, user: &User) -> S
 					))
 					.to_owned();
 
-				return SchnoseResponseData::Embed(embed);
+				return metadata.reply(SchnoseResponseData::Embed(embed)).await;
 			},
 		},
 	}

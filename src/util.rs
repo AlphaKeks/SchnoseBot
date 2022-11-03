@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use std::{env, fmt::Write, str::FromStr};
+use std::{env, fmt::Write};
 
 use bson::doc;
 use gokz_rs::prelude::*;

@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use bson::doc;
 
 use gokz_rs::{
@@ -8,11 +6,11 @@ use gokz_rs::{
 };
 use serenity::{
 	builder::{CreateApplicationCommand, CreateEmbed},
-	model::{prelude::command::CommandOptionType, user::User},
+	model::prelude::command::CommandOptionType,
 };
 
 use crate::{
-	event_handler::interaction_create::{CommandOptions, SchnoseResponseData},
+	event_handler::interaction_create::{Metadata, SchnoseResponseData},
 	util::{
 		format_time, get_id_from_mention, retrieve_steam_id, sanitize_target, Target, UserSchema,
 	},
@@ -29,14 +27,13 @@ pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCom
 		})
 }
 
-pub async fn run<'a>(
-	opts: CommandOptions<'a>,
+pub async fn run(
+	metadata: Metadata,
 	collection: &mongodb::Collection<UserSchema>,
-	user: &User,
 	root: &crate::Schnose,
-) -> SchnoseResponseData {
+) {
 	// sanitize user input
-	let target_input = match opts.get_string("target") {
+	let target_input = match metadata.opts.get_string("target") {
 		Some(target) => sanitize_target(target),
 		None => Target::None,
 	};
@@ -45,21 +42,26 @@ pub async fn run<'a>(
 
 	let steam_id = match target_input {
 		Target::None => {
-			match retrieve_steam_id(doc! { "discordID": user.id.to_string() }, collection).await {
+			match retrieve_steam_id(
+				doc! { "discordID": metadata.cmd.user.id.to_string() },
+				collection,
+			)
+			.await
+			{
 				Err(why) => {
 					log::error!("[{}]: {} => {}", file!(), line!(), why,);
 
-					return SchnoseResponseData::Message(String::from(
+					return metadata.reply(SchnoseResponseData::Message(String::from(
 						"You must either specify a target or save your SteamID with `/setsteam`.",
-					));
+					))).await;
 				},
 				Ok(steam_id) => match steam_id {
 					Some(steam_id) => steam_id,
 					None => {
 						log::error!("[{}]: {} => {}", file!(), line!(), "Failed to parse mode.",);
-						return SchnoseResponseData::Message(String::from(
-						"You must either specify a target or save your SteamID with `/setsteam`.",
-					));
+						return metadata.reply(SchnoseResponseData::Message(String::from(
+							"You must either specify a target or save your SteamID with `/setsteam`.",
+						))).await;
 					},
 				},
 			}
@@ -70,23 +72,25 @@ pub async fn run<'a>(
 			{
 				Err(why) => {
 					log::error!("[{}]: {} => {}", file!(), line!(), why);
-					return SchnoseResponseData::Message(String::from(
-						"The person you @metion'd didn't save their SteamID in the database.",
-					));
+					return metadata
+						.reply(SchnoseResponseData::Message(String::from(
+							"The person you @metion'd didn't save their SteamID in the database.",
+						)))
+						.await;
 				},
 				Ok(steam_id) => match steam_id {
 					Some(steam_id) => steam_id,
 					None => {
 						log::error!("[{}]: {} => {}", file!(), line!(), "No SteamID specified.");
-						return SchnoseResponseData::Message(String::from(
+						return metadata.reply(SchnoseResponseData::Message(String::from(
 							"The person you @metion'd didn't save their SteamID in the database.",
-						));
+						))).await;
 					},
 				},
 			},
 			Err(why) => {
 				log::error!("[{}]: {} => {}", file!(), line!(), why);
-				return SchnoseResponseData::Message(why);
+				return metadata.reply(SchnoseResponseData::Message(why)).await;
 			},
 		},
 		Target::SteamID(steam_id) => steam_id,
@@ -100,8 +104,7 @@ pub async fn run<'a>(
 						"Failed to get player from GlobalAPI",
 						why
 					);
-
-					return SchnoseResponseData::Message(why.tldr);
+					return metadata.reply(SchnoseResponseData::Message(why.tldr)).await;
 				},
 				Ok(player) => SteamID(player.steam_id),
 			}
@@ -111,8 +114,7 @@ pub async fn run<'a>(
 	let recent = match get_recent(&PlayerIdentifier::SteamID(steam_id), &client).await {
 		Err(why) => {
 			log::error!("[{}]: {} => {}\n{:#?}", file!(), line!(), "Failed to get recent.", why);
-
-			return SchnoseResponseData::Message(why.tldr);
+			return metadata.reply(SchnoseResponseData::Message(why.tldr)).await;
 		},
 		Ok(recent) => recent,
 	};
@@ -123,7 +125,7 @@ pub async fn run<'a>(
 		Err(why) => {
 			log::error!("[{}]: {} => {}\n{:#?}", file!(), line!(), "Failed to get recent.", why);
 
-			return SchnoseResponseData::Message(why.tldr);
+			return metadata.reply(SchnoseResponseData::Message(why.tldr)).await;
 		},
 		Ok(place) => format!("[#{}]", place.0),
 	};
@@ -154,7 +156,7 @@ pub async fn run<'a>(
 		.url(
 			format!("https://kzgo.eu/maps/{}", &recent.map_name)
 				+ &(match &mode {
-					Ok(mode) => format!("?{}=", mode.fancy_short().to_lowercase()),
+					Ok(mode) => format!("?{}=", mode.to_fancy().to_lowercase()),
 					Err(_) => String::new(),
 				}),
 		)
@@ -166,7 +168,7 @@ pub async fn run<'a>(
 			format!(
 				"{} {}",
 				match &mode {
-					Ok(mode) => mode.fancy_short(),
+					Ok(mode) => mode.to_fancy(),
 					Err(_) => String::new(),
 				},
 				if &recent.teleports > &0 { "TP" } else { "PRO" }
@@ -196,5 +198,5 @@ pub async fn run<'a>(
 		.footer(|f| f.text(fancy).icon_url(&root.icon))
 		.to_owned();
 
-	return SchnoseResponseData::Embed(embed);
+	return metadata.reply(SchnoseResponseData::Embed(embed)).await;
 }

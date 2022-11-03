@@ -6,7 +6,13 @@ use mongodb::{
 	Client,
 };
 use serenity::{
-	builder::CreateEmbed, json, model::application::interaction::Interaction, prelude::Context,
+	builder::CreateEmbed,
+	json,
+	model::{
+		application::interaction::Interaction,
+		prelude::interaction::application_command::ApplicationCommandInteraction,
+	},
+	prelude::Context,
 };
 
 use crate::{commands, util::UserSchema};
@@ -16,12 +22,48 @@ pub enum SchnoseResponseData {
 	Message(String),
 	Embed(CreateEmbed),
 	// maybe something like this?
-	// Pagination(Vec<CreateEmbed>)
+	// Pagination(Vec<CreateEmbed>),
 }
 
-pub struct CommandOptions<'a>(HashMap<&'a str, json::Value>);
+pub struct Metadata {
+	pub ctx: Context,
+	pub cmd: ApplicationCommandInteraction,
+	pub opts: CommandOptions,
+}
 
-impl<'a> CommandOptions<'a> {
+impl Metadata {
+	pub async fn reply(&self, response_data: SchnoseResponseData) {
+		let result = match response_data {
+			// SchnoseResponseData::Pagination(embed_list) => unimplemented!(),
+			_ => {
+				self.cmd
+					.edit_original_interaction_response(&self.ctx.http, |response| {
+						match response_data {
+							SchnoseResponseData::Message(msg) => response.content(msg),
+							SchnoseResponseData::Embed(embed) => response.set_embed(embed),
+							// _ => unreachable!(),
+						}
+					})
+					.await
+			},
+		};
+
+		if let Err(why) = result {
+			log::error!(
+				"[{}]: {} => {}\n{:#?}",
+				file!(),
+				line!(),
+				"Failed to respond to pagination.",
+				why
+			);
+		}
+	}
+}
+
+#[derive(Debug, Clone)]
+pub struct CommandOptions(HashMap<String, json::Value>);
+
+impl<'a> CommandOptions {
 	fn get(&self, name: &'a str) -> Option<json::Value> {
 		match self.0.get(name) {
 			None => return None,
@@ -89,7 +131,7 @@ pub async fn handle(root: &crate::Schnose, ctx: Context, interaction: Interactio
 	match interaction {
 		Interaction::ApplicationCommand(cmd) => {
 			// try to defer command (some take too long because of API requests)
-			if let Err(why) = cmd.defer(&ctx.http).await {
+			if let Err(why) = &cmd.defer(&ctx.http).await {
 				return log::error!(
 					"[{}]: {} => {}\n{:#?}",
 					file!(),
@@ -101,17 +143,37 @@ pub async fn handle(root: &crate::Schnose, ctx: Context, interaction: Interactio
 
 			log::info!("Received interaction: {}", &cmd.data.name);
 
-			let cmd_data = &cmd.data;
-			let mut cmd_opts = CommandOptions(HashMap::new());
-			for opt in &cmd_data.options {
+			let mut metadata = Metadata { ctx, cmd, opts: CommandOptions(HashMap::new()) };
+			for opt in metadata.cmd.data.options.clone() {
 				if let Some(value) = opt.value.clone() {
-					cmd_opts.0.insert(opt.name.as_str(), value);
+					metadata.opts.0.insert(opt.name, value);
 				}
 			}
 
 			let collection = mongodb_client.database("gokz").collection::<UserSchema>("users");
 
+			match metadata.cmd.data.name.as_str() {
+				"ping" => commands::ping::run(metadata).await,
+				"invite" => commands::invite::run(metadata).await,
+				"setsteam" => commands::setsteam::run(metadata, &collection).await,
+				"mode" => commands::mode::run(metadata, &collection).await,
+				"db" => commands::db::run(metadata, &collection).await,
+				"nocrouch" => commands::nocrouch::run(metadata).await,
+				"apistatus" => commands::apistatus::run(metadata).await,
+				"bpb" => commands::bpb::run(metadata, &collection, root).await,
+				"pb" => commands::pb::run(metadata, &collection, root).await,
+				"bwr" => commands::bwr::run(metadata, &collection, root).await,
+				"wr" => commands::wr::run(metadata, &collection, root).await,
+				"recent" => commands::recent::run(metadata, &collection, root).await,
+				"unfinished" => commands::unfinished::run(metadata, &collection, root).await,
+				"random" => commands::random::run(metadata).await,
+				"map" => commands::map::run(metadata).await,
+				"profile" => commands::profile::run(metadata, &collection, root).await,
+				unknown_command => unimplemented!("Command `{}` not found.", unknown_command),
+			}
+
 			// prepare response
+			/*
 			let data = match cmd.data.name.as_str() {
 				"ping" => commands::ping::run(),
 				"invite" => commands::invite::run(),
@@ -133,12 +195,15 @@ pub async fn handle(root: &crate::Schnose, ctx: Context, interaction: Interactio
 				"profile" => commands::profile::run(cmd_opts, &collection, &cmd.user, root).await,
 				unknown_command => unimplemented!("Command `{}` not found.", unknown_command),
 			};
+			*/
 
+			/*
 			if let Err(why) = cmd
 				// respond to user
 				.edit_original_interaction_response(&ctx.http, |response| match data {
 					SchnoseResponseData::Message(msg) => response.content(msg),
 					SchnoseResponseData::Embed(embed) => response.set_embed(embed),
+					SchnoseResponseData::Pagination(_embed_list) => todo!(),
 				})
 				.await
 			{
@@ -150,6 +215,7 @@ pub async fn handle(root: &crate::Schnose, ctx: Context, interaction: Interactio
 					why
 				);
 			}
+			*/
 		},
 		_ => unimplemented!(),
 	}

@@ -8,7 +8,7 @@ use serenity::{
 	model::prelude::command::CommandOptionType,
 };
 
-use crate::event_handler::interaction_create::{CommandOptions, SchnoseResponseData};
+use crate::event_handler::interaction_create::{Metadata, SchnoseResponseData};
 
 pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
 	cmd.name("map")
@@ -21,11 +21,11 @@ pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCom
 		})
 }
 
-pub async fn run<'a>(opts: CommandOptions<'a>) -> SchnoseResponseData {
+pub async fn run(metadata: Metadata) {
 	let client = reqwest::Client::new();
 
 	// sanitaze user input
-	let (map_api, map_kzgo) = match opts.get_string("map_name") {
+	let (map_api, map_kzgo) = match metadata.opts.get_string("map_name") {
 		Some(map_name) => {
 			let global_maps = match get_maps(&client).await {
 				Err(why) => {
@@ -36,8 +36,7 @@ pub async fn run<'a>(opts: CommandOptions<'a>) -> SchnoseResponseData {
 						"Failed to get global maps",
 						why
 					);
-
-					return SchnoseResponseData::Message(why.tldr);
+					return metadata.reply(SchnoseResponseData::Message(why.tldr)).await;
 				},
 				Ok(maps) => maps,
 			};
@@ -53,8 +52,7 @@ pub async fn run<'a>(opts: CommandOptions<'a>) -> SchnoseResponseData {
 						"Failed to get global maps",
 						why
 					);
-
-					return SchnoseResponseData::Message(why.tldr);
+					return metadata.reply(SchnoseResponseData::Message(why.tldr)).await;
 				},
 				Ok(map) => map,
 			};
@@ -69,8 +67,7 @@ pub async fn run<'a>(opts: CommandOptions<'a>) -> SchnoseResponseData {
 							"Failed to get global maps",
 							why
 						);
-
-						return SchnoseResponseData::Message(why.tldr);
+						return metadata.reply(SchnoseResponseData::Message(why.tldr)).await;
 					},
 					Ok(map) => map,
 				};
@@ -94,11 +91,10 @@ pub async fn run<'a>(opts: CommandOptions<'a>) -> SchnoseResponseData {
 		None => todo!(),
 	};
 
-	let filters = match get_filters(&MapIdentifier::ID(map_api.id), &client).await {
+	let filters = match get_filters(map_api.id, &client).await {
 		Err(why) => {
 			log::error!("[{}]: {} => {}\n{:#?}", file!(), line!(), "Failed to get filters.", why);
-
-			return SchnoseResponseData::Message(why.tldr);
+			return metadata.reply(SchnoseResponseData::Message(why.tldr)).await;
 		},
 		Ok(filters) => {
 			let filters = filters.into_iter().filter(|f| f.stage == 0).collect::<Vec<_>>();
@@ -150,5 +146,5 @@ pub async fn run<'a>(opts: CommandOptions<'a>) -> SchnoseResponseData {
 		.field("VNL", filters.2, true)
 		.to_owned();
 
-	return SchnoseResponseData::Embed(embed);
+	return metadata.reply(SchnoseResponseData::Embed(embed)).await;
 }

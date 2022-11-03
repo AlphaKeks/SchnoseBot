@@ -1,13 +1,13 @@
 use gokz_rs::global_api::health_check;
 use serenity::builder::{CreateApplicationCommand, CreateEmbed};
 
-use crate::event_handler::interaction_create::SchnoseResponseData;
+use crate::event_handler::interaction_create::{Metadata, SchnoseResponseData};
 
 pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
 	cmd.name("apistatus").description("Check the current status of the GlobalAPI.")
 }
 
-pub async fn run() -> SchnoseResponseData {
+pub async fn run(metadata: Metadata) {
 	match health_check(&reqwest::Client::new()).await {
 		Err(why) => {
 			log::error!(
@@ -18,7 +18,7 @@ pub async fn run() -> SchnoseResponseData {
 				why
 			);
 
-			return SchnoseResponseData::Message(why.tldr);
+			return metadata.reply(SchnoseResponseData::Message(why.tldr)).await;
 		},
 		Ok(response) => {
 			let success = (response.successful_responses + response.fast_responses) as f32 / 2.0;
@@ -48,7 +48,7 @@ pub async fn run() -> SchnoseResponseData {
 				.field("Fast responses", format!("{} / {}", response.fast_responses, 10), true)
 				.to_owned();
 
-			return SchnoseResponseData::Embed(embed);
+			return metadata.reply(SchnoseResponseData::Embed(embed)).await;
 		},
 	}
 }

@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use futures::future::join_all;
 use gokz_rs::{
 	global_api::{get_maps, get_pb, get_place, get_player, get_replay, is_global},
@@ -7,13 +5,13 @@ use gokz_rs::{
 };
 use serenity::{
 	builder::{CreateApplicationCommand, CreateEmbed},
-	model::{prelude::command::CommandOptionType, user::User},
+	model::prelude::command::CommandOptionType,
 };
 
 use bson::doc;
 
 use crate::{
-	event_handler::interaction_create::{CommandOptions, SchnoseResponseData},
+	event_handler::interaction_create::{Metadata, SchnoseResponseData},
 	util::{
 		format_time, get_id_from_mention, retrieve_mode, retrieve_steam_id, sanitize_target,
 		Target, UserSchema,
@@ -52,18 +50,17 @@ pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCom
 		})
 }
 
-pub async fn run<'a>(
-	opts: CommandOptions<'a>,
+pub async fn run(
+	metadata: Metadata,
 	collection: &mongodb::Collection<UserSchema>,
-	user: &User,
 	root: &crate::Schnose,
-) -> SchnoseResponseData {
+) {
 	// sanitize user input
-	let map_input = match opts.get_string("map_name") {
+	let map_input = match metadata.opts.get_string("map_name") {
 		Some(map_name) => map_name,
 		None => unreachable!("option is required"),
 	};
-	let mode_input = match opts.get_string("mode") {
+	let mode_input = match metadata.opts.get_string("mode") {
 		Some(mode_name) => match Mode::from_str(&mode_name) {
 			Err(why) => {
 				log::error!(
@@ -74,30 +71,36 @@ pub async fn run<'a>(
 					why
 				);
 
-				return SchnoseResponseData::Message(why.tldr);
+				return metadata.reply(SchnoseResponseData::Message(why.tldr)).await;
 			},
 			Ok(mode) => Some(mode),
 		},
-		None => match retrieve_mode(doc! { "discordID": user.id.to_string() }, collection).await {
-			Err(why) => {
-				log::error!("[{}]: {} => {}", file!(), line!(), why,);
+		None => {
+			match retrieve_mode(doc! { "discordID": metadata.cmd.user.id.to_string() }, collection)
+				.await
+			{
+				Err(why) => {
+					log::error!("[{}]: {} => {}", file!(), line!(), why,);
 
-				return SchnoseResponseData::Message(String::from(
-					"You must either specify a mode or set a default one with `/mode`.",
-				));
-			},
-			Ok(mode) => mode,
+					return metadata
+						.reply(SchnoseResponseData::Message(String::from(
+							"You must either specify a mode or set a default one with `/mode`.",
+						)))
+						.await;
+				},
+				Ok(mode) => mode,
+			}
 		},
 	};
 	let course = {
-		let temp = opts.get_int("course").unwrap_or(1);
+		let temp = metadata.opts.get_int("course").unwrap_or(1);
 		if temp < 1 {
 			1 as u8
 		} else {
 			temp as u8
 		}
 	};
-	let target_input = match opts.get_string("target") {
+	let target_input = match metadata.opts.get_string("target") {
 		Some(target) => sanitize_target(target),
 		None => Target::None,
 	};
@@ -114,7 +117,7 @@ pub async fn run<'a>(
 				why
 			);
 
-			return SchnoseResponseData::Message(why.tldr);
+			return metadata.reply(SchnoseResponseData::Message(why.tldr)).await;
 		},
 		Ok(maps) => maps,
 	};
@@ -123,7 +126,7 @@ pub async fn run<'a>(
 		Err(why) => {
 			log::error!("[{}]: {} => {}\n{:#?}", file!(), line!(), "Failed to validate map.", why);
 
-			return SchnoseResponseData::Message(why.tldr);
+			return metadata.reply(SchnoseResponseData::Message(why.tldr)).await;
 		},
 		Ok(map) => map,
 	};
@@ -133,30 +136,37 @@ pub async fn run<'a>(
 		None => {
 			log::error!("[{}]: {} => {}", file!(), line!(), "No mode specified.",);
 
-			return SchnoseResponseData::Message(String::from(
-				"You must either specify a mode or set a default one with `/mode`.",
-			));
+			return metadata
+				.reply(SchnoseResponseData::Message(String::from(
+					"You must either specify a mode or set a default one with `/mode`.",
+				)))
+				.await;
 		},
 	};
 
 	let mut player_name = None;
 	let steam_id = match target_input {
 		Target::None => {
-			match retrieve_steam_id(doc! { "discordID": user.id.to_string() }, collection).await {
+			match retrieve_steam_id(
+				doc! { "discordID": metadata.cmd.user.id.to_string() },
+				collection,
+			)
+			.await
+			{
 				Err(why) => {
 					log::error!("[{}]: {} => {}", file!(), line!(), why,);
 
-					return SchnoseResponseData::Message(String::from(
+					return metadata.reply(SchnoseResponseData::Message(String::from(
 						"You must either specify a target or save your SteamID with `/setsteam`.",
-					));
+					))).await;
 				},
 				Ok(steam_id) => match steam_id {
 					Some(steam_id) => steam_id,
 					None => {
 						log::error!("[{}]: {} => {}", file!(), line!(), "Failed to parse mode.",);
-						return SchnoseResponseData::Message(String::from(
-						"You must either specify a target or save your SteamID with `/setsteam`.",
-					));
+						return metadata.reply(SchnoseResponseData::Message(String::from(
+							"You must either specify a target or save your SteamID with `/setsteam`.",
+						))).await;
 					},
 				},
 			}
@@ -167,23 +177,25 @@ pub async fn run<'a>(
 			{
 				Err(why) => {
 					log::error!("[{}]: {} => {}", file!(), line!(), why,);
-					return SchnoseResponseData::Message(String::from(
-						"The person you @metion'd didn't save their SteamID in the database.",
-					));
+					return metadata
+						.reply(SchnoseResponseData::Message(String::from(
+							"The person you @metion'd didn't save their SteamID in the database.",
+						)))
+						.await;
 				},
 				Ok(steam_id) => match steam_id {
 					Some(steam_id) => steam_id,
 					None => {
 						log::error!("[{}]: {} => {}", file!(), line!(), "No SteamID specified.",);
-						return SchnoseResponseData::Message(String::from(
+						return metadata.reply(SchnoseResponseData::Message(String::from(
 							"The person you @metion'd didn't save their SteamID in the database.",
-						));
+						))).await;
 					},
 				},
 			},
 			Err(why) => {
 				log::error!("[{}]: {} => {}", file!(), line!(), why);
-				return SchnoseResponseData::Message(why);
+				return metadata.reply(SchnoseResponseData::Message(why)).await;
 			},
 		},
 		Target::SteamID(steam_id) => steam_id,
@@ -198,7 +210,7 @@ pub async fn run<'a>(
 						why
 					);
 
-					return SchnoseResponseData::Message(why.tldr);
+					return metadata.reply(SchnoseResponseData::Message(why.tldr)).await;
 				},
 				Ok(player) => {
 					player_name = Some(player.name);
@@ -218,7 +230,9 @@ pub async fn run<'a>(
 	.await;
 
 	if let (&Err(_), &Err(_)) = (&requests[0], &requests[1]) {
-		return SchnoseResponseData::Message(String::from("No BPB found."));
+		return metadata
+			.reply(SchnoseResponseData::Message(String::from("No BPB found.")))
+			.await;
 	}
 
 	let player_name = match player_name {
@@ -265,7 +279,7 @@ pub async fn run<'a>(
 			"https://kzgo.eu/maps/{}?bonus={}&{}=",
 			&map.name,
 			course,
-			&mode.fancy_short().to_lowercase()
+			&mode.to_fancy().to_lowercase()
 		))
 		.thumbnail(format!(
 			"https://raw.githubusercontent.com/KZGlobalTeam/map-images/master/images/{}.jpg",
@@ -295,7 +309,7 @@ pub async fn run<'a>(
 			),
 			true,
 		)
-		.footer(|f| f.text(format!("Mode: {}", mode.fancy())).icon_url(&root.icon))
+		.footer(|f| f.text(format!("Mode: {}", mode.to_fancy())).icon_url(&root.icon))
 		.to_owned();
 
 	let link = {
@@ -336,5 +350,5 @@ pub async fn run<'a>(
 		embed.description(description);
 	}
 
-	return SchnoseResponseData::Embed(embed);
+	return metadata.reply(SchnoseResponseData::Embed(embed)).await;
 }

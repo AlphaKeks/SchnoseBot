@@ -1,7 +1,5 @@
-use std::str::FromStr;
-
 use crate::{
-	event_handler::interaction_create::{CommandOptions, SchnoseResponseData},
+	event_handler::interaction_create::{Metadata, SchnoseResponseData},
 	util::{
 		get_id_from_mention, get_steam_avatar, retrieve_mode, retrieve_steam_id, sanitize_target,
 		Target, UserSchema,
@@ -15,7 +13,7 @@ use gokz_rs::{custom::get_profile, global_api::get_player, kzgo, prelude::*};
 use num_format::{Locale, ToFormattedString};
 use serenity::{
 	builder::{CreateApplicationCommand, CreateEmbed},
-	model::{prelude::command::CommandOptionType, user::User},
+	model::prelude::command::CommandOptionType,
 };
 
 pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
@@ -38,14 +36,13 @@ pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCom
 		})
 }
 
-pub async fn run<'a>(
-	opts: CommandOptions<'a>,
+pub async fn run(
+	metadata: Metadata,
 	collection: &mongodb::Collection<UserSchema>,
-	user: &User,
 	root: &crate::Schnose,
-) -> SchnoseResponseData {
+) {
 	// sanitize user input
-	let mode_input = match opts.get_string("mode") {
+	let mode_input = match metadata.opts.get_string("mode") {
 		Some(mode_name) => match Mode::from_str(&mode_name) {
 			Err(why) => {
 				log::error!(
@@ -55,32 +52,42 @@ pub async fn run<'a>(
 					"Failed to parse mode.",
 					why
 				);
-
-				return SchnoseResponseData::Message(why.tldr);
+				return metadata.reply(SchnoseResponseData::Message(why.tldr)).await;
 			},
 			Ok(mode) => mode,
 		},
-		None => match retrieve_mode(doc! { "discordID": user.id.to_string() }, collection).await {
-			Err(why) => {
-				log::error!("[{}]: {} => {}", file!(), line!(), why);
-
-				return SchnoseResponseData::Message(String::from(
-					"You must either specify a mode or set a default one with `/mode`.",
-				));
-			},
-			Ok(mode) => match mode {
-				None => {
-					log::error!("[{}]: {} => {}", file!(), line!(), "No mode found in database.");
-
-					return SchnoseResponseData::Message(String::from(
-						"You must either specify a mode or set a default one with `/mode`.",
-					));
+		None => {
+			match retrieve_mode(doc! { "discordID": metadata.cmd.user.id.to_string() }, collection)
+				.await
+			{
+				Err(why) => {
+					log::error!("[{}]: {} => {}", file!(), line!(), why);
+					return metadata
+						.reply(SchnoseResponseData::Message(String::from(
+							"You must either specify a mode or set a default one with `/mode`.",
+						)))
+						.await;
 				},
-				Some(mode) => mode,
-			},
+				Ok(mode) => {
+					match mode {
+						None => {
+							log::error!(
+								"[{}]: {} => {}",
+								file!(),
+								line!(),
+								"No mode found in database."
+							);
+							return metadata.reply(SchnoseResponseData::Message(String::from(
+								"You must either specify a mode or set a default one with `/mode`.",
+							))).await;
+						},
+						Some(mode) => mode,
+					}
+				},
+			}
 		},
 	};
-	let target_input = match opts.get_string("target") {
+	let target_input = match metadata.opts.get_string("target") {
 		Some(target) => sanitize_target(target),
 		None => Target::None,
 	};
@@ -89,21 +96,25 @@ pub async fn run<'a>(
 
 	let steam_id = match target_input {
 		Target::None => {
-			match retrieve_steam_id(doc! { "discordID": user.id.to_string() }, collection).await {
+			match retrieve_steam_id(
+				doc! { "discordID": metadata.cmd.user.id.to_string() },
+				collection,
+			)
+			.await
+			{
 				Err(why) => {
 					log::error!("[{}]: {} => {}", file!(), line!(), why,);
-
-					return SchnoseResponseData::Message(String::from(
+					return metadata.reply(SchnoseResponseData::Message(String::from(
 						"You must either specify a target or save your SteamID with `/setsteam`.",
-					));
+					))).await;
 				},
 				Ok(steam_id) => match steam_id {
 					Some(steam_id) => steam_id,
 					None => {
 						log::error!("[{}]: {} => {}", file!(), line!(), "Failed to parse mode.",);
-						return SchnoseResponseData::Message(String::from(
-						"You must either specify a target or save your SteamID with `/setsteam`.",
-					));
+						return metadata.reply(SchnoseResponseData::Message(String::from(
+							"You must either specify a target or save your SteamID with `/setsteam`.",
+						))).await;
 					},
 				},
 			}
@@ -114,23 +125,25 @@ pub async fn run<'a>(
 			{
 				Err(why) => {
 					log::error!("[{}]: {} => {}", file!(), line!(), why,);
-					return SchnoseResponseData::Message(String::from(
-						"The person you @metion'd didn't save their SteamID in the database.",
-					));
+					return metadata
+						.reply(SchnoseResponseData::Message(String::from(
+							"The person you @metion'd didn't save their SteamID in the database.",
+						)))
+						.await;
 				},
 				Ok(steam_id) => match steam_id {
 					Some(steam_id) => steam_id,
 					None => {
 						log::error!("[{}]: {} => {}", file!(), line!(), "No SteamID specified.",);
-						return SchnoseResponseData::Message(String::from(
+						return metadata.reply(SchnoseResponseData::Message(String::from(
 							"The person you @metion'd didn't save their SteamID in the database.",
-						));
+						))).await;
 					},
 				},
 			},
 			Err(why) => {
 				log::error!("[{}]: {} => {}", file!(), line!(), why);
-				return SchnoseResponseData::Message(why);
+				return metadata.reply(SchnoseResponseData::Message(why)).await;
 			},
 		},
 		Target::SteamID(steam_id) => steam_id,
@@ -144,8 +157,7 @@ pub async fn run<'a>(
 						"Failed to get player from GlobalAPI",
 						why
 					);
-
-					return SchnoseResponseData::Message(why.tldr);
+					return metadata.reply(SchnoseResponseData::Message(why.tldr)).await;
 				},
 				Ok(player) => SteamID(player.steam_id),
 			}
@@ -162,8 +174,7 @@ pub async fn run<'a>(
 					"Failed to get player profile.",
 					why
 				);
-
-				return SchnoseResponseData::Message(why.tldr);
+				return metadata.reply(SchnoseResponseData::Message(why.tldr)).await;
 			},
 			Ok(profile) => profile,
 		};
@@ -173,7 +184,7 @@ pub async fn run<'a>(
 	let mode_pref = match &profile.steam_id {
 		Some(steam_id) => match retrieve_mode(doc! { "steamID": steam_id }, collection).await {
 			Ok(mode) => match mode {
-				Some(mode) => mode.fancy(),
+				Some(mode) => mode.to_fancy(),
 				None => String::from("unknown"),
 			},
 			Err(_) => String::from("unknown"),
@@ -213,8 +224,7 @@ pub async fn run<'a>(
 		Ok(data) => (data.tp.total, data.pro.total),
 		Err(why) => {
 			log::error!("`kzgo::completion::get_completion_count()`: {:#?}", why);
-
-			return SchnoseResponseData::Message(why.tldr);
+			return metadata.reply(SchnoseResponseData::Message(why.tldr)).await;
 		},
 	};
 
@@ -226,7 +236,7 @@ pub async fn run<'a>(
 				Some(name) => name,
 				None => "unknown",
 			},
-			&mode_input.fancy()
+			&mode_input.to_fancy()
 		))
 		.url(format!(
 			"https://kzgo.eu/players/{}?{}=",
@@ -234,7 +244,7 @@ pub async fn run<'a>(
 				Some(steam_id) => steam_id,
 				None => "",
 			},
-			&mode_input.fancy_short().to_lowercase()
+			&mode_input.to_fancy().to_lowercase()
 		))
 		.thumbnail(avatar)
 		.description(format!(
@@ -297,5 +307,5 @@ Preferred Mode: {}
 		})
 		.to_owned();
 
-	return SchnoseResponseData::Embed(embed);
+	return metadata.reply(SchnoseResponseData::Embed(embed)).await;
 }

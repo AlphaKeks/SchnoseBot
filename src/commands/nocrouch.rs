@@ -1,6 +1,6 @@
 use serenity::{builder::CreateApplicationCommand, model::prelude::command::CommandOptionType};
 
-use crate::event_handler::interaction_create::{CommandOptions, SchnoseResponseData};
+use crate::event_handler::interaction_create::{Metadata, SchnoseResponseData};
 
 pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
 	cmd.name("nocrouch")
@@ -19,17 +19,19 @@ pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCom
 		})
 }
 
-pub fn run<'a>(opts: CommandOptions<'a>) -> SchnoseResponseData {
-	let distance = match opts.get_float("distance") {
+pub async fn run(metadata: Metadata) {
+	let distance = match metadata.opts.get_float("distance") {
 		Some(num) => num,
 		None => unreachable!("option is required"),
 	};
-	let max = match opts.get_float("max") {
+	let max = match metadata.opts.get_float("max") {
 		Some(num) => num,
 		None => unreachable!("option is required"),
 	};
 
 	let result = distance + (max / 128.0) * 4.0;
 
-	return SchnoseResponseData::Message(format!("Approximated distance: `{0:.4}`", result));
+	return metadata
+		.reply(SchnoseResponseData::Message(format!("Approximated distance: `{0:.4}`", result)))
+		.await;
 }
