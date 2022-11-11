@@ -1,12 +1,14 @@
-use serenity::builder::CreateApplicationCommand;
-
-use crate::event_handler::interaction_create::{Metadata, SchnoseResponseData};
+use {
+	crate::events::slash_command::{InteractionData, InteractionResponseData::Message},
+	anyhow::Result,
+	serenity::builder::CreateApplicationCommand,
+};
 
 pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
-	cmd.name("ping").description("pong!")
+	return cmd.name("ping").description("pong!");
 }
 
-pub async fn run(metadata: Metadata) {
-	let pong = SchnoseResponseData::Message(String::from("pong!"));
-	metadata.reply(pong).await
+pub async fn execute(ctx: InteractionData<'_>) -> Result<()> {
+	ctx.reply(Message("pong!")).await?;
+	return Ok(());
 }
