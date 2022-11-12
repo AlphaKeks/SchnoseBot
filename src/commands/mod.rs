@@ -5,6 +5,7 @@ pub mod db;
 pub mod invite;
 pub mod map;
 pub mod mode;
+pub mod nocrouch;
 pub mod ping;
 
 // # Command Template

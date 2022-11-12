@@ -24,6 +24,7 @@ pub async fn handle(
 		"invite" => commands::invite::execute(ctx).await,
 		"map" => commands::map::execute(ctx).await,
 		"mode" => commands::mode::execute(ctx).await,
+		"nocrouch" => commands::nocrouch::execute(ctx).await,
 		unkown_command => unimplemented!("Command `{}` not found.", unkown_command),
 	}
 }
