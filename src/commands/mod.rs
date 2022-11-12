@@ -11,6 +11,7 @@ pub mod ping;
 pub mod profile;
 pub mod random;
 pub mod recent;
+pub mod setsteam;
 
 // # Command Template
 //

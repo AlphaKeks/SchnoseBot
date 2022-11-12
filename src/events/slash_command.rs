@@ -29,6 +29,7 @@ pub async fn handle(
 		"profile" => commands::profile::execute(ctx).await,
 		"random" => commands::random::execute(ctx).await,
 		"recent" => commands::recent::execute(ctx).await,
+		"setsteam" => commands::setsteam::execute(ctx).await,
 		unkown_command => unimplemented!("Command `{}` not found.", unkown_command),
 	}
 }
