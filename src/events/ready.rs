@@ -32,6 +32,7 @@ pub async fn handle(_client: &Schnose, ctx: Context, ready: Ready) -> Result<()>
 						.create_application_command(|cmd| commands::db::register(cmd))
 						.create_application_command(|cmd| commands::invite::register(cmd))
 						.create_application_command(|cmd| commands::map::register(cmd))
+						.create_application_command(|cmd| commands::mode::register(cmd))
 				})
 				.await
 			{
