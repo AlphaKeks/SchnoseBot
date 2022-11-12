@@ -21,6 +21,7 @@ pub async fn handle(
 		"bpb" => commands::bpb::execute(ctx).await,
 		"bwr" => commands::bwr::execute(ctx).await,
 		"db" => commands::db::execute(ctx).await,
+		"invite" => commands::invite::execute(ctx).await,
 		unkown_command => unimplemented!("Command `{}` not found.", unkown_command),
 	}
 }
@@ -124,6 +125,15 @@ impl<'a> InteractionData<'a> {
 	pub fn get_bool(&self, name: &'a str) -> Option<bool> {
 		if let Some(json::Value::Bool(boolean)) = self.get(name) {
 			return Some(boolean);
+		}
+		return None;
+	}
+
+	pub fn get_user(&self, name: &'a str) -> Option<u64> {
+		if let Some(json::Value::String(string)) = self.get(name) {
+			if let Ok(user_id) = string.parse::<u64>() {
+				return Some(user_id);
+			}
 		}
 		return None;
 	}
