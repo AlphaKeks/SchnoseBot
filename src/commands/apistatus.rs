@@ -47,7 +47,7 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 				.field("Fast Responses", format!("{} / {}", response.fast_responses, 10), true)
 				.to_owned();
 
-			ctx.reply(Embed(embed)).await?
+			return ctx.reply(Embed(embed)).await;
 		},
 		Err(why) => {
 			log::error!(
@@ -57,9 +57,7 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 				"Failed to check GlobalAPI Health.",
 				why
 			);
-			ctx.reply(Message(&why.tldr)).await?;
+			return ctx.reply(Message(&why.tldr)).await;
 		},
 	}
-
-	return Ok(());
 }

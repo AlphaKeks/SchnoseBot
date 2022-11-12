@@ -38,6 +38,5 @@ pub mod wr;
 // }
 //
 // pub async fn execute(ctx: InteractionData<'_>) -> Result<()> {
-// 	ctx.reply(Message("pong!")).await?;
-// 	return Ok(());
+// 	return ctx.reply(Message("pong!")).await;
 // }

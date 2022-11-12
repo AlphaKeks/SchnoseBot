@@ -71,7 +71,7 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 				"Failed to fetch global maps.",
 				why
 			);
-			return Ok(ctx.reply(Message("Failed to fetch global maps.")).await?);
+			return ctx.reply(Message("Failed to fetch global maps.")).await;
 		},
 	};
 
@@ -79,7 +79,7 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 		Ok(map) => map,
 		Err(why) => {
 			log::warn!("[{}]: {} => {}\n{:?}", file!(), line!(), "Given map is not global.", why);
-			return Ok(ctx.reply(Message("Please input a global map.")).await?);
+			return ctx.reply(Message("Please input a global map.")).await;
 		},
 	};
 
@@ -95,7 +95,7 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 	.unwrap();
 
 	if let (&Err(_), &Err(_)) = (&tp, &pro) {
-		return Ok(ctx.reply(Message("No WRs found 😔")).await?);
+		return ctx.reply(Message("No WRs found 😔")).await;
 	}
 
 	let mut embed = CreateEmbed::default()
@@ -193,5 +193,5 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 		embed.description(description);
 	}
 
-	return Ok(ctx.reply(Embed(embed)).await?);
+	return ctx.reply(Embed(embed)).await;
 }

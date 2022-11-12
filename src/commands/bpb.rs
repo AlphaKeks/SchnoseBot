@@ -73,9 +73,9 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 	let player = match sanitize_target(ctx.get_string("player"), &ctx.db, &ctx.root).await {
 		Some(target) => target,
 		None => {
-			return Ok(ctx
+			return ctx
 				.reply(Message("Please specify a player or save your own SteamID via `/setsteam`."))
-				.await?)
+				.await;
 		},
 	};
 	let course = match ctx.get_int("course") {
@@ -95,7 +95,7 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 				"Failed to fetch global maps.",
 				why
 			);
-			return Ok(ctx.reply(Message("Failed to fetch global maps.")).await?);
+			return ctx.reply(Message("Failed to fetch global maps.")).await;
 		},
 	};
 
@@ -103,7 +103,7 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 		Ok(map) => map,
 		Err(why) => {
 			log::warn!("[{}]: {} => {}\n{:?}", file!(), line!(), "Given map is not global.", why);
-			return Ok(ctx.reply(Message("Please input a global map.")).await?);
+			return ctx.reply(Message("Please input a global map.")).await;
 		},
 	};
 
@@ -120,7 +120,7 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 						"Failed to get player from the GlobalAPI.",
 						why
 					);
-					return Ok(ctx.reply(Message("Couldn't fetch player from GlobalAPI.")).await?);
+					return ctx.reply(Message("Couldn't fetch player from GlobalAPI.")).await;
 				},
 			}
 		},
@@ -139,7 +139,7 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 	.unwrap();
 
 	if let (&Err(_), &Err(_)) = (&tp, &pro) {
-		return Ok(ctx.reply(Message("No PBs found 😔")).await?);
+		return ctx.reply(Message("No PBs found 😔")).await;
 	}
 
 	let player_name = match &tp {
@@ -250,5 +250,5 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 		embed.description(description);
 	}
 
-	return Ok(ctx.reply(Embed(embed)).await?);
+	return ctx.reply(Embed(embed)).await;
 }

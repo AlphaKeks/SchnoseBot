@@ -120,7 +120,7 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 						"Failed to get player from the GlobalAPI.",
 						why
 					);
-					return Ok(ctx.reply(Message("Couldn't fetch player from GlobalAPI.")).await?);
+					return ctx.reply(Message("Couldn't fetch player from GlobalAPI.")).await;
 				},
 			},
 			Target::SteamID(steam_id) => steam_id

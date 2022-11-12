@@ -70,9 +70,9 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 	let player = match sanitize_target(ctx.get_string("player"), &ctx.db, &ctx.root).await {
 		Some(target) => target,
 		None => {
-			return Ok(ctx
+			return ctx
 				.reply(Message("Please specify a player or save your own SteamID via `/setsteam`."))
-				.await?)
+				.await
 		},
 	};
 
@@ -91,7 +91,7 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 						"Failed to get player from the GlobalAPI.",
 						why
 					);
-					return Ok(ctx.reply(Message("Couldn't fetch player from GlobalAPI.")).await?);
+					return ctx.reply(Message("Couldn't fetch player from GlobalAPI.")).await;
 				},
 			}
 		},
