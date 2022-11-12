@@ -34,8 +34,9 @@ pub async fn handle(_client: &Schnose, ctx: Context, ready: Ready) -> Result<()>
 						// .create_application_command(|cmd| commands::map::register(cmd))
 						.create_application_command(|cmd| commands::mode::register(cmd))
 						// .create_application_command(|cmd| commands::nocrouch::register(cmd))
-						.create_application_command(|cmd| commands::pb::register(cmd))
-						.create_application_command(|cmd| commands::profile::register(cmd))
+						// .create_application_command(|cmd| commands::pb::register(cmd))
+						// .create_application_command(|cmd| commands::profile::register(cmd))
+						.create_application_command(|cmd| commands::random::register(cmd))
 				})
 				.await
 			{

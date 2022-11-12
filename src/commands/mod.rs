@@ -9,6 +9,7 @@ pub mod nocrouch;
 pub mod pb;
 pub mod ping;
 pub mod profile;
+pub mod random;
 
 // # Command Template
 //

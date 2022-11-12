@@ -27,6 +27,7 @@ pub async fn handle(
 		"nocrouch" => commands::nocrouch::execute(ctx).await,
 		"pb" => commands::pb::execute(ctx).await,
 		"profile" => commands::profile::execute(ctx).await,
+		"random" => commands::random::execute(ctx).await,
 		unkown_command => unimplemented!("Command `{}` not found.", unkown_command),
 	}
 }
