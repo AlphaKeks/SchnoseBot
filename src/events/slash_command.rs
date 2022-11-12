@@ -28,6 +28,7 @@ pub async fn handle(
 		"pb" => commands::pb::execute(ctx).await,
 		"profile" => commands::profile::execute(ctx).await,
 		"random" => commands::random::execute(ctx).await,
+		"recent" => commands::recent::execute(ctx).await,
 		unkown_command => unimplemented!("Command `{}` not found.", unkown_command),
 	}
 }

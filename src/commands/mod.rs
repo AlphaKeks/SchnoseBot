@@ -10,6 +10,7 @@ pub mod pb;
 pub mod ping;
 pub mod profile;
 pub mod random;
+pub mod recent;
 
 // # Command Template
 //
