@@ -220,15 +220,17 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 		(tp_link, pro_link)
 	};
 
-	if tp_link.len() > 0 || pro_link.len() > 0 {
+	let tp = tp_link.len() > 0;
+	let pro = pro_link.len() > 0;
+	if tp || pro {
 		let mut description = String::from("Download Replays:");
 
-		if tp_link.len() > 0 {
-			description.push_str(&format!(" [TP]({}) |", tp_link))
-		}
-
-		if pro_link.len() > 0 {
+		if tp && !pro {
+			description.push_str(&format!(" [TP]({})", tp_link))
+		} else if !tp && pro {
 			description.push_str(&format!(" [PRO]({})", pro_link))
+		} else {
+			description.push_str(&format!(" [TP]({}) | [PRO]({})", tp_link, pro_link))
 		}
 
 		embed.description(description);
