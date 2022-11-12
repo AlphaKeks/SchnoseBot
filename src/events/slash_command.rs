@@ -31,6 +31,7 @@ pub async fn handle(
 		"recent" => commands::recent::execute(ctx).await,
 		"setsteam" => commands::setsteam::execute(ctx).await,
 		"unfinished" => commands::unfinished::execute(ctx).await,
+		"wr" => commands::wr::execute(ctx).await,
 		unkown_command => unimplemented!("Command `{}` not found.", unkown_command),
 	}
 }
