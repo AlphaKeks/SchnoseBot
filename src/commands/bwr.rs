@@ -19,8 +19,8 @@ use {
 
 pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
 	return cmd
-		.name("bpb")
-		.description("Check a player's personal best on a bonus.")
+		.name("bwr")
+		.description("Check a World Record on a bonus.")
 		.create_option(|opt| {
 			opt.kind(CommandOptionType::String)
 				.name("map_name")
@@ -34,12 +34,6 @@ pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCom
 				.add_string_choice("KZT", "kz_timer")
 				.add_string_choice("SKZ", "kz_simple")
 				.add_string_choice("VNL", "kz_vanilla")
-				.required(false)
-		})
-		.create_option(|opt| {
-			opt.kind(CommandOptionType::String)
-				.name("player")
-				.description("Specify a player.")
 				.required(false)
 		})
 		.create_option(|opt| {
@@ -68,14 +62,6 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 					.expect("Mode stored in the database _needs_ to be valid."),
 				_ => Mode::KZTimer,
 			}
-		},
-	};
-	let player = match sanitize_target(ctx.get_string("player"), &ctx.db, &ctx.root).await {
-		Some(target) => target,
-		None => {
-			return Ok(ctx
-				.reply(Message("Please specify a player or save your own SteamID via `/setsteam`."))
-				.await?)
 		},
 	};
 	let course = match ctx.get_int("course") {
@@ -107,31 +93,11 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 		},
 	};
 
-	let steam_id = match player {
-		Target::SteamID(steam_id) => steam_id,
-		Target::Name(player_name) => {
-			match get_player(&PlayerIdentifier::Name(player_name), &client).await {
-				Ok(player) => SteamID(player.steam_id),
-				Err(why) => {
-					log::warn!(
-						"[{}]: {} => {}\n{:?}",
-						file!(),
-						line!(),
-						"Failed to get player from the GlobalAPI.",
-						why
-					);
-					return Ok(ctx.reply(Message("Couldn't fetch player from GlobalAPI.")).await?);
-				},
-			}
-		},
-	};
-
-	let player_identifier = PlayerIdentifier::SteamID(steam_id);
 	let map_identifier = MapIdentifier::Name(map.name.clone());
 
 	let (tp, pro) = join_all([
-		get_pb(&player_identifier, &map_identifier, &mode, true, course, &client),
-		get_pb(&player_identifier, &map_identifier, &mode, false, course, &client),
+		get_wr(&map_identifier, &mode, true, course, &client),
+		get_wr(&map_identifier, &mode, false, course, &client),
 	])
 	.await
 	.into_iter()
@@ -139,42 +105,12 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 	.unwrap();
 
 	if let (&Err(_), &Err(_)) = (&tp, &pro) {
-		return Ok(ctx.reply(Message("No PBs found 😔")).await?);
+		return Ok(ctx.reply(Message("No WRs found 😔")).await?);
 	}
-
-	let player_name = match &tp {
-		Ok(rec) => rec.player_name.clone().unwrap_or(String::from("unknown")),
-		Err(_) => match &pro {
-			Ok(rec) => rec.player_name.clone().unwrap_or(String::from("unknown")),
-			Err(_) => {
-				unreachable!("If both records had failed, we would have already returned earlier.")
-			},
-		},
-	};
-
-	let (place_tp, place_pro) = (
-		match &tp {
-			Ok(rec) => match get_place(&rec.id, &client).await {
-				Ok(place) => format!("[#{}]", place.0),
-				Err(_) => String::new(),
-			},
-			Err(_) => String::new(),
-		},
-		match &pro {
-			Ok(rec) => match get_place(&rec.id, &client).await {
-				Ok(place) => format!("[#{}]", place.0),
-				Err(_) => String::new(),
-			},
-			Err(_) => String::new(),
-		},
-	);
 
 	let mut embed = CreateEmbed::default()
 		.color((116, 128, 194))
-		.title(format!(
-			"[BPB {}] {} on {} (T{})",
-			&course, &player_name, &map.name, &map.difficulty
-		))
+		.title(format!("[BWR {}] {} (T{})", &course, &map.name, &map.difficulty))
 		.url(format!(
 			"https://kzgo.eu/maps/{}?bonus={}&{}=",
 			&map.name,
@@ -193,7 +129,16 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 					Ok(rec) => format_time(rec.time),
 					Err(_) => String::from("😔"),
 				},
-				place_tp
+				match &tp {
+					Ok(rec) => format!(
+						"({})",
+						match &rec.player_name {
+							Some(name) => name,
+							None => "unknown",
+						}
+					),
+					Err(_) => String::from("unknown"),
+				}
 			),
 			true,
 		)
@@ -205,7 +150,16 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 					Ok(rec) => format_time(rec.time),
 					Err(_) => String::from("😔"),
 				},
-				place_pro
+				match &pro {
+					Ok(rec) => format!(
+						"({})",
+						match &rec.player_name {
+							Some(name) => name,
+							None => "unknown",
+						}
+					),
+					Err(_) => String::from("unknown"),
+				}
 			),
 			true,
 		)

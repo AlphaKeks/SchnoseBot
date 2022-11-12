@@ -19,6 +19,7 @@ pub async fn handle(
 		"ping" => commands::ping::execute(ctx).await,
 		"apistatus" => commands::apistatus::execute(ctx).await,
 		"bpb" => commands::bpb::execute(ctx).await,
+		"bwr" => commands::bwr::execute(ctx).await,
 		unkown_command => unimplemented!("Command `{}` not found.", unkown_command),
 	}
 }

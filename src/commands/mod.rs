@@ -1,5 +1,6 @@
 pub mod apistatus;
 pub mod bpb;
+pub mod bwr;
 pub mod ping;
 
 // # Command Template
