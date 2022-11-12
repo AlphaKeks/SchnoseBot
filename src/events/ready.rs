@@ -24,7 +24,10 @@ pub async fn handle(_client: &Schnose, ctx: Context, ready: Ready) -> Result<()>
 			let dev_guild = GuildId(env::var("DEV_GUILD")?.parse::<u64>()?);
 			if let Ok(commands) = dev_guild
 				.set_application_commands(&ctx.http, |commands| {
-					commands.create_application_command(|cmd| commands::ping::register(cmd))
+					commands
+						.create_application_command(|cmd| commands::ping::register(cmd))
+						.create_application_command(|cmd| commands::apistatus::register(cmd))
+						.create_application_command(|cmd| commands::bpb::register(cmd))
 				})
 				.await
 			{

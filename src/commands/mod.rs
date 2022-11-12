@@ -1,14 +1,23 @@
+pub mod apistatus;
+pub mod bpb;
 pub mod ping;
 
-// # Example command
+// # Command Template
 //
 // use {
-// 	crate::events::slash_command::{
-// 		InteractionData,
-// 		InteractionResponseData::{Message, Embed},
+// 	crate::{
+// 		events::slash_command::{
+// 			InteractionData,
+// 			InteractionResponseData::{Message, Embed},
+// 		},
+// 		util::*,
 // 	},
 // 	anyhow::Result,
-// 	serenity::builder::CreateApplicationCommand,
+// 	gokz_rs::{prelude::*, global_api::*},
+// 	serenity::{
+// 		builder::{CreateApplicationCommand, CreateEmbed},
+// 		model::prelude::command::CommandOptionType,
+// 	},
 // };
 //
 // pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {

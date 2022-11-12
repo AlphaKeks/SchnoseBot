@@ -15,6 +15,7 @@ use {
 mod commands;
 mod db;
 mod events;
+mod util;
 
 #[tokio::main]
 async fn main() -> Result<()> {

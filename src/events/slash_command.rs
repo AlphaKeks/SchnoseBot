@@ -10,13 +10,15 @@ use {
 };
 
 pub async fn handle(
-	_client: &Schnose,
+	client: &Schnose,
 	ctx: Context,
 	interaction: ApplicationCommandInteraction,
 ) -> Result<()> {
-	let ctx = InteractionData::new(&interaction, &ctx.http).await?;
+	let ctx = InteractionData::new(&interaction, &ctx.http, client).await?;
 	match interaction.data.name.as_str() {
 		"ping" => commands::ping::execute(ctx).await,
+		"apistatus" => commands::apistatus::execute(ctx).await,
+		"bpb" => commands::bpb::execute(ctx).await,
 		unkown_command => unimplemented!("Command `{}` not found.", unkown_command),
 	}
 }
@@ -29,17 +31,19 @@ pub enum InteractionResponseData<'a> {
 
 #[derive(Debug, Clone)]
 pub struct InteractionData<'a> {
-	root: &'a ApplicationCommandInteraction,
 	http: &'a Http,
 	deferred: bool,
+	pub root: &'a ApplicationCommandInteraction,
 	pub opts: HashMap<String, json::Value>,
 	pub db: Collection<crate::db::UserSchema>,
+	pub client: &'a Schnose,
 }
 
 impl<'a> InteractionData<'a> {
 	async fn new(
 		root: &'a ApplicationCommandInteraction,
 		http: &'a Http,
+		client: &'a Schnose,
 	) -> Result<InteractionData<'a>> {
 		let mut opts: HashMap<String, json::Value> = HashMap::new();
 		for opt in &root.data.options {
@@ -55,7 +59,7 @@ impl<'a> InteractionData<'a> {
 		let db: Collection<crate::db::UserSchema> =
 			mongo_client.database("gokz").collection("users");
 
-		return Ok(Self { root, http, deferred: false, opts, db });
+		return Ok(Self { root, http, deferred: false, opts, db, client });
 	}
 
 	// some commands need to load a bit longer, so we can tell discord to remember an interaction
