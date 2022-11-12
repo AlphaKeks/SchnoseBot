@@ -12,6 +12,7 @@ pub mod profile;
 pub mod random;
 pub mod recent;
 pub mod setsteam;
+pub mod unfinished;
 
 // # Command Template
 //
