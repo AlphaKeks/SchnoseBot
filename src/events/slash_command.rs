@@ -22,6 +22,7 @@ pub async fn handle(
 		"bwr" => commands::bwr::execute(ctx).await,
 		"db" => commands::db::execute(ctx).await,
 		"invite" => commands::invite::execute(ctx).await,
+		"map" => commands::map::execute(ctx).await,
 		unkown_command => unimplemented!("Command `{}` not found.", unkown_command),
 	}
 }
