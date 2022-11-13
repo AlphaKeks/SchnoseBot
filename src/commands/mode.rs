@@ -28,7 +28,7 @@ pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCom
 pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 	ctx.defer().await?;
 
-	match ctx.db.find_one(doc! { "discordID": ctx.root.user.id.to_string() }, None).await {
+	match ctx.db.find_one(doc! { "discordID": ctx.user.id.to_string() }, None).await {
 		Ok(document) => match document {
 			// user already has a database entry
 			Some(entry) => match ctx.get_string("mode") {
@@ -36,7 +36,7 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 				Some(mode) => match ctx
 					.db
 					.find_one_and_update(
-						doc! { "discordID": ctx.root.user.id.to_string() },
+						doc! { "discordID": ctx.user.id.to_string() },
 						doc! { "$set": { "mode": &mode } },
 						None,
 					)
@@ -47,14 +47,14 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 							return ctx
 								.reply(Message(&format!(
 									"Successfully cleared mode for <@{}>",
-									ctx.root.user.id.as_u64()
+									ctx.user.id.as_u64()
 								)))
 								.await;
 						} else {
 							return ctx
 								.reply(Message(&format!(
 									"Successfully updated mode for <@{}>. New Mode: {}",
-									ctx.root.user.id.as_u64(),
+									ctx.user.id.as_u64(),
 									Mode::from_str(&mode)
 										.expect("`mode` should be valid at this point.")
 										.to_fancy()
@@ -100,8 +100,8 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 					.db
 					.insert_one(
 						UserSchema {
-							name: ctx.root.user.name.clone(),
-							discordID: ctx.root.user.id.to_string(),
+							name: ctx.user.name.clone(),
+							discordID: ctx.user.id.to_string(),
 							steamID: None,
 							mode: if mode == "none" { None } else { Some(mode.clone()) },
 						},
@@ -116,7 +116,7 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 								Mode::from_str(&mode)
 									.expect("`mode` should be valid at this point.")
 									.to_fancy(),
-								ctx.root.user.id.as_u64()
+								ctx.user.id.as_u64()
 							)))
 							.await
 					},

@@ -61,7 +61,7 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 		None => {
 			match ctx
 				.db
-				.find_one(doc! { "discordID": ctx.root.user.id.as_u64().to_string() }, None)
+				.find_one(doc! { "discordID": ctx.user.id.as_u64().to_string() }, None)
 				.await
 			{
 				Ok(Some(entry)) => Mode::from_str(&entry.mode.unwrap_or(String::from("kz_timer")))
@@ -70,7 +70,7 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 			}
 		},
 	};
-	let player = match sanitize_target(ctx.get_string("player"), &ctx.db, &ctx.root).await {
+	let player = match sanitize_target(ctx.get_string("player"), &ctx.db, ctx.user).await {
 		Some(target) => target,
 		None => {
 			return ctx

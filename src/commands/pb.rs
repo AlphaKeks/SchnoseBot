@@ -52,19 +52,13 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 	let mode = match ctx.get_string("mode") {
 		Some(mode_name) => Mode::from_str(&mode_name)
 			.expect("`mode_name` _has_ to be valid here. See the `register` function above."),
-		None => {
-			match ctx
-				.db
-				.find_one(doc! { "discordID": ctx.root.user.id.as_u64().to_string() }, None)
-				.await
-			{
-				Ok(Some(entry)) => Mode::from_str(&entry.mode.unwrap_or(String::from("kz_timer")))
-					.expect("Mode stored in the database _needs_ to be valid."),
-				_ => Mode::KZTimer,
-			}
+		None => match ctx.db.find_one(doc! { "discordID": ctx.user.id.to_string() }, None).await {
+			Ok(Some(entry)) => Mode::from_str(&entry.mode.unwrap_or(String::from("kz_timer")))
+				.expect("Mode stored in the database _needs_ to be valid."),
+			_ => Mode::KZTimer,
 		},
 	};
-	let player = match sanitize_target(ctx.get_string("player"), &ctx.db, &ctx.root).await {
+	let player = match sanitize_target(ctx.get_string("player"), &ctx.db, &ctx.user).await {
 		Some(target) => target,
 		None => {
 			return ctx

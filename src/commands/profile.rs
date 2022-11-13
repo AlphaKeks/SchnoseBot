@@ -47,7 +47,7 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 		// mode has been specified
 		Some(mode_name) => Mode::from_str(&mode_name).expect("`mode_name` has to be valid here."),
 		// check db
-		None => match ctx.db.find_one(doc! { "discordID": ctx.root.user.id.to_string() }, None).await {
+		None => match ctx.db.find_one(doc! { "discordID": ctx.user.id.to_string() }, None).await {
 			// user is in db
 			Ok(doc) => match doc {
 				Some(entry) => match entry.mode {
@@ -67,7 +67,7 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 		}
 	};
 
-	let player = match sanitize_target(ctx.get_string("player"), &ctx.db, &ctx.root).await {
+	let player = match sanitize_target(ctx.get_string("player"), &ctx.db, &ctx.user).await {
 		Some(target) => target,
 		None => {
 			return ctx

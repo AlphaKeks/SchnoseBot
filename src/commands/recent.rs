@@ -30,7 +30,7 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 	ctx.defer().await?;
 
 	// sanitize user input
-	let player = match sanitize_target(ctx.get_string("player"), &ctx.db, &ctx.root).await {
+	let player = match sanitize_target(ctx.get_string("player"), &ctx.db, &ctx.user).await {
 		Some(target) => target,
 		None => {
 			return ctx

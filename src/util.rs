@@ -5,7 +5,7 @@ use {
 	gokz_rs::prelude::*,
 	regex::Regex,
 	serde::{Serialize, Deserialize},
-	serenity::model::application::interaction::application_command::ApplicationCommandInteraction,
+	serenity::model::user::User,
 };
 
 pub fn format_time(secs_float: f32) -> String {
@@ -69,10 +69,10 @@ pub enum Target {
 pub async fn sanitize_target(
 	target: Option<String>,
 	db_collection: &mongodb::Collection<UserSchema>,
-	interaction: &ApplicationCommandInteraction,
+	user: &User,
 ) -> Option<Target> {
 	let Some(target) = target else {
-		let Ok(Some(entry)) = db_collection.find_one(doc! { "discordID": interaction.user.id.as_u64().to_string() }, None).await else {
+		let Ok(Some(entry)) = db_collection.find_one(doc! { "discordID": user.id.to_string() }, None).await else {
 			return None;
 		};
 

@@ -34,7 +34,7 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 	match ctx
 		.db
 		.find_one_and_update(
-			doc! { "discordID": ctx.root.user.id.to_string() },
+			doc! { "discordID": ctx.user.id.to_string() },
 			doc! { "$set": { "steamID": &steam_id } },
 			None,
 		)
@@ -44,7 +44,7 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 			return ctx
 				.reply(Message(&format!(
 					"Successfully updated SteamID for <@{}>. New SteamID: `{}`",
-					ctx.root.user.id.as_u64(),
+					ctx.user.id.as_u64(),
 					steam_id,
 				)))
 				.await
@@ -54,8 +54,8 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 			.db
 			.insert_one(
 				UserSchema {
-					name: ctx.root.user.name.clone(),
-					discordID: ctx.root.user.id.to_string(),
+					name: ctx.user.name.clone(),
+					discordID: ctx.user.id.to_string(),
 					steamID: Some(steam_id.clone()),
 					mode: None,
 				},
@@ -68,7 +68,7 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 					.reply(Message(&format!(
 						"Successfully set SteamID `{}` for <@{}>.",
 						steam_id,
-						ctx.root.user.id.as_u64()
+						ctx.user.id.as_u64()
 					)))
 					.await
 			},

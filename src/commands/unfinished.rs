@@ -60,12 +60,13 @@ pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCom
 pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 	ctx.defer().await?;
 
-	let mode = match ctx.get_string("mode") {
-		Some(mode_name) => {
-			Mode::from_str(&mode_name).expect("`mode_name` has to be valid at this point.")
-		},
-		None => {
-			match ctx.db.find_one(doc! { "discordID": ctx.root.user.id.to_string() }, None).await {
+	let mode =
+		match ctx.get_string("mode") {
+			Some(mode_name) => {
+				Mode::from_str(&mode_name).expect("`mode_name` has to be valid at this point.")
+			},
+			None => {
+				match ctx.db.find_one(doc! { "discordID": ctx.user.id.to_string() }, None).await {
 				Ok(document) => match document {
 					Some(entry) => match entry.mode {
 						Some(mode_name) if mode_name != "none" => Mode::from_str(&mode_name)
@@ -91,8 +92,8 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 					return ctx.reply(Message("Failed to access database.")).await;
 				},
 			}
-		},
-	};
+			},
+		};
 	let runtype = match ctx.get_string("runtype") {
 		Some(runtype) => match runtype.as_str() {
 			"true" => true,
@@ -108,7 +109,7 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 
 	let client = reqwest::Client::new();
 
-	let steam_id = match sanitize_target(ctx.get_string("player"), &ctx.db, &ctx.root).await {
+	let steam_id = match sanitize_target(ctx.get_string("player"), &ctx.db, &ctx.user).await {
 		Some(target) => match target {
 			Target::Name(name) => match get_player(&PlayerIdentifier::Name(name), &client).await {
 				Ok(player) => SteamID(player.steam_id),
@@ -126,7 +127,7 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 			Target::SteamID(steam_id) => steam_id
 		},
 		// check db
-		None => match ctx.db.find_one(doc! { "discordID": ctx.root.user.id.to_string() }, None).await {
+		None => match ctx.db.find_one(doc! { "discordID": ctx.user.id.to_string() }, None).await {
 			Ok(doc) => match doc {
 				Some(entry) => match entry.steamID {
 					Some(steam_id) => SteamID(steam_id),

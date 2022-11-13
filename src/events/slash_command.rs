@@ -4,8 +4,14 @@ use {
 	crate::{commands, Schnose},
 	mongodb::Collection,
 	serenity::{
-		json, http::Http, prelude::Context, builder::CreateEmbed,
-		model::application::interaction::application_command::ApplicationCommandInteraction,
+		json,
+		http::Http,
+		prelude::Context,
+		builder::CreateEmbed,
+		model::{
+			application::interaction::application_command::ApplicationCommandInteraction,
+			user::User,
+		},
 	},
 };
 
@@ -44,22 +50,23 @@ pub enum InteractionResponseData<'a> {
 
 #[derive(Debug, Clone)]
 pub struct InteractionData<'a> {
+	interaction: &'a ApplicationCommandInteraction,
 	http: &'a Http,
 	deferred: bool,
-	pub root: &'a ApplicationCommandInteraction,
+	pub client: &'a Schnose,
+	pub user: &'a User,
 	pub opts: HashMap<String, json::Value>,
 	pub db: Collection<crate::db::UserSchema>,
-	pub client: &'a Schnose,
 }
 
 impl<'a> InteractionData<'a> {
 	async fn new(
-		root: &'a ApplicationCommandInteraction,
+		interaction: &'a ApplicationCommandInteraction,
 		http: &'a Http,
 		client: &'a Schnose,
 	) -> Result<InteractionData<'a>> {
 		let mut opts: HashMap<String, json::Value> = HashMap::new();
-		for opt in &root.data.options {
+		for opt in &interaction.data.options {
 			if let Some(value) = opt.value.to_owned() {
 				opts.insert(opt.name.clone(), value);
 			}
@@ -72,26 +79,34 @@ impl<'a> InteractionData<'a> {
 		let db: Collection<crate::db::UserSchema> =
 			mongo_client.database("gokz").collection("users");
 
-		return Ok(Self { root, http, deferred: false, opts, db, client });
+		return Ok(Self {
+			interaction,
+			http,
+			deferred: false,
+			client,
+			user: &interaction.user,
+			opts,
+			db,
+		});
 	}
 
 	// some commands need to load a bit longer, so we can tell discord to remember an interaction
 	pub async fn defer(&mut self) -> Result<()> {
-		self.root.defer(self.http).await?;
+		self.interaction.defer(self.http).await?;
 		self.deferred = true;
 		return Ok(());
 	}
 
 	pub async fn reply(&self, content: InteractionResponseData<'_>) -> Result<()> {
 		if self.deferred {
-			self.root
+			self.interaction
 				.edit_original_interaction_response(self.http, |response| match content {
 					InteractionResponseData::Message(msg) => response.content(msg),
 					InteractionResponseData::Embed(embed) => response.set_embed(embed),
 				})
 				.await?;
 		} else {
-			self.root
+			self.interaction
 				.create_interaction_response(self.http, |response| {
 					response.interaction_response_data(|response| match content {
 						InteractionResponseData::Message(msg) => response.content(msg),

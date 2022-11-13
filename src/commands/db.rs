@@ -28,7 +28,7 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 
 	let (user_id, target) = match ctx.get_user("user") {
 		Some(h) => (h, true),
-		None => (ctx.root.user.id.as_u64().to_owned(), false),
+		None => (ctx.user.id.as_u64().to_owned(), false),
 	};
 
 	match ctx.db.find_one(doc! { "discordID": user_id.to_string() }, None).await {
