@@ -18,15 +18,14 @@ $ cp .env.tx .env
 
 ```
 # login credentials
-DISCORD_TOKEN=<[Bot token](https://discord.com/developers/applications)>
-MONGODB=<MongoDB connection string>
+DISCORD_TOKEN=<Discord API token>
+MONGO_URL=<MongoDB connection string>
 STEAM_API=<Steam WebAPI Key>
 
 # variables
-MODE=<"DEV" or "PROD">
-DEV_GUILD=<GuildID of your test server>
-BOT_ID=<UserID of your bot's discord account>
-ICON=<URL for embed icons>
+MODE=DEV # `DEV` or `PROD`
+DEV_GUILD=<Discord GuilID>
+ICON_URL=https://cdn.discordapp.com/attachments/981130651094900756/981130719537545286/churchOfSchnose.png
 ```
 
 Build the bot:
