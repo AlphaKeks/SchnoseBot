@@ -99,7 +99,7 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 	let embed = CreateEmbed::default()
 		.color((116, 128, 194))
 		.title(format!(
-			"[PB] {} on {}{}",
+			"[PB] {} on {} (T{})",
 			&recent.player_name.unwrap_or(String::from("unknown")),
 			&map.name,
 			&map.difficulty
