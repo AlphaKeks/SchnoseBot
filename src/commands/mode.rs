@@ -53,7 +53,7 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 						} else {
 							return ctx
 								.reply(Message(&format!(
-									"Successfully updated mode for <@{}>. New Mode: {}",
+									"Successfully updated mode for <@{}>. New Mode: `{}`",
 									ctx.user.id.as_u64(),
 									Mode::from_str(&mode)
 										.expect("`mode` should be valid at this point.")

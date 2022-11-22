@@ -46,7 +46,7 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 					Ok(_) => {
 						return ctx
 							.reply(Message(&format!(
-								"Successfully updated SteamID for <@{}>. New SteamID: {}",
+								"Successfully updated SteamID for <@{}>. New SteamID: `{}`",
 								ctx.user.id.as_u64(),
 								steam_id,
 							)))
