@@ -1,15 +1,14 @@
 use {
 	crate::{
 		db::UserSchema,
-		events::slash_command::{InteractionData, InteractionResponseData::Message},
+		events::slash_commands::{InteractionData, InteractionResponseData::Message},
 	},
-	anyhow::Result,
-	gokz_rs::prelude::*,
 	bson::doc,
+	gokz_rs::prelude::*,
 	serenity::{builder::CreateApplicationCommand, model::prelude::command::CommandOptionType},
 };
 
-pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
+pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
 	return cmd
 		.name("setsteam")
 		.description("Save your SteamID in schnose's database.")
@@ -21,75 +20,91 @@ pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCom
 		});
 }
 
-pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
-	ctx.defer().await?;
+pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()> {
+	data.defer().await?;
 
-	let steam_id = ctx.get_string("steam_id").expect("This option is marked as `required`.");
+	let steam_id = data.get_string("steam_id").expect("This option is marked as `required`.");
 
 	if !SteamID::test(&steam_id) {
-		return ctx.reply(Message("Please enter a valid SteamID.")).await;
+		return data
+			.reply(Message("Please enter a valid SteamID (e.g. `STEAM_1:1:161178172`)."))
+			.await;
 	}
 
-	match ctx.db.find_one(doc! { "discordID": ctx.user.id.to_string() }, None).await {
+	match data.db.find_one(doc! { "discordID": data.user.id.to_string() }, None).await {
+		// user has an entry already => update
 		Ok(document) => match document {
-			// update document
-			Some(_entry) => {
-				match ctx
+			Some(_old_entry) => {
+				log::info!(
+					"[{}]: {} => Modifying database entry\n\n{:?}",
+					file!(),
+					line!(),
+					_old_entry
+				);
+				match data
 					.db
 					.find_one_and_update(
-						doc! { "discordID": ctx.user.id.to_string() },
+						doc! { "discordID": data.user.id.to_string() },
 						doc! { "$set": { "steamID": &steam_id } },
 						None,
 					)
 					.await
 				{
 					Ok(_) => {
-						return ctx
+						return data
 							.reply(Message(&format!(
-								"Successfully updated SteamID for <@{}>. New SteamID: `{}`",
-								ctx.user.id.as_u64(),
+								"Successfully set SteamID `{}` for <@{}>.",
+								&steam_id,
+								data.user.id.as_u64(),
+							)))
+							.await;
+					},
+					Err(why) => {
+						log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
+						return data.reply(Message("Failed to update database.")).await;
+					},
+				}
+			},
+			// user does not yet have an entry => create a new one
+			None => {
+				log::warn!(
+					"[{}]: {} => {} doesn't have a database entry.",
+					file!(),
+					line!(),
+					&data.user.name
+				);
+				match data
+					.db
+					.insert_one(
+						UserSchema {
+							name: data.user.name.clone(),
+							discordID: data.user.id.to_string(),
+							steamID: Some(steam_id.clone()),
+							mode: None,
+						},
+						None,
+					)
+					.await
+				{
+					Ok(_) => {
+						return data
+							.reply(Message(&format!(
+								"Successfully set SteamID `{}` for <@{}>.",
 								steam_id,
+								data.user.id.as_u64()
 							)))
 							.await
 					},
 					Err(why) => {
-						log::error!("[{}]: {} => {:?}", file!(), line!(), why);
-						return ctx.reply(Message("Failed to update databse.")).await;
+						log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
+						return data.reply(Message("Failed to create database entry.")).await;
 					},
 				}
 			},
-			// create new document
-			None => match ctx
-				.db
-				.insert_one(
-					UserSchema {
-						name: ctx.user.name.clone(),
-						discordID: ctx.user.id.to_string(),
-						steamID: Some(steam_id.clone()),
-						mode: None,
-					},
-					None,
-				)
-				.await
-			{
-				Ok(_) => {
-					return ctx
-						.reply(Message(&format!(
-							"Successfully set SteamID `{}` for <@{}>.",
-							steam_id,
-							ctx.user.id.as_u64()
-						)))
-						.await
-				},
-				Err(why) => {
-					log::error!("[{}]: {} => {:?}", file!(), line!(), why);
-					return ctx.reply(Message("Failed to create database entry.")).await;
-				},
-			},
 		},
 		Err(why) => {
-			log::error!("[{}]: {} => {}\n{:?}", file!(), line!(), "Failed to acces database.", why);
-			return ctx.reply(Message("Failed to access database.")).await;
+			log::error!("[{}]: {} => {:?}", file!(), line!(), why);
+			return data.reply(Message("Failed to access database.")).await;
 		},
 	}
 }

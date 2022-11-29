@@ -1,9 +1,8 @@
 use {
-	crate::events::slash_command::{
+	crate::events::slash_commands::{
 		InteractionData,
 		InteractionResponseData::{Message, Embed},
 	},
-	anyhow::Result,
 	bson::doc,
 	serenity::{
 		builder::{CreateApplicationCommand, CreateEmbed},
@@ -11,7 +10,7 @@ use {
 	},
 };
 
-pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
+pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
 	return cmd
 		.name("db")
 		.description("Check a user's current database entries.")
@@ -23,46 +22,52 @@ pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCom
 		});
 }
 
-pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
-	ctx.defer().await?;
+pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()> {
+	data.defer().await?;
 
-	let (user_id, target) = match ctx.get_user("user") {
-		Some(h) => (h, true),
-		None => (ctx.user.id.as_u64().to_owned(), false),
+	let (user_id, blame_user) = match data.get_user("user") {
+		Some(user_id) => (user_id, false),
+		None => (*data.user.id.as_u64(), true),
 	};
 
-	match ctx.db.find_one(doc! { "discordID": user_id.to_string() }, None).await {
+	match data.db.find_one(doc! { "discordID": user_id.to_string() }, None).await {
 		Ok(document) => match document {
 			Some(entry) => {
 				let embed = CreateEmbed::default()
-					.color((116, 128, 194))
-					.title(format!("<@{}>'s database entries", user_id))
+					.colour(data.colour)
+					.title(format!("{}'s database entries", &entry.name))
 					.description(format!(
-						"
+						r#"
+> name: {}
 > discordID: {}
 > steamID: {}
 > mode: {}
-",
-						entry.discordID,
-						entry.steamID.unwrap_or(String::from("none")),
-						entry.mode.unwrap_or(String::from("none"))
+						"#,
+						&entry.name,
+						&entry.discordID,
+						&entry.steamID.unwrap_or(String::from("none")),
+						&entry.mode.unwrap_or(String::from("none")),
 					))
 					.to_owned();
 
-				return ctx.reply(Embed(embed)).await;
+				return data.reply(Embed(embed)).await;
 			},
 			None => {
-				return ctx
+				return data
 					.reply(Message(&format!(
-						"{} have any database entries yet.",
-						if target { "The specified user doesn't" } else { "You don't" }
+						"{} a database entry.",
+						if blame_user {
+							"You don't have"
+						} else {
+							"The user you specified doesn't have"
+						}
 					)))
 					.await
 			},
 		},
 		Err(why) => {
-			log::error!("[{}]: {} => {}\n{:?}", file!(), line!(), "Failed to acces database.", why);
-			return ctx.reply(Message("Failed to access database.")).await;
+			log::error!("[{}]: {} => {:?}", file!(), line!(), why);
+			return data.reply(Message("Failed to access database.")).await;
 		},
 	}
 }

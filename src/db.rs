@@ -1,8 +1,8 @@
 use serde::{Serialize, Deserialize};
 
-#[allow(dead_code, non_snake_case)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UserSchema {
+#[allow(non_snake_case)]
+pub(crate) struct UserSchema {
 	pub name: String,
 	pub discordID: String,
 	pub steamID: Option<String>,

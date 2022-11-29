@@ -1,39 +1,39 @@
+use serenity::model::prelude::{GuildId, command::Command};
+
+use crate::commands;
+
 use {
 	std::env,
-	anyhow::Result,
-	crate::{commands, Schnose},
+	crate::schnose::BotState,
 	serenity::{
+		model::prelude::{Ready, Activity},
 		prelude::Context,
-		model::{
-			application::command::Command,
-			prelude::{Activity, GuildId, Ready},
-		},
 	},
 };
 
-pub async fn handle(_client: &Schnose, ctx: Context, ready: Ready) -> Result<()> {
-	// set status
+pub(crate) async fn handle(_state: &BotState, ctx: Context, ready: Ready) -> anyhow::Result<()> {
+	log::info!("`ready` event triggered.");
+
 	ctx.set_activity(Activity::playing("kz_epiphany_v2")).await;
+	log::warn!("Connected to Discord as `{}`.", ready.user.tag());
 
-	println!("Connected to Discord as {}.", ready.user.tag());
-
-	// registering commands
 	let mode = env::var("MODE")?;
 	match mode.as_str() {
+		// register commands on dev server only
 		"DEV" => {
 			let dev_guild = GuildId(env::var("DEV_GUILD")?.parse::<u64>()?);
 			if let Ok(commands) = dev_guild
 				.set_application_commands(&ctx.http, |commands| {
 					commands
 						.create_application_command(|cmd| commands::ping::register(cmd))
-						// .create_application_command(|cmd| commands::apistatus::register(cmd))
+						.create_application_command(|cmd| commands::apistatus::register(cmd))
 						// .create_application_command(|cmd| commands::bpb::register(cmd))
 						// .create_application_command(|cmd| commands::bwr::register(cmd))
 						.create_application_command(|cmd| commands::db::register(cmd))
 						.create_application_command(|cmd| commands::invite::register(cmd))
 						// .create_application_command(|cmd| commands::map::register(cmd))
 						.create_application_command(|cmd| commands::mode::register(cmd))
-						// .create_application_command(|cmd| commands::nocrouch::register(cmd))
+						.create_application_command(|cmd| commands::nocrouch::register(cmd))
 						// .create_application_command(|cmd| commands::pb::register(cmd))
 						// .create_application_command(|cmd| commands::profile::register(cmd))
 						// .create_application_command(|cmd| commands::random::register(cmd))
@@ -44,19 +44,10 @@ pub async fn handle(_client: &Schnose, ctx: Context, ready: Ready) -> Result<()>
 				})
 				.await
 			{
-				let command_names: Vec<String> = commands.into_iter().map(|cmd| cmd.name).collect();
-
-				println!(
-					"[MODE: {}] {}",
-					mode,
-					if command_names.len() > 0 {
-						format!("Registered commands:\n> {}", command_names.join("\n> "))
-					} else {
-						String::from("No commands registered.")
-					}
-				);
+				print_commands(commands, &mode);
 			}
 		},
+		// register commands globally
 		"PROD" => {
 			if let Ok(commands) = Command::set_global_application_commands(&ctx.http, |commands| {
 				commands
@@ -79,21 +70,28 @@ pub async fn handle(_client: &Schnose, ctx: Context, ready: Ready) -> Result<()>
 			})
 			.await
 			{
-				let command_names: Vec<String> = commands.into_iter().map(|cmd| cmd.name).collect();
-
-				println!(
-					"[MODE: {}] {}",
-					mode,
-					if command_names.len() > 0 {
-						format!("Registered commands:\n> {}", command_names.join("\n> "))
-					} else {
-						String::from("No commands registered.")
-					}
-				);
+				print_commands(commands, &mode);
 			}
 		},
-		_ => unreachable!("[env] Invalid `MODE`. Use `DEV` or `PROD`."),
+		invalid_mode => panic!(
+			"`{}` is an invalid `MODE` environment variable. Please use `DEV` or `PROD`.",
+			invalid_mode
+		),
 	}
 
 	return Ok(());
+}
+
+fn print_commands(commands: Vec<Command>, mode: &str) {
+	let names: Vec<String> = commands.into_iter().map(|cmd| cmd.name).collect();
+
+	println!(
+		"[MODE: {}] {}",
+		mode,
+		if names.len() > 0 {
+			format!("Registered commands:\n> {}", names.join("\n> "))
+		} else {
+			String::from("No commands registered.")
+		}
+	)
 }

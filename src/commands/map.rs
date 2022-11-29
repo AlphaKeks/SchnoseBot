@@ -1,9 +1,8 @@
 use {
-	crate::events::slash_command::{
+	crate::events::slash_commands::{
 		InteractionData,
 		InteractionResponseData::{Message, Embed},
 	},
-	anyhow::Result,
 	gokz_rs::{prelude::*, global_api::*, kzgo},
 	serenity::{
 		builder::{CreateApplicationCommand, CreateEmbed},
@@ -11,7 +10,7 @@ use {
 	},
 };
 
-pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
+pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
 	return cmd.name("map").description("Get detailed information on a map.").create_option(
 		|opt| {
 			opt.kind(CommandOptionType::String)
@@ -22,69 +21,57 @@ pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCom
 	);
 }
 
-pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
-	ctx.defer().await?;
+pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()> {
+	data.defer().await?;
 
-	let map_name = ctx.get_string("map_name").expect("This option is marked as `required`.");
+	let map_name = data.get_string("map_name").expect("This option is marked as `required`.");
 
-	let client = reqwest::Client::new();
 	let (map_api, map_kzgo) = {
-		let global_maps = match get_maps(&client).await {
+		let global_maps = match get_maps(&data.req_client).await {
 			Ok(maps) => maps,
 			Err(why) => {
-				log::error!(
-					"[{}]: {} => {}\n{:?}",
-					file!(),
-					line!(),
-					"Failed to fetch global maps.",
-					why
-				);
-				return ctx.reply(Message(&why.tldr)).await;
+				log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
+				return data.reply(Message(&why.tldr)).await;
 			},
 		};
 
 		let map_api = match is_global(&MapIdentifier::Name(map_name), &global_maps).await {
 			Ok(map) => map,
 			Err(why) => {
-				log::warn!("[{}]: {} => {}\n{:?}", file!(), line!(), "Map is not global.", why);
-				return ctx.reply(Message(&why.tldr)).await;
+				log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
+				return data.reply(Message(&why.tldr)).await;
 			},
 		};
 
 		let map_identifier = MapIdentifier::Name(map_api.name.clone());
 
-		let map_kzgo = match kzgo::maps::get_map(&map_identifier, &client).await {
+		let map_kzgo = match kzgo::maps::get_map(&map_identifier, &data.req_client).await {
 			Ok(map) => map,
 			Err(why) => {
-				log::error!(
-					"[{}]: {} => {}\n{:?}",
-					file!(),
-					line!(),
-					"Failed to fetch KZGO map.",
-					why
-				);
-				return ctx.reply(Message(&why.tldr)).await;
+				log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
+				return data.reply(Message(&why.tldr)).await;
 			},
 		};
 
 		(map_api, map_kzgo)
 	};
 
-	let mappers = match map_kzgo.mapperNames {
-		Some(names) => match map_kzgo.mapperIds {
-			Some(ids) => names
-				.into_iter()
-				.enumerate()
-				.map(|(idx, name)| {
-					format!("[{}](https://steamcommunity.com/profiles/{})", name, ids[idx])
-				})
-				.collect::<Vec<String>>(),
-			None => vec![String::new()],
-		},
-		None => vec![String::new()],
+	let mappers = {
+		let mut mappers: Vec<String> = Vec::new();
+		if let Some(names) = map_kzgo.mapperNames {
+			if let Some(ids) = map_kzgo.mapperIds {
+				for (i, name) in names.into_iter().enumerate() {
+					mappers.push(format!(
+						"[{}](https://steamcommunity.com/profiles/{})",
+						name, ids[i]
+					));
+				}
+			}
+		}
+		mappers
 	};
 
-	let filters = match get_filters(map_api.id, &client).await {
+	let filters = match get_filters(map_api.id, &data.req_client).await {
 		Ok(filters) => {
 			let filters = filters.into_iter().filter(|f| f.stage == 0).collect::<Vec<_>>();
 			let mut res = ("❌", "❌", "❌");
@@ -96,54 +83,40 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 					_ => (),
 				}
 			}
-
 			res
 		},
 		Err(why) => {
-			log::error!(
-				"[{}]: {} => {}\n{:?}",
-				file!(),
-				line!(),
-				"Failed to fetch map filters",
-				why
-			);
-			return ctx.reply(Message(&why.tldr)).await;
+			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
+			return data.reply(Message(&why.tldr)).await;
 		},
 	};
 
 	let embed = CreateEmbed::default()
-		.color((116, 128, 194))
+		.color(data.colour)
 		.title(&map_api.name)
 		.url(format!("https://kzgo.eu/maps/{}", &map_api.name))
-		.thumbnail(format!(
-			"https://raw.githubusercontent.com/KZGlobalTeam/map-images/master/images/{}.jpg",
-			&map_api.name
-		))
+		.thumbnail(&data.thumbnail(&map_api.name))
 		.description(format!(
-			// Discord's formatting sucks
-			"
+			r#"
 🢂 API Tier: {}
 🢂 Mapper(s): {}
 🢂 Bonuses: {}
 🢂 Last Update: {}
 
 🢂 Filters:
-",
+			"#,
 			&map_api.difficulty,
 			mappers.join(", "),
-			match &map_kzgo.bonuses {
-				Some(n) => n,
-				None => &0,
-			},
+			&map_kzgo.bonuses.unwrap_or(0),
 			match chrono::NaiveDateTime::parse_from_str(&map_api.updated_on, "%Y-%m-%dT%H:%M:%S") {
 				Ok(parsed_time) => parsed_time.format("%d/%m/%Y").to_string(),
 				Err(_) => String::from("unknown"),
-			}
+			},
 		))
 		.field("KZT", filters.0, true)
 		.field("SKZ", filters.1, true)
 		.field("VNL", filters.2, true)
 		.to_owned();
 
-	return ctx.reply(Embed(embed)).await;
+	return data.reply(Embed(embed)).await;
 }

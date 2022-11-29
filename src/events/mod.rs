@@ -1,3 +1,3 @@
-pub mod message;
-pub mod ready;
-pub mod slash_command;
+pub(crate) mod message;
+pub(crate) mod ready;
+pub(crate) mod slash_commands;

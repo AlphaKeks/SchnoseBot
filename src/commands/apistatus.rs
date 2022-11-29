@@ -1,24 +1,23 @@
 use {
-	crate::events::slash_command::{
+	crate::events::slash_commands::{
 		InteractionData,
 		InteractionResponseData::{Message, Embed},
 	},
-	anyhow::Result,
 	gokz_rs::global_api::health_check,
 	serenity::builder::{CreateApplicationCommand, CreateEmbed},
 };
 
-pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
-	return cmd.name("apistatus").description("Check the current status of the GlobalAPI.");
+pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
+	return cmd.name("apistatus").description("Check the GlobalAPI's health status.");
 }
 
-pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
-	ctx.defer().await?;
+pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()> {
+	data.defer().await?;
 
 	match health_check(&reqwest::Client::new()).await {
 		Ok(response) => {
 			let (success, mut status, mut color) = (
-				(response.successful_responses + response.fast_responses) as f32 / 2.0,
+				(response.successful_responses + response.fast_responses) as f32 / 2f32,
 				"Healthy",
 				(166, 227, 161),
 			);
@@ -47,17 +46,11 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 				.field("Fast Responses", format!("{} / {}", response.fast_responses, 10), true)
 				.to_owned();
 
-			return ctx.reply(Embed(embed)).await;
+			return data.reply(Embed(embed)).await;
 		},
 		Err(why) => {
-			log::error!(
-				"[{}]: {} => {}\n{:?}",
-				file!(),
-				line!(),
-				"Failed to check GlobalAPI Health.",
-				why
-			);
-			return ctx.reply(Message(&why.tldr)).await;
+			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
+			return data.reply(Message(&why.tldr)).await;
 		},
 	}
 }

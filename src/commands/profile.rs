@@ -1,24 +1,22 @@
-use gokz_rs::custom::get_profile;
-use num_format::{ToFormattedString, Locale};
-
 use {
 	crate::{
-		events::slash_command::{
+		events::slash_commands::{
 			InteractionData,
 			InteractionResponseData::{Message, Embed},
 		},
+		schnose::Target,
 		util::*,
 	},
-	anyhow::Result,
 	bson::doc,
-	gokz_rs::{prelude::*, global_api::*, kzgo},
+	gokz_rs::{prelude::*, global_api::*, custom::get_profile, kzgo},
+	num_format::{ToFormattedString, Locale},
 	serenity::{
 		builder::{CreateApplicationCommand, CreateEmbed},
 		model::prelude::command::CommandOptionType,
 	},
 };
 
-pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
+pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
 	return cmd
 		.name("profile")
 		.description("Check a player's stats.")
@@ -39,92 +37,64 @@ pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCom
 		});
 }
 
-pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
-	ctx.defer().await?;
+pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()> {
+	data.defer().await?;
 
-	// sanitize user input
-	let mode = match ctx.get_string("mode") {
-		// mode has been specified
-		Some(mode_name) => Mode::from_str(&mode_name).expect("`mode_name` has to be valid here."),
-		// check db
-		None => match ctx.db.find_one(doc! { "discordID": ctx.user.id.to_string() }, None).await {
-			// user is in db
-			Ok(doc) => match doc {
-				Some(entry) => match entry.mode {
-					Some(mode_name) if mode_name != "none" => Mode::from_str(&mode_name).expect("`mode_name` has to be valid here."),
-					_ => return ctx.reply(Message("You either need to specify a mode or set a default option via `/mode`.")).await
-				},
-				// user not in db
-				None => return ctx.reply(Message("You either need to specify a mode or set a default option via `/mode`.")).await
-			},
+	let target = Target::from(data.get_string("player"));
+	let player = match target.to_player(data.user, data.db).await {
+		Ok(player) => player,
+		Err(why) => {
+			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
+			return data.reply(Message(&why)).await;
+		},
+	};
+	let mode = match data.get_string("mode") {
+		Some(mode_name) => Mode::from_str(&mode_name).expect("This must be valid at this point."),
+		None => match retrieve_mode(data.user, data.db).await {
+			Ok(mode) => mode,
 			Err(why) => {
-				log::error!(
-					"[{}]: {} => {}\n{:?}",
-					file!(), line!(), "Failed to access database.", why
-				);
-				return ctx.reply(Message("Failed to access database")).await;
-			}
-		}
-	};
-
-	let player = match sanitize_target(ctx.get_string("player"), &ctx.db, &ctx.user).await {
-		Some(target) => target,
-		None => {
-			return ctx
-				.reply(Message("Please specify a player or save your own SteamID via `/setsteam`."))
-				.await
+				log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
+				return data.reply(Message(&why)).await;
+			},
 		},
 	};
 
-	let client = reqwest::Client::new();
-
-	let steam_id = match player {
-		Target::SteamID(steam_id) => steam_id,
-		Target::Name(player_name) => {
-			match get_player(&PlayerIdentifier::Name(player_name), &client).await {
-				Ok(player) => SteamID(player.steam_id),
-				Err(why) => {
-					log::warn!(
-						"[{}]: {} => {}\n{:?}",
-						file!(),
-						line!(),
-						"Failed to get player from the GlobalAPI.",
-						why
-					);
-					return ctx.reply(Message("Couldn't fetch player from GlobalAPI.")).await;
-				},
-			}
+	let player = match get_player(&player, &data.req_client).await {
+		Ok(player) => player,
+		Err(why) => {
+			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
+			return data.reply(Message(&why.tldr)).await;
 		},
 	};
+
+	let steam_id = SteamID(player.steam_id.clone());
 
 	let player_profile =
-		match get_profile(&PlayerIdentifier::SteamID(steam_id), &mode, &client).await {
+		match get_profile(&PlayerIdentifier::SteamID(steam_id), &mode, &data.req_client).await {
 			Ok(profile) => profile,
 			Err(why) => {
-				log::error!(
-					"[{}]: {} => {}\n{:?}",
-					file!(),
-					line!(),
-					"Failed to fetch player profile.",
-					why
-				);
-				return ctx.reply(Message("Failed to fetch player profile.")).await;
+				log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
+				return data.reply(Message(&why.tldr)).await;
 			},
 		};
 
-	let avatar = get_steam_avatar(&player_profile.steam_id64, &client).await;
+	let avatar = get_steam_avatar(&player_profile.steam_id64, &data.req_client).await;
 
-	let fav_mode = match &player_profile.steam_id {
-		Some(steam_id) => match ctx.db.find_one(doc! { "steamID": steam_id }, None).await {
-			Ok(Some(entry)) => match entry.mode {
-				Some(mode_name) if mode_name != "none" => Mode::from_str(&mode_name)
-					.expect("`mode_name` has to be valid at this point.")
-					.to_fancy(),
-				_ => String::from("unknown"),
-			},
-			_ => String::from("unknown"),
-		},
-		None => String::from("unknown"),
+	let fav_mode = {
+		let mut mode = String::new();
+		if let Ok(Some(entry)) =
+			data.db.find_one(doc! { "steamID": &player_profile.steam_id }, None).await
+		{
+			if let Some(db_mode) = entry.mode {
+				if db_mode != "none" {
+					mode = Mode::from_str(&db_mode)
+						.expect("This must be valid at this point.")
+						.to_fancy();
+				}
+			}
+		}
+
+		mode
 	};
 
 	let mut bars = [[""; 7]; 2].map(|a| a.map(|s| s.to_owned()));
@@ -155,22 +125,16 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 		}
 	}
 
-	let doable = match kzgo::completion::get_completion_count(&mode, &client).await {
+	let doable = match kzgo::completion::get_completion_count(&mode, &data.req_client).await {
 		Ok(data) => (data.tp.total, data.pro.total),
 		Err(why) => {
-			log::error!(
-				"[{}]: {} => {}\n{:?}",
-				file!(),
-				line!(),
-				"Failed to fetch completion count from KZGO.",
-				why
-			);
-			return ctx.reply(Message(&why.tldr)).await;
+			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
+			return data.reply(Message(&why.tldr)).await;
 		},
 	};
 
 	let embed = CreateEmbed::default()
-		.color((116, 128, 194))
+		.colour(data.colour)
 		.title(format!(
 			"{} - {} Profile",
 			&player_profile.name.unwrap_or(String::from("unknown")),
@@ -235,12 +199,12 @@ Preferred Mode: {}
 		))
 		.footer(|f| {
 			f.text(format!(
-				"steamID: {}",
+				"SteamID: {}",
 				&player_profile.steam_id.unwrap_or(String::from("unknown"))
 			))
-			.icon_url(&ctx.client.icon_url)
+			.icon_url(&data.icon)
 		})
 		.to_owned();
 
-	return ctx.reply(Embed(embed)).await;
+	return data.reply(Embed(embed)).await;
 }

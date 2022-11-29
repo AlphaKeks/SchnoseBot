@@ -1,13 +1,13 @@
 [package]
 name = "schnose"
-version = "0.4.7"
+version = "0.5.0"
 edition = "2021"
 
 [dependencies]
 dotenv = "0.15"
 anyhow = "1"
 log = "0.4"
-simple_logger = "2.3"
+env_logger = "0.10"
 
 chrono = "0.4"
 regex = "1.6"

@@ -1,11 +1,9 @@
 use {
-	anyhow::Result,
-	crate::Schnose,
 	serenity::{prelude::Context, model::channel::Message},
 	rand::{Rng, thread_rng},
 };
 
-pub async fn handle(_client: &Schnose, ctx: Context, msg: Message) -> Result<()> {
+pub async fn handle(ctx: Context, msg: Message) -> anyhow::Result<()> {
 	if msg.content.to_lowercase().starts_with("bing?") {
 		return chilling(ctx, msg).await;
 	}
@@ -13,7 +11,7 @@ pub async fn handle(_client: &Schnose, ctx: Context, msg: Message) -> Result<()>
 	return Ok(());
 }
 
-async fn chilling(ctx: Context, msg: Message) -> Result<()> {
+async fn chilling(ctx: Context, msg: Message) -> anyhow::Result<()> {
 	let response = match msg.author.id.as_u64() {
 		// AlphaKeks
 		&291585142164815873 => "chilling 🥶",

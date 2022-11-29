@@ -1,13 +1,12 @@
 use {
 	crate::{
-		events::slash_command::{
+		events::slash_commands::{
 			InteractionData,
 			InteractionResponseData::{Message, Embed},
 		},
-		util::*,
+		schnose::Target,
+		util::retrieve_mode,
 	},
-	anyhow::Result,
-	bson::doc,
 	gokz_rs::{prelude::*, global_api::*},
 	serenity::{
 		builder::{CreateApplicationCommand, CreateEmbed},
@@ -15,10 +14,10 @@ use {
 	},
 };
 
-pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
+pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
 	return cmd
 		.name("unfinished")
-		.description("Check which maps a player still needs to complete.")
+		.description("Check which maps you still need to complete!")
 		.create_option(|opt| {
 			opt.kind(CommandOptionType::String)
 				.name("mode")
@@ -57,133 +56,72 @@ pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCom
 		});
 }
 
-pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
-	ctx.defer().await?;
+pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()> {
+	data.defer().await?;
 
-	let mode =
-		match ctx.get_string("mode") {
-			Some(mode_name) => {
-				Mode::from_str(&mode_name).expect("`mode_name` has to be valid at this point.")
+	let target = Target::from(data.get_string("player"));
+	let player = match target.to_player(data.user, data.db).await {
+		Ok(player) => player,
+		Err(why) => {
+			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
+			return data.reply(Message(&why)).await;
+		},
+	};
+
+	let mode = match data.get_string("mode") {
+		Some(mode_name) => Mode::from_str(&mode_name).expect("This must be valid at this point."),
+		None => match retrieve_mode(data.user, data.db).await {
+			Ok(mode) => mode,
+			Err(why) => {
+				log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
+				return data.reply(Message(&why)).await;
 			},
-			None => {
-				match ctx.db.find_one(doc! { "discordID": ctx.user.id.to_string() }, None).await {
-				Ok(document) => match document {
-					Some(entry) => match entry.mode {
-						Some(mode_name) if mode_name != "none" => Mode::from_str(&mode_name)
-							.expect("`mode_name` has to be valid at this point."),
-						_ => return ctx.reply(Message(
-							"You either need to specify a mode or set a default one via `/mode`.",
-						)).await,
-					},
-					None => {
-						return ctx.reply(Message(
-							"You either need to specify a mode or set a default one via `/mode`.",
-						)).await
-					},
-				},
-				Err(why) => {
-					log::error!(
-						"[{}]: {} => {}\n{:?}",
-						file!(),
-						line!(),
-						"Failed to access database.",
-						why
-					);
-					return ctx.reply(Message("Failed to access database.")).await;
-				},
-			}
-			},
-		};
-	let runtype = match ctx.get_string("runtype") {
+		},
+	};
+
+	let runtype = match data.get_string("runtype") {
 		Some(runtype) => match runtype.as_str() {
 			"true" => true,
 			"false" => false,
-			_ => unreachable!("only `true` and `false` exist as options"),
+			_ => unreachable!("only `true` and `false` exist as selectable options."),
 		},
 		None => true,
 	};
-	let tier = match ctx.get_int("tier") {
-		Some(tier) => Some(tier as u8),
-		None => None,
-	};
 
-	let client = reqwest::Client::new();
+	let tier = data.get_int("tier").map(|n| n as u8);
 
-	let steam_id = match sanitize_target(ctx.get_string("player"), &ctx.db, &ctx.user).await {
-		Some(target) => match target {
-			Target::Name(name) => match get_player(&PlayerIdentifier::Name(name), &client).await {
-				Ok(player) => SteamID(player.steam_id),
-				Err(why) => {
-					log::warn!(
-						"[{}]: {} => {}\n{:?}",
-						file!(),
-						line!(),
-						"Failed to get player from the GlobalAPI.",
-						why
-					);
-					return ctx.reply(Message("Couldn't fetch player from GlobalAPI.")).await;
-				},
-			},
-			Target::SteamID(steam_id) => steam_id
-		},
-		// check db
-		None => match ctx.db.find_one(doc! { "discordID": ctx.user.id.to_string() }, None).await {
-			Ok(doc) => match doc {
-				Some(entry) => match entry.steamID {
-					Some(steam_id) => SteamID(steam_id),
-					None => return ctx.reply(Message("You either need to specify a player or save your own SteamID via `/setsteam`.")).await
-				},
-				None => return ctx.reply(Message("You either need to specify a player or save your own SteamID via `/setsteam`.")).await
-			},
-			Err(why) => {
-				log::error!(
-					"[{}]: {} => {}\n{:?}",
-					file!(), line!(), "Failed to access database.", why
-				);
-				return ctx.reply(Message("Failed to access database.")).await;
-			}
-		},
-	};
-
-	let player_identifier = PlayerIdentifier::SteamID(steam_id);
-
-	let player_name = match get_player(&player_identifier, &client).await {
+	let player_name = match get_player(&player, &data.req_client).await {
 		Ok(player) => player.name,
 		Err(why) => {
-			log::error!("[{}]: {} => {}\n{:?}", file!(), line!(), "Failed to fetch player.", why);
+			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
 			String::from("unknown")
 		},
 	};
 
 	let (description, amount) =
-		match get_unfinished(&player_identifier, &mode, runtype, tier, &client).await {
+		match get_unfinished(&player, &mode, runtype, tier, &data.req_client).await {
 			Ok(map_list) => {
 				let description = if map_list.len() <= 10 {
 					map_list.join("\n")
 				} else {
 					format!("{}\n...{} more", (map_list[0..10]).join("\n"), map_list.len() - 10)
 				};
-				let amount = if map_list.len() == 1 {
-					format!("{} uncompleted map", map_list.len())
-				} else {
-					format!("{} uncompleted maps", map_list.len())
-				};
+
+				let amount = format!(
+					"{} uncompleted map{}",
+					map_list.len(),
+					if map_list.len() == 1 { "" } else { "s" }
+				);
 				(description, amount)
 			},
 			Err(why) => {
-				log::error!(
-					"[{}]: {} => {}\n{:?}",
-					file!(),
-					line!(),
-					"Failed to fetch unfinished maps.",
-					why
-				);
-				return ctx.reply(Message(&why.tldr)).await;
+				log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
+				return data.reply(Message(&why.tldr)).await;
 			},
 		};
 
 	let embed = CreateEmbed::default()
-		.color((116, 128, 194))
+		.colour(data.colour)
 		.title(format!(
 			"{} - {} {} {}",
 			amount,
@@ -194,9 +132,13 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 				None => String::new(),
 			}
 		))
-		.description(description)
-		.footer(|f| f.text(format!("Player: {}", player_name)).icon_url(&ctx.client.icon_url))
+		.description(if description.len() > 0 {
+			description
+		} else {
+			String::from("You have no maps left to complete! Congrats! 🥳")
+		})
+		.footer(|f| f.text(format!("Player: {}", player_name)).icon_url(&data.icon))
 		.to_owned();
 
-	return ctx.reply(Embed(embed)).await;
+	return data.reply(Embed(embed)).await;
 }

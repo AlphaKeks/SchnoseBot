@@ -1,13 +1,12 @@
 use rand::Rng;
 
 use {
-	crate::events::slash_command::{InteractionData, InteractionResponseData::Message},
-	anyhow::Result,
+	crate::events::slash_commands::{InteractionData, InteractionResponseData::Message},
 	gokz_rs::global_api::*,
 	serenity::{builder::CreateApplicationCommand, model::prelude::command::CommandOptionType},
 };
 
-pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
+pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
 	return cmd.name("random").description("Get a random KZ map.").create_option(|opt| {
 		opt.kind(CommandOptionType::Integer)
 			.name("tier")
@@ -23,35 +22,20 @@ pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCom
 	});
 }
 
-pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
-	ctx.defer().await?;
-
-	let global_maps = match get_maps(&reqwest::Client::new()).await {
-		Ok(maps) => match ctx.get_int("tier") {
-			Some(tier) => maps
-				.into_iter()
-				.filter(|map| map.difficulty == (tier as u8))
-				.collect::<Vec<_>>(),
-			None => maps,
-		},
+pub(crate) async fn execute(data: InteractionData<'_>) -> anyhow::Result<()> {
+	let tier = match data.get_int("tier") {
+		Some(tier) => Some(tier as u8),
+		None => None,
+	};
+	let map_names = match get_mapcycle(tier, &data.req_client).await {
+		Ok(names) => names,
 		Err(why) => {
-			log::error!(
-				"[{}]: {} => {}\n{:?}",
-				file!(),
-				line!(),
-				"Failed to fetch global maps.",
-				why
-			);
-			return ctx.reply(Message(&why.tldr)).await;
+			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
+			return data.reply(Message(&why.tldr)).await;
 		},
 	};
 
-	let rand = rand::thread_rng().gen_range(0..global_maps.len());
+	let rand = rand::thread_rng().gen_range(0..map_names.len());
 
-	return ctx
-		.reply(Message(&format!(
-			"🎲 {} (T{})",
-			global_maps[rand].name, global_maps[rand].difficulty
-		)))
-		.await;
+	return data.reply(Message(&format!("🎲 {}", map_names[rand]))).await;
 }

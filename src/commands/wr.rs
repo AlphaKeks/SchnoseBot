@@ -1,26 +1,24 @@
 use {
 	crate::{
-		events::slash_command::{
+		events::slash_commands::{
 			InteractionData,
 			InteractionResponseData::{Message, Embed},
 		},
-		util::*,
+		util::{self, *},
 	},
-	anyhow::Result,
-	bson::doc,
-	itertools::Itertools,
-	gokz_rs::{prelude::*, global_api::*},
 	futures::future::join_all,
+	gokz_rs::{prelude::*, global_api::*},
+	itertools::Itertools,
 	serenity::{
 		builder::{CreateApplicationCommand, CreateEmbed},
 		model::prelude::command::CommandOptionType,
 	},
 };
 
-pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
+pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
 	return cmd
 		.name("wr")
-		.description("Check a World Record on a map.")
+		.description("Check the World Record on a map.")
 		.create_option(|opt| {
 			opt.kind(CommandOptionType::String)
 				.name("map_name")
@@ -38,89 +36,79 @@ pub fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCom
 		});
 }
 
-pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
-	ctx.defer().await?;
+pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()> {
+	data.defer().await?;
 
-	// sanitize user input
-	let map = ctx.get_string("map_name").expect("This option is marked as `required`.");
-	let mode = match ctx.get_string("mode") {
-		Some(mode_name) => Mode::from_str(&mode_name)
-			.expect("`mode_name` _has_ to be valid here. See the `register` function above."),
-		None => match ctx.db.find_one(doc! { "discordID": ctx.user.id.to_string() }, None).await {
-			Ok(Some(entry)) => Mode::from_str(&entry.mode.unwrap_or(String::from("kz_timer")))
-				.expect("Mode stored in the database _needs_ to be valid."),
-			_ => Mode::KZTimer,
+	let map_name = data.get_string("map_name").expect("This option is marked as `required`.");
+	let mode = match data.get_string("mode") {
+		Some(mode_name) => Mode::from_str(&mode_name).expect("This must be valid at this point."),
+		None => match retrieve_mode(data.user, data.db).await {
+			Ok(mode) => mode,
+			Err(why) => {
+				log::error!("[{}]: {} => {:?}", file!(), line!(), why);
+				return data.reply(Message(&why)).await;
+			},
 		},
 	};
 
-	let client = reqwest::Client::new();
-
-	let global_maps = match get_maps(&client).await {
+	let global_maps = match get_maps(&data.req_client).await {
 		Ok(maps) => maps,
 		Err(why) => {
-			log::error!(
-				"[{}]: {} => {}\n{:?}",
-				file!(),
-				line!(),
-				"Failed to fetch global maps.",
-				why
-			);
-			return ctx.reply(Message("Failed to fetch global maps.")).await;
+			log::error!("[{}]: {} => {:?}", file!(), line!(), why);
+			return data.reply(Message(&why.tldr)).await;
 		},
 	};
 
-	let map = match is_global(&MapIdentifier::Name(map), &global_maps).await {
+	let map = match is_global(&MapIdentifier::Name(map_name), &global_maps).await {
 		Ok(map) => map,
 		Err(why) => {
-			log::warn!("[{}]: {} => {}\n{:?}", file!(), line!(), "Given map is not global.", why);
-			return ctx.reply(Message("Please input a global map.")).await;
+			log::error!("[{}]: {} => {:?}", file!(), line!(), why);
+			return data.reply(Message(&why.tldr)).await;
 		},
 	};
 
 	let map_identifier = MapIdentifier::Name(map.name.clone());
 
 	let (tp, pro) = join_all([
-		get_wr(&map_identifier, &mode, true, 0, &client),
-		get_wr(&map_identifier, &mode, false, 0, &client),
+		get_wr(&map_identifier, &mode, true, 0, &data.req_client),
+		get_wr(&map_identifier, &mode, false, 0, &data.req_client),
 	])
 	.await
 	.into_iter()
 	.collect_tuple()
-	.unwrap();
+	.expect("This cannot fail, look 6 lines up.");
 
 	if let (&Err(_), &Err(_)) = (&tp, &pro) {
-		return ctx.reply(Message("No WRs found 😔")).await;
+		return data.reply(Message("No WRs found 😔.")).await;
 	}
 
+	let links = (util::get_replay_link(&tp).await, util::get_replay_link(&pro).await);
+
 	let mut embed = CreateEmbed::default()
-		.color((116, 128, 194))
+		.colour(data.colour)
 		.title(format!("[WR] {} (T{})", &map.name, &map.difficulty))
 		.url(format!(
 			"https://kzgo.eu/maps/{}?{}=",
 			&map.name,
 			&mode.to_fancy().to_lowercase()
 		))
-		.thumbnail(format!(
-			"https://raw.githubusercontent.com/KZGlobalTeam/map-images/master/images/{}.jpg",
-			&map.name
-		))
+		.thumbnail(data.thumbnail(&map.name))
 		.field(
 			"TP",
 			format!(
-				"{} {}",
+				"{} ({})",
 				match &tp {
 					Ok(rec) => format_time(rec.time),
-					Err(_) => String::from("😔"),
+					_ => String::from("😔"),
 				},
-				match &tp {
-					Ok(rec) => format!(
-						"({})",
-						match &rec.player_name {
-							Some(name) => name,
-							None => "unknown",
+				{
+					let mut name = "unknown";
+					if let Ok(rec) = &tp {
+						if let Some(player_name) = &rec.player_name {
+							name = &player_name;
 						}
-					),
-					Err(_) => String::from("unknown"),
+					}
+					name
 				}
 			),
 			true,
@@ -128,64 +116,27 @@ pub async fn execute(mut ctx: InteractionData<'_>) -> Result<()> {
 		.field(
 			"PRO",
 			format!(
-				"{} {}",
+				"{} ({})",
 				match &pro {
 					Ok(rec) => format_time(rec.time),
-					Err(_) => String::from("😔"),
+					_ => String::from("😔"),
 				},
-				match &pro {
-					Ok(rec) => format!(
-						"({})",
-						match &rec.player_name {
-							Some(name) => name,
-							None => "unknown",
+				{
+					let mut name = "unknown";
+					if let Ok(rec) = &pro {
+						if let Some(player_name) = &rec.player_name {
+							name = &player_name;
 						}
-					),
-					Err(_) => String::from("unknown"),
+					}
+					name
 				}
 			),
 			true,
 		)
-		.footer(|f| f.text(format!("Mode: {}", mode.to_fancy())).icon_url(&ctx.client.icon_url))
+		.footer(|f| f.text(format!("Mode: {}", mode.to_fancy())).icon_url(&data.icon))
 		.to_owned();
 
-	let (tp_link, pro_link) = {
-		let (mut tp_link, mut pro_link) = (String::new(), String::new());
+	attach_replay_links(&mut embed, links);
 
-		if let Ok(rec) = &tp {
-			if rec.replay_id != 0 {
-				if let Ok(link) = get_replay(rec.replay_id).await {
-					tp_link = link;
-				}
-			}
-		}
-
-		if let Ok(rec) = &pro {
-			if rec.replay_id != 0 {
-				if let Ok(link) = get_replay(rec.replay_id).await {
-					pro_link = link;
-				}
-			}
-		}
-
-		(tp_link, pro_link)
-	};
-
-	let tp = tp_link.len() > 0;
-	let pro = pro_link.len() > 0;
-	if tp || pro {
-		let mut description = String::from("Download Replays:");
-
-		if tp && !pro {
-			description.push_str(&format!(" [TP]({})", tp_link))
-		} else if !tp && pro {
-			description.push_str(&format!(" [PRO]({})", pro_link))
-		} else {
-			description.push_str(&format!(" [TP]({}) | [PRO]({})", tp_link, pro_link))
-		}
-
-		embed.description(description);
-	}
-
-	return ctx.reply(Embed(embed)).await;
+	return data.reply(Embed(embed)).await;
 }
