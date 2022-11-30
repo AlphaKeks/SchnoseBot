@@ -23,6 +23,7 @@ MONGO_URL=<MongoDB connection string>
 STEAM_API=<Steam WebAPI Key>
 
 # variables
+RUST_LOG=schnose=<log level> # e.g. `WARN`
 MODE=DEV # `DEV` or `PROD`
 DEV_GUILD=<Discord GuilID>
 ICON_URL=https://cdn.discordapp.com/attachments/981130651094900756/981130719537545286/churchOfSchnose.png
