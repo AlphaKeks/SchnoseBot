@@ -1,6 +1,6 @@
 use {
 	crate::events::slash_commands::{
-		InteractionData,
+		GlobalState,
 		InteractionResponseData::{Message, Embed},
 	},
 	bson::doc,
@@ -22,19 +22,19 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 		});
 }
 
-pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()> {
-	data.defer().await?;
+pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
+	state.defer().await?;
 
-	let (user_id, blame_user) = match data.get_user("user") {
+	let (user_id, blame_user) = match state.get_user("user") {
 		Some(user_id) => (user_id, false),
-		None => (*data.user.id.as_u64(), true),
+		None => (*state.user.id.as_u64(), true),
 	};
 
-	match data.db.find_one(doc! { "discordID": user_id.to_string() }, None).await {
+	match state.db.find_one(doc! { "discordID": user_id.to_string() }, None).await {
 		Ok(document) => match document {
 			Some(entry) => {
 				let embed = CreateEmbed::default()
-					.colour(data.colour)
+					.colour(state.colour)
 					.title(format!("{}'s database entries", &entry.name))
 					.description(format!(
 						r#"
@@ -50,10 +50,10 @@ pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()>
 					))
 					.to_owned();
 
-				return data.reply(Embed(embed)).await;
+				return state.reply(Embed(embed)).await;
 			},
 			None => {
-				return data
+				return state
 					.reply(Message(&format!(
 						"{} a database entry.",
 						if blame_user {
@@ -67,7 +67,7 @@ pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()>
 		},
 		Err(why) => {
 			log::error!("[{}]: {} => {:?}", file!(), line!(), why);
-			return data.reply(Message("Failed to access database.")).await;
+			return state.reply(Message("Failed to access database.")).await;
 		},
 	}
 }

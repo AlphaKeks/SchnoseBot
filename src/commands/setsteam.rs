@@ -1,7 +1,7 @@
 use {
 	crate::{
 		db::UserSchema,
-		events::slash_commands::{InteractionData, InteractionResponseData::Message},
+		events::slash_commands::{GlobalState, InteractionResponseData::Message},
 	},
 	bson::doc,
 	gokz_rs::prelude::*,
@@ -20,13 +20,13 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 		});
 }
 
-pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()> {
-	data.defer().await?;
+pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
+	state.defer().await?;
 
-	let steam_id = data.get_string("steam_id").expect("This option is marked as `required`.");
+	let steam_id = state.get_string("steam_id").expect("This option is marked as `required`.");
 
 	if !SteamID::test(&steam_id) {
-		return data
+		return state
 			.reply(Message("Please enter a valid SteamID (e.g. `STEAM_1:1:161178172`)."))
 			.await;
 	}
@@ -34,7 +34,7 @@ pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()>
 	// TODO: normalize steam ids to `STEAM_1:1:XXXXXX`
 	// (`STEAM_0:1:XXXXXX` is bad)
 
-	match data.db.find_one(doc! { "discordID": data.user.id.to_string() }, None).await {
+	match state.db.find_one(doc! { "discordID": state.user.id.to_string() }, None).await {
 		// user has an entry already => update
 		Ok(document) => match document {
 			Some(_old_entry) => {
@@ -44,27 +44,27 @@ pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()>
 					line!(),
 					_old_entry
 				);
-				match data
+				match state
 					.db
 					.find_one_and_update(
-						doc! { "discordID": data.user.id.to_string() },
+						doc! { "discordID": state.user.id.to_string() },
 						doc! { "$set": { "steamID": &steam_id } },
 						None,
 					)
 					.await
 				{
 					Ok(_) => {
-						return data
+						return state
 							.reply(Message(&format!(
 								"Successfully set SteamID `{}` for <@{}>.",
 								&steam_id,
-								data.user.id.as_u64(),
+								state.user.id.as_u64(),
 							)))
 							.await;
 					},
 					Err(why) => {
 						log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-						return data.reply(Message("Failed to update database.")).await;
+						return state.reply(Message("Failed to update database.")).await;
 					},
 				}
 			},
@@ -74,14 +74,14 @@ pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()>
 					"[{}]: {} => {} doesn't have a database entry.",
 					file!(),
 					line!(),
-					&data.user.name
+					&state.user.name
 				);
-				match data
+				match state
 					.db
 					.insert_one(
 						UserSchema {
-							name: data.user.name.clone(),
-							discordID: data.user.id.to_string(),
+							name: state.user.name.clone(),
+							discordID: state.user.id.to_string(),
 							steamID: Some(steam_id.clone()),
 							mode: None,
 						},
@@ -90,24 +90,24 @@ pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()>
 					.await
 				{
 					Ok(_) => {
-						return data
+						return state
 							.reply(Message(&format!(
 								"Successfully set SteamID `{}` for <@{}>.",
 								steam_id,
-								data.user.id.as_u64()
+								state.user.id.as_u64()
 							)))
 							.await
 					},
 					Err(why) => {
 						log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-						return data.reply(Message("Failed to create database entry.")).await;
+						return state.reply(Message("Failed to create database entry.")).await;
 					},
 				}
 			},
 		},
 		Err(why) => {
 			log::error!("[{}]: {} => {:?}", file!(), line!(), why);
-			return data.reply(Message("Failed to access database.")).await;
+			return state.reply(Message("Failed to access database.")).await;
 		},
 	}
 }

@@ -1,7 +1,7 @@
 use {
 	crate::{
 		events::slash_commands::{
-			InteractionData,
+			GlobalState,
 			InteractionResponseData::{Message, Embed},
 		},
 		schnose::Target,
@@ -26,39 +26,40 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 		});
 }
 
-pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()> {
-	data.defer().await?;
+pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
+	state.defer().await?;
 
-	let target = Target::from(data.get_string("player"));
-	let player = match target.to_player(data.user, data.db).await {
+	let target = Target::from(state.get_string("player"));
+	let player = match target.to_player(state.user, state.db).await {
 		Ok(player) => player,
 		Err(why) => {
 			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return data.reply(Message(&why)).await;
+			return state.reply(Message(&why)).await;
 		},
 	};
 
-	let recent = match get_recent(&player, &data.req_client).await {
+	let recent = match get_recent(&player, &state.req_client).await {
 		Ok(record) => record,
 		Err(why) => {
 			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return data.reply(Message(&why.tldr)).await;
+			return state.reply(Message(&why.tldr)).await;
 		},
 	};
 
-	let map = match get_map(&MapIdentifier::Name(recent.map_name.clone()), &data.req_client).await {
+	let map = match get_map(&MapIdentifier::Name(recent.map_name.clone()), &state.req_client).await
+	{
 		Ok(map) => map,
 		Err(why) => {
 			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return data.reply(Message(&why.tldr)).await;
+			return state.reply(Message(&why.tldr)).await;
 		},
 	};
 
-	let place = match get_place(&recent.id, &data.req_client).await {
+	let place = match get_place(&recent.id, &state.req_client).await {
 		Ok(place) => format!("[#{}]", place.0),
 		Err(why) => {
 			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return data.reply(Message(&why.tldr)).await;
+			return state.reply(Message(&why.tldr)).await;
 		},
 	};
 
@@ -82,7 +83,7 @@ pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()>
 			&map.difficulty
 		))
 		.url(format!("https://kzgo.eu/maps/{}?{}=", &map.name, &mode.to_fancy()))
-		.thumbnail(&data.thumbnail(&map.name))
+		.thumbnail(&state.thumbnail(&map.name))
 		.field(
 			format!("{} {}", mode.to_fancy(), if &recent.teleports > &0 { "TP" } else { "PRO" }),
 			format!("> {} {}\n> {}{}", format_time(recent.time), place, discord_timestamp, {
@@ -107,8 +108,8 @@ pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()>
 			}),
 			true,
 		)
-		.footer(|f| f.text(fancy).icon_url(&data.icon))
+		.footer(|f| f.text(fancy).icon_url(&state.icon))
 		.to_owned();
 
-	return data.reply(Embed(embed)).await;
+	return state.reply(Embed(embed)).await;
 }

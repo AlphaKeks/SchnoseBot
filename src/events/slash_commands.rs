@@ -21,10 +21,10 @@ pub(crate) async fn handle(
 	let event_name = interaction.data.name.as_str();
 	log::info!("received slash command: `{}`", event_name);
 
-	let data = match InteractionData::new(&interaction, &ctx.http, data, &data.db) {
-		Ok(data) => {
+	let state = match GlobalState::new(&interaction, &ctx.http, &data.db) {
+		Ok(state) => {
 			log::trace!("Created new interaction data.");
-			data
+			state
 		},
 		Err(why) => {
 			log::error!("Failed to create new interaction data.\n\n{:?}", why);
@@ -33,36 +33,34 @@ pub(crate) async fn handle(
 	};
 
 	match event_name {
-		"ping" => commands::ping::execute(data).await,
-		"apistatus" => commands::apistatus::execute(data).await,
-		"bpb" => commands::bpb::execute(data).await,
-		"bwr" => commands::bwr::execute(data).await,
-		"db" => commands::db::execute(data).await,
-		"invite" => commands::invite::execute(data).await,
-		"map" => commands::map::execute(data).await,
-		"mode" => commands::mode::execute(data).await,
-		"nocrouch" => commands::nocrouch::execute(data).await,
-		"pb" => commands::pb::execute(data).await,
-		"profile" => commands::profile::execute(data).await,
-		"random" => commands::random::execute(data).await,
-		"recent" => commands::recent::execute(data).await,
-		"setsteam" => commands::setsteam::execute(data).await,
-		"unfinished" => commands::unfinished::execute(data).await,
-		"wr" => commands::wr::execute(data).await,
+		"ping" => commands::ping::execute(state).await,
+		"apistatus" => commands::apistatus::execute(state).await,
+		"bpb" => commands::bpb::execute(state).await,
+		"bwr" => commands::bwr::execute(state).await,
+		"db" => commands::db::execute(state).await,
+		"invite" => commands::invite::execute(state).await,
+		"map" => commands::map::execute(state).await,
+		"mode" => commands::mode::execute(state).await,
+		"nocrouch" => commands::nocrouch::execute(state).await,
+		"pb" => commands::pb::execute(state).await,
+		"profile" => commands::profile::execute(state).await,
+		"random" => commands::random::execute(state).await,
+		"recent" => commands::recent::execute(state).await,
+		"setsteam" => commands::setsteam::execute(state).await,
+		"unfinished" => commands::unfinished::execute(state).await,
+		"wr" => commands::wr::execute(state).await,
 		unknown_command => {
-			log::error!("encountered unknown slash command `{}`.", unknown_command);
-			unimplemented!("`{}` is an unrecognized command.", unknown_command);
+			log::warn!("encountered unknown slash command: {}", unknown_command);
+			return Ok(());
 		},
 	}
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct InteractionData<'h> {
+pub(crate) struct GlobalState<'h> {
 	http: &'h Http,
 	interaction: &'h ApplicationCommandInteraction,
 	pub deferred: bool,
-	#[allow(dead_code)]
-	pub state: &'h BotData,
 	pub user: &'h User,
 	pub opts: HashMap<String, json::Value>,
 	pub db: &'h Collection<UserSchema>,
@@ -71,13 +69,12 @@ pub(crate) struct InteractionData<'h> {
 	pub icon: String,
 }
 
-impl<'h> InteractionData<'h> {
+impl<'h> GlobalState<'h> {
 	pub fn new(
 		interaction: &'h ApplicationCommandInteraction,
 		http: &'h Http,
-		state: &'h BotData,
 		collection: &'h Collection<UserSchema>,
-	) -> anyhow::Result<InteractionData<'h>> {
+	) -> anyhow::Result<GlobalState<'h>> {
 		let mut opts = HashMap::<String, json::Value>::new();
 		for opt in &interaction.data.options {
 			if let Some(value) = opt.value.to_owned() {
@@ -89,7 +86,6 @@ impl<'h> InteractionData<'h> {
 			http,
 			interaction,
 			deferred: false,
-			state,
 			user: &interaction.user,
 			opts,
 			db: collection,
@@ -175,7 +171,7 @@ impl<'h> InteractionData<'h> {
 		return None;
 	}
 
-	#[allow(dead_code)]
+	#[allow(dead_code)] // at some point I will use this Copium
 	pub fn get_bool(&self, name: &'h str) -> Option<bool> {
 		if let Some(json::Value::Bool(boolean)) = self.get(name) {
 			return Some(boolean);

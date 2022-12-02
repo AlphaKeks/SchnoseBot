@@ -1,7 +1,7 @@
 use {
 	crate::{
 		events::slash_commands::{
-			InteractionData,
+			GlobalState,
 			InteractionResponseData::{Message, Embed},
 		},
 		schnose::Target,
@@ -37,53 +37,53 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 		});
 }
 
-pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()> {
-	data.defer().await?;
+pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
+	state.defer().await?;
 
-	let target = Target::from(data.get_string("player"));
-	let player = match target.to_player(data.user, data.db).await {
+	let target = Target::from(state.get_string("player"));
+	let player = match target.to_player(state.user, state.db).await {
 		Ok(player) => player,
 		Err(why) => {
 			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return data.reply(Message(&why)).await;
+			return state.reply(Message(&why)).await;
 		},
 	};
-	let mode = match data.get_string("mode") {
+	let mode = match state.get_string("mode") {
 		Some(mode_name) => Mode::from_str(&mode_name).expect("This must be valid at this point."),
-		None => match retrieve_mode(data.user, data.db).await {
+		None => match retrieve_mode(state.user, state.db).await {
 			Ok(mode) => mode,
 			Err(why) => {
 				log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-				return data.reply(Message(&why)).await;
+				return state.reply(Message(&why)).await;
 			},
 		},
 	};
 
-	let player = match get_player(&player, &data.req_client).await {
+	let player = match get_player(&player, &state.req_client).await {
 		Ok(player) => player,
 		Err(why) => {
 			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return data.reply(Message(&why.tldr)).await;
+			return state.reply(Message(&why.tldr)).await;
 		},
 	};
 
 	let steam_id = SteamID(player.steam_id.clone());
 
 	let player_profile =
-		match get_profile(&PlayerIdentifier::SteamID(steam_id), &mode, &data.req_client).await {
+		match get_profile(&PlayerIdentifier::SteamID(steam_id), &mode, &state.req_client).await {
 			Ok(profile) => profile,
 			Err(why) => {
 				log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-				return data.reply(Message(&why.tldr)).await;
+				return state.reply(Message(&why.tldr)).await;
 			},
 		};
 
-	let avatar = get_steam_avatar(&player_profile.steam_id64, &data.req_client).await;
+	let avatar = get_steam_avatar(&player_profile.steam_id64, &state.req_client).await;
 
 	let fav_mode = {
 		let mut mode = String::new();
 		if let Ok(Some(entry)) =
-			data.db.find_one(doc! { "steamID": &player_profile.steam_id }, None).await
+			state.db.find_one(doc! { "steamID": &player_profile.steam_id }, None).await
 		{
 			if let Some(db_mode) = entry.mode {
 				if db_mode != "none" {
@@ -125,16 +125,16 @@ pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()>
 		}
 	}
 
-	let doable = match kzgo::completion::get_completion_count(&mode, &data.req_client).await {
+	let doable = match kzgo::completion::get_completion_count(&mode, &state.req_client).await {
 		Ok(data) => (data.tp.total, data.pro.total),
 		Err(why) => {
 			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return data.reply(Message(&why.tldr)).await;
+			return state.reply(Message(&why.tldr)).await;
 		},
 	};
 
 	let embed = CreateEmbed::default()
-		.colour(data.colour)
+		.colour(state.colour)
 		.title(format!(
 			"{} - {} Profile",
 			&player_profile.name.unwrap_or(String::from("unknown")),
@@ -202,9 +202,9 @@ Preferred Mode: {}
 				"SteamID: {}",
 				&player_profile.steam_id.unwrap_or(String::from("unknown"))
 			))
-			.icon_url(&data.icon)
+			.icon_url(&state.icon)
 		})
 		.to_owned();
 
-	return data.reply(Embed(embed)).await;
+	return state.reply(Embed(embed)).await;
 }
