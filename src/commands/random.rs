@@ -1,8 +1,7 @@
-use rand::Rng;
-
 use {
 	crate::events::slash_commands::{InteractionData, InteractionResponseData::Message},
-	gokz_rs::global_api::*,
+	gokz_rs::global_api::get_mapcycle,
+	rand::Rng,
 	serenity::{builder::CreateApplicationCommand, model::prelude::command::CommandOptionType},
 };
 
@@ -23,10 +22,7 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 }
 
 pub(crate) async fn execute(data: InteractionData<'_>) -> anyhow::Result<()> {
-	let tier = match data.get_int("tier") {
-		Some(tier) => Some(tier as u8),
-		None => None,
-	};
+	let tier = data.get_int("tier").map(|tier| tier as u8);
 	let map_names = match get_mapcycle(tier, &data.req_client).await {
 		Ok(names) => names,
 		Err(why) => {

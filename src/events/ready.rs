@@ -4,14 +4,14 @@ use crate::commands;
 
 use {
 	std::env,
-	crate::schnose::BotState,
+	crate::schnose::BotData,
 	serenity::{
 		model::prelude::{Ready, Activity},
 		prelude::Context,
 	},
 };
 
-pub(crate) async fn handle(_state: &BotState, ctx: Context, ready: Ready) -> anyhow::Result<()> {
+pub(crate) async fn handle(_state: &BotData, ctx: Context, ready: Ready) -> anyhow::Result<()> {
 	log::info!("`ready` event triggered.");
 
 	ctx.set_activity(Activity::playing("kz_epiphany_v2")).await;

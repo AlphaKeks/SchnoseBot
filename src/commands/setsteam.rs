@@ -31,6 +31,9 @@ pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()>
 			.await;
 	}
 
+	// TODO: normalize steam ids to `STEAM_1:1:XXXXXX`
+	// (`STEAM_0:1:XXXXXX` is bad)
+
 	match data.db.find_one(doc! { "discordID": data.user.id.to_string() }, None).await {
 		// user has an entry already => update
 		Ok(document) => match document {

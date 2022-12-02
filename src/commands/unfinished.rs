@@ -88,8 +88,7 @@ pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()>
 		None => true,
 	};
 
-	let tier = data.get_int("tier").map(|n| n as u8);
-
+	let tier = data.get_int("tier").map(|tier| tier as u8);
 	let player_name = match get_player(&player, &data.req_client).await {
 		Ok(player) => player.name,
 		Err(why) => {

@@ -1,6 +1,6 @@
 use {
 	std::{collections::HashMap, env},
-	crate::{commands, schnose::BotState, db::UserSchema},
+	crate::{commands, schnose::BotData, db::UserSchema},
 	serenity::{
 		prelude::Context,
 		model::{
@@ -14,15 +14,14 @@ use {
 };
 
 pub(crate) async fn handle(
-	state: &BotState,
+	data: &BotData,
 	ctx: Context,
 	interaction: ApplicationCommandInteraction,
-	collection: &Collection<UserSchema>,
 ) -> anyhow::Result<()> {
 	let event_name = interaction.data.name.as_str();
 	log::info!("received slash command: `{}`", event_name);
 
-	let data = match InteractionData::new(&interaction, &ctx.http, state, collection) {
+	let data = match InteractionData::new(&interaction, &ctx.http, data, &data.db) {
 		Ok(data) => {
 			log::trace!("Created new interaction data.");
 			data
@@ -63,7 +62,7 @@ pub(crate) struct InteractionData<'h> {
 	interaction: &'h ApplicationCommandInteraction,
 	pub deferred: bool,
 	#[allow(dead_code)]
-	pub state: &'h BotState,
+	pub state: &'h BotData,
 	pub user: &'h User,
 	pub opts: HashMap<String, json::Value>,
 	pub db: &'h Collection<UserSchema>,
@@ -76,7 +75,7 @@ impl<'h> InteractionData<'h> {
 	pub fn new(
 		interaction: &'h ApplicationCommandInteraction,
 		http: &'h Http,
-		state: &'h BotState,
+		state: &'h BotData,
 		collection: &'h Collection<UserSchema>,
 	) -> anyhow::Result<InteractionData<'h>> {
 		let mut opts = HashMap::<String, json::Value>::new();

@@ -15,18 +15,18 @@ use {
 };
 
 #[derive(Debug, Clone)]
-pub(crate) struct BotState {
+pub(crate) struct BotData {
 	pub token: String,
 	pub intents: GatewayIntents,
-	db: Collection<UserSchema>,
+	pub db: Collection<UserSchema>,
 }
 
-impl BotState {
-	pub async fn new(token: String) -> anyhow::Result<Self> {
+impl BotData {
+	pub async fn new(token: String, collection: &str) -> anyhow::Result<Self> {
 		let mongo_url = env::var("MONGO_URL")?;
 		let mongo_options = mongodb::options::ClientOptions::parse(mongo_url).await?;
 		let mongo_client = mongodb::Client::with_options(mongo_options)?;
-		let collection = mongo_client.database("gokz").collection("users");
+		let collection = mongo_client.database("gokz").collection(collection);
 
 		return Ok(Self {
 			token,
@@ -41,7 +41,7 @@ impl BotState {
 }
 
 #[async_trait]
-impl EventHandler for BotState {
+impl EventHandler for BotData {
 	async fn ready(&self, ctx: Context, ready: Ready) {
 		if let Err(why) = events::ready::handle(self, ctx, ready).await {
 			log::error!("Failed to respond to `ready` event.\n\n{:?}", why);
@@ -51,14 +51,12 @@ impl EventHandler for BotState {
 	async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
 		match interaction {
 			Interaction::ApplicationCommand(slash_command) => {
-				if let Err(why) =
-					events::slash_commands::handle(self, ctx, slash_command, &self.db).await
-				{
+				if let Err(why) = events::slash_commands::handle(self, ctx, slash_command).await {
 					log::error!("Failed to respond to slash command.\n\n{:?}", why);
 				}
 			},
 			unknown_interaction => {
-				unimplemented!("`{:?}` is not implemented.", unknown_interaction)
+				log::warn!("encountered unknown interaction: `{:?}`", unknown_interaction)
 			},
 		}
 	}

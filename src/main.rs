@@ -1,7 +1,7 @@
 use std::env;
 
 mod schnose;
-use schnose::BotState;
+use schnose::BotData;
 
 mod commands;
 mod db;
@@ -24,7 +24,7 @@ async fn main() -> anyhow::Result<()> {
 		log::error!("Missing `DISCORD_TOKEN` environment variable.");
 		panic!();
 	};
-	let state = BotState::new(token).await?;
+	let state = BotData::new(token, "users").await?;
 
 	let mut client = serenity::Client::builder(&state.token, state.intents)
 		.event_handler(state)
