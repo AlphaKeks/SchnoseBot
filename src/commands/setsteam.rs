@@ -23,7 +23,7 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
 	state.defer().await?;
 
-	let steam_id = state.get_string("steam_id").expect("This option is marked as `required`.");
+	let steam_id = state.get::<String>("steam_id").expect("This option is marked as `required`.");
 
 	if !SteamID::test(&steam_id) {
 		return state

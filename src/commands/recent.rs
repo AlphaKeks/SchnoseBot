@@ -29,7 +29,7 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
 	state.defer().await?;
 
-	let target = Target::from(state.get_string("player"));
+	let target = Target::from(state.get::<String>("player"));
 	let player = match target.to_player(state.user, state.db).await {
 		Ok(player) => player,
 		Err(why) => {

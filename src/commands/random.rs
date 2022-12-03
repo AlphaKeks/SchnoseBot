@@ -22,7 +22,7 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 }
 
 pub(crate) async fn execute(state: GlobalState<'_>) -> anyhow::Result<()> {
-	let tier = state.get_int("tier").map(|tier| tier as u8);
+	let tier = state.get::<u8>("tier");
 	let map_names = match get_mapcycle(tier, &state.req_client).await {
 		Ok(names) => names,
 		Err(why) => {

@@ -24,7 +24,7 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
 	state.defer().await?;
 
-	let map_name = state.get_string("map_name").expect("This option is marked as `required`.");
+	let map_name = state.get::<String>("map_name").expect("This option is marked as `required`.");
 
 	let (map_api, map_kzgo) = {
 		let global_maps = match get_maps(&state.req_client).await {

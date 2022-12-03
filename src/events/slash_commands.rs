@@ -143,49 +143,14 @@ impl<'h> GlobalState<'h> {
 		return Ok(());
 	}
 
-	fn get(&self, name: &'h str) -> Option<json::Value> {
-		if let Some(value) = self.opts.get(name) {
-			return Some(value.to_owned());
+	pub fn get<T>(&self, name: &str) -> Option<T>
+	where
+		T: serde::de::DeserializeOwned,
+	{
+		match self.opts.get(name) {
+			Some(value) => serde_json::from_value(value.to_owned()).ok(),
+			None => None,
 		}
-		return None;
-	}
-
-	pub fn get_string(&self, name: &'h str) -> Option<String> {
-		if let Some(json::Value::String(string)) = self.get(name) {
-			return Some(string);
-		}
-		return None;
-	}
-
-	pub fn get_int(&self, name: &'h str) -> Option<i64> {
-		if let Some(json::Value::Number(number)) = self.get(name) {
-			return number.as_i64();
-		}
-		return None;
-	}
-
-	pub fn get_float(&self, name: &'h str) -> Option<f64> {
-		if let Some(json::Value::Number(number)) = self.get(name) {
-			return number.as_f64();
-		}
-		return None;
-	}
-
-	#[allow(dead_code)] // at some point I will use this Copium
-	pub fn get_bool(&self, name: &'h str) -> Option<bool> {
-		if let Some(json::Value::Bool(boolean)) = self.get(name) {
-			return Some(boolean);
-		}
-		return None;
-	}
-
-	pub fn get_user(&self, name: &'h str) -> Option<u64> {
-		if let Some(json::Value::String(string)) = self.get(name) {
-			if let Ok(user_id) = string.parse::<u64>() {
-				return Some(user_id);
-			}
-		}
-		return None;
 	}
 
 	pub fn thumbnail(&self, map_name: &String) -> String {

@@ -27,7 +27,7 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
 	state.defer().await?;
 
-	match state.get_string("mode") {
+	match state.get::<String>("mode") {
 		// user specified a mode and wants to
 		// 1. set it for the first time => create new db entry
 		// 2. change their current mode => update db entry

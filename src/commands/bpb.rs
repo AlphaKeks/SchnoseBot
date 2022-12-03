@@ -52,9 +52,10 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
 	state.defer().await?;
 
-	let map_name = state.get_string("map_name").expect("This option is marked as `required`.");
-	let course = state.get_int("course").unwrap_or(1) as u8;
-	let target = Target::from(state.get_string("player"));
+	let map_name = state.get::<String>("map_name").expect("This option is marked as `required`.");
+	let course = state.get::<u8>("course").unwrap_or(1);
+	dbg!(&course);
+	let target = Target::from(state.get::<String>("player"));
 	let player = match target.to_player(state.user, state.db).await {
 		Ok(player) => player,
 		Err(why) => {
@@ -62,7 +63,7 @@ pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
 			return state.reply(Message(&why)).await;
 		},
 	};
-	let mode = match state.get_string("mode") {
+	let mode = match state.get::<String>("mode") {
 		Some(mode_name) => Mode::from_str(&mode_name).expect("This must be valid at this point."),
 		None => match retrieve_mode(state.user, state.db).await {
 			Ok(mode) => mode,

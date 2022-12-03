@@ -25,7 +25,7 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
 	state.defer().await?;
 
-	let (user_id, blame_user) = match state.get_user("user") {
+	let (user_id, blame_user) = match state.get::<u64>("user") {
 		Some(user_id) => (user_id, false),
 		None => (*state.user.id.as_u64(), true),
 	};

@@ -22,9 +22,9 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 }
 
 pub(crate) async fn execute(state: GlobalState<'_>) -> anyhow::Result<()> {
-	let distance = state.get_float("distance").expect("This option is marked as `required`.");
+	let distance = state.get::<f64>("distance").expect("This option is marked as `required`.");
 
-	let max = state.get_float("max").expect("This option is marked as `required`.");
+	let max = state.get::<f64>("max").expect("This option is marked as `required`.");
 
 	let result = distance + (max / 128f64) * 4f64;
 
