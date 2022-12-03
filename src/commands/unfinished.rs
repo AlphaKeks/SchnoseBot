@@ -1,7 +1,7 @@
 use {
 	crate::{
 		events::slash_commands::{
-			InteractionData,
+			GlobalState,
 			InteractionResponseData::{Message, Embed},
 		},
 		schnose::Target,
@@ -56,30 +56,30 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 		});
 }
 
-pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()> {
-	data.defer().await?;
+pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
+	state.defer().await?;
 
-	let target = Target::from(data.get_string("player"));
-	let player = match target.to_player(data.user, data.db).await {
+	let target = Target::from(state.get::<String>("player"));
+	let player = match target.to_player(state.user, state.db).await {
 		Ok(player) => player,
 		Err(why) => {
 			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return data.reply(Message(&why)).await;
+			return state.reply(Message(&why)).await;
 		},
 	};
 
-	let mode = match data.get_string("mode") {
+	let mode = match state.get::<String>("mode") {
 		Some(mode_name) => Mode::from_str(&mode_name).expect("This must be valid at this point."),
-		None => match retrieve_mode(data.user, data.db).await {
+		None => match retrieve_mode(state.user, state.db).await {
 			Ok(mode) => mode,
 			Err(why) => {
 				log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-				return data.reply(Message(&why)).await;
+				return state.reply(Message(&why)).await;
 			},
 		},
 	};
 
-	let runtype = match data.get_string("runtype") {
+	let runtype = match state.get::<String>("runtype") {
 		Some(runtype) => match runtype.as_str() {
 			"true" => true,
 			"false" => false,
@@ -88,8 +88,8 @@ pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()>
 		None => true,
 	};
 
-	let tier = data.get_int("tier").map(|tier| tier as u8);
-	let player_name = match get_player(&player, &data.req_client).await {
+	let tier = state.get::<u8>("tier");
+	let player_name = match get_player(&player, &state.req_client).await {
 		Ok(player) => player.name,
 		Err(why) => {
 			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
@@ -98,7 +98,7 @@ pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()>
 	};
 
 	let (description, amount) =
-		match get_unfinished(&player, &mode, runtype, tier, &data.req_client).await {
+		match get_unfinished(&player, &mode, runtype, tier, &state.req_client).await {
 			Ok(map_list) => {
 				let description = if map_list.len() <= 10 {
 					map_list.join("\n")
@@ -115,12 +115,12 @@ pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()>
 			},
 			Err(why) => {
 				log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-				return data.reply(Message(&why.tldr)).await;
+				return state.reply(Message(&why.tldr)).await;
 			},
 		};
 
 	let embed = CreateEmbed::default()
-		.colour(data.colour)
+		.colour(state.colour)
 		.title(format!(
 			"{} - {} {} {}",
 			amount,
@@ -136,8 +136,8 @@ pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()>
 		} else {
 			String::from("You have no maps left to complete! Congrats! 🥳")
 		})
-		.footer(|f| f.text(format!("Player: {}", player_name)).icon_url(&data.icon))
+		.footer(|f| f.text(format!("Player: {}", player_name)).icon_url(&state.icon))
 		.to_owned();
 
-	return data.reply(Embed(embed)).await;
+	return state.reply(Embed(embed)).await;
 }

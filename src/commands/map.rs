@@ -1,6 +1,6 @@
 use {
 	crate::events::slash_commands::{
-		InteractionData,
+		GlobalState,
 		InteractionResponseData::{Message, Embed},
 	},
 	gokz_rs::{prelude::*, global_api::*, kzgo},
@@ -21,17 +21,17 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 	);
 }
 
-pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()> {
-	data.defer().await?;
+pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
+	state.defer().await?;
 
-	let map_name = data.get_string("map_name").expect("This option is marked as `required`.");
+	let map_name = state.get::<String>("map_name").expect("This option is marked as `required`.");
 
 	let (map_api, map_kzgo) = {
-		let global_maps = match get_maps(&data.req_client).await {
+		let global_maps = match get_maps(&state.req_client).await {
 			Ok(maps) => maps,
 			Err(why) => {
 				log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-				return data.reply(Message(&why.tldr)).await;
+				return state.reply(Message(&why.tldr)).await;
 			},
 		};
 
@@ -39,17 +39,17 @@ pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()>
 			Ok(map) => map,
 			Err(why) => {
 				log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-				return data.reply(Message(&why.tldr)).await;
+				return state.reply(Message(&why.tldr)).await;
 			},
 		};
 
 		let map_identifier = MapIdentifier::Name(map_api.name.clone());
 
-		let map_kzgo = match kzgo::maps::get_map(&map_identifier, &data.req_client).await {
+		let map_kzgo = match kzgo::maps::get_map(&map_identifier, &state.req_client).await {
 			Ok(map) => map,
 			Err(why) => {
 				log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-				return data.reply(Message(&why.tldr)).await;
+				return state.reply(Message(&why.tldr)).await;
 			},
 		};
 
@@ -71,7 +71,7 @@ pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()>
 		mappers
 	};
 
-	let filters = match get_filters(map_api.id, &data.req_client).await {
+	let filters = match get_filters(map_api.id, &state.req_client).await {
 		Ok(filters) => {
 			let filters = filters.into_iter().filter(|f| f.stage == 0).collect::<Vec<_>>();
 			let mut res = ("❌", "❌", "❌");
@@ -87,15 +87,15 @@ pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()>
 		},
 		Err(why) => {
 			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return data.reply(Message(&why.tldr)).await;
+			return state.reply(Message(&why.tldr)).await;
 		},
 	};
 
 	let embed = CreateEmbed::default()
-		.color(data.colour)
+		.color(state.colour)
 		.title(&map_api.name)
 		.url(format!("https://kzgo.eu/maps/{}", &map_api.name))
-		.thumbnail(&data.thumbnail(&map_api.name))
+		.thumbnail(&state.thumbnail(&map_api.name))
 		.description(format!(
 			r#"
 🢂 API Tier: {}
@@ -118,5 +118,5 @@ pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()>
 		.field("VNL", filters.2, true)
 		.to_owned();
 
-	return data.reply(Embed(embed)).await;
+	return state.reply(Embed(embed)).await;
 }

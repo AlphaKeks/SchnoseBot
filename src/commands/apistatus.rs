@@ -1,6 +1,6 @@
 use {
 	crate::events::slash_commands::{
-		InteractionData,
+		GlobalState,
 		InteractionResponseData::{Message, Embed},
 	},
 	gokz_rs::global_api::health_check,
@@ -11,8 +11,8 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 	return cmd.name("apistatus").description("Check the GlobalAPI's health status.");
 }
 
-pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()> {
-	data.defer().await?;
+pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
+	state.defer().await?;
 
 	match health_check(&reqwest::Client::new()).await {
 		Ok(response) => {
@@ -46,11 +46,11 @@ pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()>
 				.field("Fast Responses", format!("{} / {}", response.fast_responses, 10), true)
 				.to_owned();
 
-			return data.reply(Embed(embed)).await;
+			return state.reply(Embed(embed)).await;
 		},
 		Err(why) => {
 			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return data.reply(Message(&why.tldr)).await;
+			return state.reply(Message(&why.tldr)).await;
 		},
 	}
 }

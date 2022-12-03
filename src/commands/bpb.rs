@@ -1,7 +1,7 @@
 use {
 	crate::{
 		events::slash_commands::{
-			InteractionData,
+			GlobalState,
 			InteractionResponseData::{Message, Embed},
 		},
 		schnose::Target,
@@ -49,35 +49,36 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 		});
 }
 
-pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()> {
-	data.defer().await?;
+pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
+	state.defer().await?;
 
-	let map_name = data.get_string("map_name").expect("This option is marked as `required`.");
-	let course = data.get_int("course").unwrap_or(1) as u8;
-	let target = Target::from(data.get_string("player"));
-	let player = match target.to_player(data.user, data.db).await {
+	let map_name = state.get::<String>("map_name").expect("This option is marked as `required`.");
+	let course = state.get::<u8>("course").unwrap_or(1);
+	dbg!(&course);
+	let target = Target::from(state.get::<String>("player"));
+	let player = match target.to_player(state.user, state.db).await {
 		Ok(player) => player,
 		Err(why) => {
 			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return data.reply(Message(&why)).await;
+			return state.reply(Message(&why)).await;
 		},
 	};
-	let mode = match data.get_string("mode") {
+	let mode = match state.get::<String>("mode") {
 		Some(mode_name) => Mode::from_str(&mode_name).expect("This must be valid at this point."),
-		None => match retrieve_mode(data.user, data.db).await {
+		None => match retrieve_mode(state.user, state.db).await {
 			Ok(mode) => mode,
 			Err(why) => {
 				log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-				return data.reply(Message(&why)).await;
+				return state.reply(Message(&why)).await;
 			},
 		},
 	};
 
-	let global_maps = match get_maps(&data.req_client).await {
+	let global_maps = match get_maps(&state.req_client).await {
 		Ok(maps) => maps,
 		Err(why) => {
 			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return data.reply(Message(&why.tldr)).await;
+			return state.reply(Message(&why.tldr)).await;
 		},
 	};
 
@@ -85,15 +86,15 @@ pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()>
 		Ok(map) => map,
 		Err(why) => {
 			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return data.reply(Message(&why.tldr)).await;
+			return state.reply(Message(&why.tldr)).await;
 		},
 	};
 
 	let map_identifier = MapIdentifier::Name(map.name.clone());
 
 	let (tp, pro) = join_all([
-		get_pb(&player, &map_identifier, &mode, true, course, &data.req_client),
-		get_pb(&player, &map_identifier, &mode, false, course, &data.req_client),
+		get_pb(&player, &map_identifier, &mode, true, course, &state.req_client),
+		get_pb(&player, &map_identifier, &mode, false, course, &state.req_client),
 	])
 	.await
 	.into_iter()
@@ -101,18 +102,18 @@ pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()>
 	.expect("This cannot fail, look 6 lines up.");
 
 	if let (&Err(_), &Err(_)) = (&tp, &pro) {
-		return data.reply(Message("No BPBs found 😔.")).await;
+		return state.reply(Message("No BPBs found 😔.")).await;
 	}
 
 	let player_name = get_player_name((&tp, &pro));
 	let (place_tp, place_pro) = (
-		util::get_place(&tp, &data.req_client).await,
-		util::get_place(&pro, &data.req_client).await,
+		util::get_place(&tp, &state.req_client).await,
+		util::get_place(&pro, &state.req_client).await,
 	);
 	let links = (util::get_replay_link(&tp).await, util::get_replay_link(&pro).await);
 
 	let mut embed = CreateEmbed::default()
-		.colour(data.colour)
+		.colour(state.colour)
 		.title(format!(
 			"[BPB {}] {} on {} (T{})",
 			&course, &player_name, &map.name, &map.difficulty
@@ -123,7 +124,7 @@ pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()>
 			&course,
 			&mode.to_fancy().to_lowercase()
 		))
-		.thumbnail(data.thumbnail(&map.name))
+		.thumbnail(state.thumbnail(&map.name))
 		.field(
 			"TP",
 			format!(
@@ -148,10 +149,10 @@ pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()>
 			),
 			true,
 		)
-		.footer(|f| f.text(format!("Mode: {}", mode.to_fancy())).icon_url(&data.icon))
+		.footer(|f| f.text(format!("Mode: {}", mode.to_fancy())).icon_url(&state.icon))
 		.to_owned();
 
 	attach_replay_links(&mut embed, links);
 
-	return data.reply(Embed(embed)).await;
+	return state.reply(Embed(embed)).await;
 }

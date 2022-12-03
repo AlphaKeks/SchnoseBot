@@ -1,7 +1,7 @@
 use {
 	crate::{
 		db::UserSchema,
-		events::slash_commands::{InteractionData, InteractionResponseData::Message},
+		events::slash_commands::{GlobalState, InteractionResponseData::Message},
 	},
 	bson::doc,
 	gokz_rs::prelude::*,
@@ -24,15 +24,15 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 		});
 }
 
-pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()> {
-	data.defer().await?;
+pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
+	state.defer().await?;
 
-	match data.get_string("mode") {
+	match state.get::<String>("mode") {
 		// user specified a mode and wants to
 		// 1. set it for the first time => create new db entry
 		// 2. change their current mode => update db entry
 		Some(mode_name) => {
-			match data.db.find_one(doc! { "discordID": data.user.id.to_string() }, None).await {
+			match state.db.find_one(doc! { "discordID": state.user.id.to_string() }, None).await {
 				// user has an entry already => update
 				Ok(document) => match document {
 					Some(_old_entry) => {
@@ -42,21 +42,21 @@ pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()>
 							line!(),
 							_old_entry
 						);
-						match data
+						match state
 							.db
 							.find_one_and_update(
-								doc! { "discordID": data.user.id.to_string() },
+								doc! { "discordID": state.user.id.to_string() },
 								doc! { "$set": { "mode": &mode_name } },
 								None,
 							)
 							.await
 						{
 							Ok(_) => {
-								return data
+								return state
 									.reply(Message(&format!(
 										"Successfully {} mode for <@{}>.{}",
 										if mode_name == "none" { "cleared" } else { "set" },
-										data.user.id.as_u64(),
+										state.user.id.as_u64(),
 										if mode_name == "none" {
 											String::new()
 										} else {
@@ -71,7 +71,7 @@ pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()>
 							},
 							Err(why) => {
 								log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-								return data.reply(Message("Failed to update database.")).await;
+								return state.reply(Message("Failed to update database.")).await;
 							},
 						}
 					},
@@ -81,15 +81,15 @@ pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()>
 							"[{}]: {} => {} doesn't have a database entry.",
 							file!(),
 							line!(),
-							&data.user.name
+							&state.user.name
 						);
 						if mode_name != "none" {
-							match data
+							match state
 								.db
 								.insert_one(
 									UserSchema {
-										name: data.user.name.clone(),
-										discordID: data.user.id.to_string(),
+										name: state.user.name.clone(),
+										discordID: state.user.id.to_string(),
 										steamID: None,
 										mode: Some(mode_name.clone()),
 									},
@@ -99,23 +99,25 @@ pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()>
 							{
 								Ok(_) => {
 									return if mode_name == "none" {
-										data.reply(Message(&format!(
-											"Successfully cleared mode for <@{}>.",
-											data.user.id.as_u64()
-										)))
-										.await
+										state
+											.reply(Message(&format!(
+												"Successfully cleared mode for <@{}>.",
+												state.user.id.as_u64()
+											)))
+											.await
 									} else {
-										data.reply(Message(&format!(
-											"Successfully set mode `{}` for <@{}>.",
-											mode_name,
-											data.user.id.as_u64()
-										)))
-										.await
+										state
+											.reply(Message(&format!(
+												"Successfully set mode `{}` for <@{}>.",
+												mode_name,
+												state.user.id.as_u64()
+											)))
+											.await
 									}
 								},
 								Err(why) => {
 									log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-									return data
+									return state
 										.reply(Message("Failed to create database entry."))
 										.await;
 								},
@@ -123,7 +125,7 @@ pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()>
 						} else {
 							// user doesn't have any database entries but wants to set their mode
 							// to "none"
-							return data
+							return state
 								.reply(Message("Your tactics confuse and frighten me, sir."))
 								.await;
 						}
@@ -131,17 +133,17 @@ pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()>
 				},
 				Err(why) => {
 					log::error!("[{}]: {} => {:?}", file!(), line!(), why);
-					return data.reply(Message("Failed to access database.")).await;
+					return state.reply(Message("Failed to access database.")).await;
 				},
 			}
 		},
 		// user did not specify a mode and therefore wants to check their current mode
 		None => {
-			match data.db.find_one(doc! { "discordID": data.user.id.to_string() }, None).await {
+			match state.db.find_one(doc! { "discordID": state.user.id.to_string() }, None).await {
 				Ok(document) => match document {
 					Some(entry) => match entry.mode {
 						Some(mode) if mode != "none" => {
-							return data
+							return state
 								.reply(Message(&format!(
 									"Your current mode is set to: `{}`.",
 									Mode::from_str(&mode)
@@ -150,7 +152,7 @@ pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()>
 								.await
 						},
 						_ => {
-							return data
+							return state
 								.reply(Message("You currently don't have a mode set."))
 								.await
 						},
@@ -160,14 +162,14 @@ pub(crate) async fn execute(mut data: InteractionData<'_>) -> anyhow::Result<()>
 							"[{}]: {} => {} doesn't have a database entry.",
 							file!(),
 							line!(),
-							&data.user.name
+							&state.user.name
 						);
-						return data.reply(Message("You don't have any database entries.")).await;
+						return state.reply(Message("You don't have any database entries.")).await;
 					},
 				},
 				Err(why) => {
 					log::error!("[{}]: {} => {:?}", file!(), line!(), why);
-					return data.reply(Message("Failed to access database.")).await;
+					return state.reply(Message("Failed to access database.")).await;
 				},
 			}
 		},
