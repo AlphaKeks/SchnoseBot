@@ -81,8 +81,8 @@ impl Target {
 		let Some(input) = input else {
 			return Target::None;
 		};
-		if SteamID::test(&input) {
-			return Target::SteamID(SteamID(input));
+		if let Ok(steam_id) = SteamID::new(&input) {
+			return Target::SteamID(steam_id);
 		}
 		if let Some(mention) = Mention::from(&input) {
 			return Target::Mention(mention.0);
@@ -106,7 +106,11 @@ impl Target {
 			Ok(document) => {
 				if let Some(entry) = document {
 					if let Some(steam_id) = entry.steamID {
-						return Ok(PlayerIdentifier::SteamID(SteamID(steam_id)));
+						return Ok(PlayerIdentifier::SteamID(
+							SteamID::new(&steam_id).expect(
+								"This should never be invalid. If it is, fix the database.",
+							),
+						));
 					}
 				}
 

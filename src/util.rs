@@ -83,7 +83,7 @@ pub(crate) async fn retrieve_mode(
 	}
 }
 
-type PB = Result<gokz_rs::global_api::records::top::Response, gokz_rs::prelude::Error>;
+type PB = Result<gokz_rs::global_api::records::top::Record, gokz_rs::prelude::Error>;
 pub(crate) fn get_player_name(records: (&PB, &PB)) -> String {
 	match records.0 {
 		Ok(tp) => tp.player_name.clone().unwrap_or(String::from("unknown")),

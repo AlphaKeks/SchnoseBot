@@ -148,7 +148,7 @@ impl<'h> GlobalState<'h> {
 		T: serde::de::DeserializeOwned,
 	{
 		match self.opts.get(name) {
-			Some(value) => serde_json::from_value(value.to_owned()).ok(),
+			Some(value) => serde_json::from_value(value.clone()).ok(),
 			None => None,
 		}
 	}
