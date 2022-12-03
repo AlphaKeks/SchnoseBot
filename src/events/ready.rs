@@ -27,7 +27,7 @@ pub(crate) async fn handle(_state: &BotData, ctx: Context, ready: Ready) -> anyh
 					commands
 						.create_application_command(|cmd| commands::ping::register(cmd))
 						.create_application_command(|cmd| commands::apistatus::register(cmd))
-						.create_application_command(|cmd| commands::bpb::register(cmd))
+						// .create_application_command(|cmd| commands::bpb::register(cmd))
 						// .create_application_command(|cmd| commands::bwr::register(cmd))
 						.create_application_command(|cmd| commands::db::register(cmd))
 						.create_application_command(|cmd| commands::invite::register(cmd))
@@ -36,10 +36,10 @@ pub(crate) async fn handle(_state: &BotData, ctx: Context, ready: Ready) -> anyh
 						.create_application_command(|cmd| commands::nocrouch::register(cmd))
 						// .create_application_command(|cmd| commands::pb::register(cmd))
 						// .create_application_command(|cmd| commands::profile::register(cmd))
-						.create_application_command(|cmd| commands::random::register(cmd))
+						// .create_application_command(|cmd| commands::random::register(cmd))
 						// .create_application_command(|cmd| commands::recent::register(cmd))
 						.create_application_command(|cmd| commands::setsteam::register(cmd))
-						.create_application_command(|cmd| commands::unfinished::register(cmd))
+					// .create_application_command(|cmd| commands::unfinished::register(cmd))
 					// .create_application_command(|cmd| commands::wr::register(cmd))
 				})
 				.await

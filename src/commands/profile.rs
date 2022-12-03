@@ -67,7 +67,13 @@ pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
 		},
 	};
 
-	let steam_id = SteamID(player.steam_id.clone());
+	let steam_id = match SteamID::new(&player.steam_id) {
+		Ok(steam_id) => steam_id,
+		Err(why) => {
+			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
+			return state.reply(Message(&why.tldr)).await;
+		},
+	};
 
 	let player_profile =
 		match get_profile(&PlayerIdentifier::SteamID(steam_id), &mode, &state.req_client).await {
