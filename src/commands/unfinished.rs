@@ -5,7 +5,7 @@ use {
 			InteractionResponseData::{self, *},
 		},
 		schnose::Target,
-		util::retrieve_mode,
+		db::retrieve_mode,
 	},
 	gokz_rs::{prelude::*, global_api::*},
 	serenity::{
@@ -66,7 +66,7 @@ pub(crate) async fn execute(
 		Ok(player) => player,
 		Err(why) => {
 			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return Ok(Message(why));
+			return Ok(Message(why.to_string()));
 		},
 	};
 
@@ -76,7 +76,7 @@ pub(crate) async fn execute(
 			Ok(mode) => mode,
 			Err(why) => {
 				log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-				return Ok(Message(why));
+				return Ok(Message(why.to_string()));
 			},
 		},
 	};

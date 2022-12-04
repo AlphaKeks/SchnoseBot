@@ -17,11 +17,13 @@ pub(crate) async fn handle(
 	data: &BotData,
 	ctx: Context,
 	interaction: ApplicationCommandInteraction,
+	req_client: &reqwest::Client,
+	icon: String
 ) -> anyhow::Result<()> {
 	let event_name = interaction.data.name.as_str();
 	log::info!("received slash command: `{}`", event_name);
 
-	let mut state = match GlobalState::new(&interaction, &ctx.http, &data.db) {
+	let mut state = match GlobalState::new(&interaction, &ctx.http, &data.db, &data.req_client, &data.icon) {
 		Ok(state) => {
 			log::trace!("Created new interaction data.");
 			state
@@ -71,13 +73,13 @@ pub(crate) async fn handle(
 pub(crate) struct GlobalState<'h> {
 	http: &'h Http,
 	interaction: &'h ApplicationCommandInteraction,
+	opts: HashMap<String, json::Value>,
 	pub deferred: bool,
 	pub user: &'h User,
-	pub opts: HashMap<String, json::Value>,
 	pub db: &'h Collection<UserSchema>,
-	pub req_client: reqwest::Client,
+	pub req_client: &'h reqwest::Client,
 	pub colour: (u8, u8, u8),
-	pub icon: String,
+	pub icon: &'h String,
 }
 
 impl<'h> GlobalState<'h> {
@@ -85,6 +87,8 @@ impl<'h> GlobalState<'h> {
 		interaction: &'h ApplicationCommandInteraction,
 		http: &'h Http,
 		collection: &'h Collection<UserSchema>,
+		req_client: &'h reqwest::Client,
+		icon: &'h String
 	) -> anyhow::Result<GlobalState<'h>> {
 		let mut opts = HashMap::<String, json::Value>::new();
 		for opt in &interaction.data.options {
@@ -96,15 +100,13 @@ impl<'h> GlobalState<'h> {
 		return Ok(Self {
 			http,
 			interaction,
+			opts,
 			deferred: false,
 			user: &interaction.user,
-			opts,
 			db: collection,
-			req_client: reqwest::Client::new(),
+			req_client,
 			colour: (116, 128, 194),
-			icon: env::var("ICON_URL").unwrap_or(
-				String::from("https://cdn.discordapp.com/attachments/981130651094900756/981130719537545286/churchOfSchnose.png")
-			)
+			icon
 		});
 	}
 
@@ -115,7 +117,7 @@ impl<'h> GlobalState<'h> {
 		return Ok(());
 	}
 
-	pub async fn reply(&self, content: InteractionResponseData) -> anyhow::Result<()> {
+	async fn reply(&self, content: InteractionResponseData) -> anyhow::Result<()> {
 		if self.deferred {
 			match self
 				.interaction
@@ -164,7 +166,7 @@ impl<'h> GlobalState<'h> {
 		}
 	}
 
-	pub fn thumbnail(&self, map_name: &String) -> String {
+	pub fn thumbnail(&self, map_name: &str) -> String {
 		return format!(
 			"https://raw.githubusercontent.com/KZGlobalTeam/map-images/master/images/{}.jpg",
 			map_name
