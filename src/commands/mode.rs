@@ -1,7 +1,10 @@
 use {
 	crate::{
 		db::UserSchema,
-		events::slash_commands::{GlobalState, InteractionResponseData::Message},
+		events::slash_commands::{
+			GlobalState,
+			InteractionResponseData::{self, *},
+		},
 	},
 	bson::doc,
 	gokz_rs::prelude::*,
@@ -24,7 +27,9 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 		});
 }
 
-pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
+pub(crate) async fn execute(
+	state: &mut GlobalState<'_>,
+) -> anyhow::Result<InteractionResponseData> {
 	state.defer().await?;
 
 	match state.get::<String>("mode") {
@@ -52,26 +57,24 @@ pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
 							.await
 						{
 							Ok(_) => {
-								return state
-									.reply(Message(&format!(
-										"Successfully {} mode for <@{}>.{}",
-										if mode_name == "none" { "cleared" } else { "set" },
-										state.user.id.as_u64(),
-										if mode_name == "none" {
-											String::new()
-										} else {
-											format!(
-												" New Mode: `{}`",
-												Mode::from_str(&mode_name)
-													.expect("This must be valid at this point.")
-											)
-										},
-									)))
-									.await;
+								return Ok(Message(format!(
+									"Successfully {} mode for <@{}>.{}",
+									if mode_name == "none" { "cleared" } else { "set" },
+									state.user.id.as_u64(),
+									if mode_name == "none" {
+										String::new()
+									} else {
+										format!(
+											" New Mode: `{}`",
+											Mode::from_str(&mode_name)
+												.expect("This must be valid at this point.")
+										)
+									},
+								)));
 							},
 							Err(why) => {
 								log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-								return state.reply(Message("Failed to update database.")).await;
+								return Ok(Message("Failed to update database.".into()));
 							},
 						}
 					},
@@ -99,41 +102,35 @@ pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
 							{
 								Ok(_) => {
 									return if mode_name == "none" {
-										state
-											.reply(Message(&format!(
-												"Successfully cleared mode for <@{}>.",
-												state.user.id.as_u64()
-											)))
-											.await
+										Ok(Message(format!(
+											"Successfully cleared mode for <@{}>.",
+											state.user.id.as_u64()
+										)))
 									} else {
-										state
-											.reply(Message(&format!(
-												"Successfully set mode `{}` for <@{}>.",
-												mode_name,
-												state.user.id.as_u64()
-											)))
-											.await
+										Ok(Message(format!(
+											"Successfully set mode `{}` for <@{}>.",
+											mode_name,
+											state.user.id.as_u64()
+										)))
 									}
 								},
 								Err(why) => {
 									log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-									return state
-										.reply(Message("Failed to create database entry."))
-										.await;
+									return Ok(Message("Failed to create database entry.".into()));
 								},
 							}
 						} else {
 							// user doesn't have any database entries but wants to set their mode
 							// to "none"
-							return state
-								.reply(Message("Your tactics confuse and frighten me, sir."))
-								.await;
+							return Ok(Message(
+								"Your tactics confuse and frighten me, sir.".into(),
+							));
 						}
 					},
 				},
 				Err(why) => {
 					log::error!("[{}]: {} => {:?}", file!(), line!(), why);
-					return state.reply(Message("Failed to access database.")).await;
+					return Ok(Message("Failed to access database.".into()));
 				},
 			}
 		},
@@ -143,19 +140,12 @@ pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
 				Ok(document) => match document {
 					Some(entry) => match entry.mode {
 						Some(mode) if mode != "none" => {
-							return state
-								.reply(Message(&format!(
-									"Your current mode is set to: `{}`.",
-									Mode::from_str(&mode)
-										.expect("This must be valid at this point.")
-								)))
-								.await
+							return Ok(Message(format!(
+								"Your current mode is set to: `{}`.",
+								Mode::from_str(&mode).expect("This must be valid at this point.")
+							)))
 						},
-						_ => {
-							return state
-								.reply(Message("You currently don't have a mode set."))
-								.await
-						},
+						_ => return Ok(Message("You currently don't have a mode set.".into())),
 					},
 					None => {
 						log::warn!(
@@ -164,12 +154,12 @@ pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
 							line!(),
 							&state.user.name
 						);
-						return state.reply(Message("You don't have any database entries.")).await;
+						return Ok(Message("You don't have any database entries.".into()));
 					},
 				},
 				Err(why) => {
 					log::error!("[{}]: {} => {:?}", file!(), line!(), why);
-					return state.reply(Message("Failed to access database.")).await;
+					return Ok(Message("Failed to access database.".into()));
 				},
 			}
 		},

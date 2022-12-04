@@ -1,7 +1,10 @@
 use {
 	crate::{
 		db::UserSchema,
-		events::slash_commands::{GlobalState, InteractionResponseData::Message},
+		events::slash_commands::{
+			GlobalState,
+			InteractionResponseData::{self, *},
+		},
 	},
 	bson::doc,
 	gokz_rs::prelude::*,
@@ -20,15 +23,15 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 		});
 }
 
-pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
+pub(crate) async fn execute(
+	state: &mut GlobalState<'_>,
+) -> anyhow::Result<InteractionResponseData> {
 	state.defer().await?;
 
 	let steam_id = state.get::<String>("steam_id").expect("This option is marked as `required`.");
 
 	if !SteamID::test(&steam_id) {
-		return state
-			.reply(Message("Please enter a valid SteamID (e.g. `STEAM_1:1:161178172`)."))
-			.await;
+		return Ok(Message("Please enter a valid SteamID (e.g. `STEAM_1:1:161178172`).".into()));
 	}
 
 	// TODO: normalize steam ids to `STEAM_1:1:XXXXXX`
@@ -54,17 +57,15 @@ pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
 					.await
 				{
 					Ok(_) => {
-						return state
-							.reply(Message(&format!(
-								"Successfully set SteamID `{}` for <@{}>.",
-								&steam_id,
-								state.user.id.as_u64(),
-							)))
-							.await;
+						return Ok(Message(format!(
+							"Successfully set SteamID `{}` for <@{}>.",
+							&steam_id,
+							state.user.id.as_u64(),
+						)))
 					},
 					Err(why) => {
 						log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-						return state.reply(Message("Failed to update database.")).await;
+						return Ok(Message("Failed to update database.".into()));
 					},
 				}
 			},
@@ -90,24 +91,22 @@ pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
 					.await
 				{
 					Ok(_) => {
-						return state
-							.reply(Message(&format!(
-								"Successfully set SteamID `{}` for <@{}>.",
-								steam_id,
-								state.user.id.as_u64()
-							)))
-							.await
+						return Ok(Message(format!(
+							"Successfully set SteamID `{}` for <@{}>.",
+							steam_id,
+							state.user.id.as_u64()
+						)))
 					},
 					Err(why) => {
 						log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-						return state.reply(Message("Failed to create database entry.")).await;
+						return Ok(Message("Failed to create database entry.".into()));
 					},
 				}
 			},
 		},
 		Err(why) => {
 			log::error!("[{}]: {} => {:?}", file!(), line!(), why);
-			return state.reply(Message("Failed to access database.")).await;
+			return Ok(Message("Failed to access database.".into()));
 		},
 	}
 }

@@ -21,7 +21,7 @@ pub(crate) async fn handle(
 	let event_name = interaction.data.name.as_str();
 	log::info!("received slash command: `{}`", event_name);
 
-	let state = match GlobalState::new(&interaction, &ctx.http, &data.db) {
+	let mut state = match GlobalState::new(&interaction, &ctx.http, &data.db) {
 		Ok(state) => {
 			log::trace!("Created new interaction data.");
 			state
@@ -32,28 +32,39 @@ pub(crate) async fn handle(
 		},
 	};
 
-	match event_name {
-		"ping" => commands::ping::execute(state).await,
-		"apistatus" => commands::apistatus::execute(state).await,
-		"bpb" => commands::bpb::execute(state).await,
-		"bwr" => commands::bwr::execute(state).await,
-		"db" => commands::db::execute(state).await,
-		"invite" => commands::invite::execute(state).await,
-		"map" => commands::map::execute(state).await,
-		"mode" => commands::mode::execute(state).await,
-		"nocrouch" => commands::nocrouch::execute(state).await,
-		"pb" => commands::pb::execute(state).await,
-		"profile" => commands::profile::execute(state).await,
-		"random" => commands::random::execute(state).await,
-		"recent" => commands::recent::execute(state).await,
-		"setsteam" => commands::setsteam::execute(state).await,
-		"unfinished" => commands::unfinished::execute(state).await,
-		"wr" => commands::wr::execute(state).await,
+	let response = match event_name {
+		"ping" => commands::ping::execute().await,
+		"apistatus" => commands::apistatus::execute(&mut state).await,
+		"bpb" => commands::bpb::execute(&mut state).await,
+		"bwr" => commands::bwr::execute(&mut state).await,
+		"db" => commands::db::execute(&mut state).await,
+		"invite" => commands::invite::execute().await,
+		"map" => commands::map::execute(&mut state).await,
+		"mode" => commands::mode::execute(&mut state).await,
+		"nocrouch" => commands::nocrouch::execute(&state).await,
+		"pb" => commands::pb::execute(&mut state).await,
+		"profile" => commands::profile::execute(&mut state).await,
+		"random" => commands::random::execute(&state).await,
+		"recent" => commands::recent::execute(&mut state).await,
+		"setsteam" => commands::setsteam::execute(&mut state).await,
+		"unfinished" => commands::unfinished::execute(&mut state).await,
+		"wr" => commands::wr::execute(&mut state).await,
 		unknown_command => {
 			log::warn!("encountered unknown slash command: {}", unknown_command);
 			return Ok(());
 		},
+	};
+
+	match response {
+		Err(why) => log::error!("Failed executing command: {:?}", why),
+		Ok(response) => {
+			if let Err(why) = state.reply(response).await {
+				log::error!("Failed replying to interaction: {:?}", why);
+			}
+		},
 	}
+
+	return Ok(());
 }
 
 #[derive(Debug, Clone)]
@@ -104,7 +115,7 @@ impl<'h> GlobalState<'h> {
 		return Ok(());
 	}
 
-	pub async fn reply(&self, content: InteractionResponseData<'_>) -> anyhow::Result<()> {
+	pub async fn reply(&self, content: InteractionResponseData) -> anyhow::Result<()> {
 		if self.deferred {
 			match self
 				.interaction
@@ -162,7 +173,7 @@ impl<'h> GlobalState<'h> {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) enum InteractionResponseData<'a> {
-	Message(&'a str),
+pub(crate) enum InteractionResponseData {
+	Message(String),
 	Embed(CreateEmbed),
 }
