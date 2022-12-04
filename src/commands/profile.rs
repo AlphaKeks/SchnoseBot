@@ -6,6 +6,7 @@ use {
 		},
 		schnose::Target,
 		util::*,
+		db::retrieve_mode,
 	},
 	bson::doc,
 	gokz_rs::{prelude::*, global_api::*, custom::get_profile, kzgo},
@@ -47,7 +48,7 @@ pub(crate) async fn execute(
 		Ok(player) => player,
 		Err(why) => {
 			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return Ok(Message(why));
+			return Ok(Message(why.to_string()));
 		},
 	};
 	let mode = match state.get::<String>("mode") {
@@ -56,7 +57,7 @@ pub(crate) async fn execute(
 			Ok(mode) => mode,
 			Err(why) => {
 				log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-				return Ok(Message(why));
+				return Ok(Message(why.to_string()));
 			},
 		},
 	};

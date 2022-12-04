@@ -36,7 +36,7 @@ pub(crate) async fn execute(
 		Ok(player) => player,
 		Err(why) => {
 			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return Ok(Message(why));
+			return Ok(Message(why.to_string()));
 		},
 	};
 

@@ -6,6 +6,7 @@ use schnose::BotData;
 mod commands;
 mod db;
 mod events;
+mod gokz;
 mod util;
 
 #[tokio::main]

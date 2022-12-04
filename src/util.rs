@@ -1,41 +1,9 @@
 use {
 	std::{env, fmt::Write},
-	crate::db::UserSchema,
 	bson::doc,
-	gokz_rs::{prelude::*, global_api},
-	mongodb::Collection,
-	regex::Regex,
 	serde::{Serialize, Deserialize},
-	serenity::{builder::CreateEmbed, model::user::User},
+	serenity::builder::CreateEmbed,
 };
-
-pub(crate) struct Mention(pub u64);
-
-impl Mention {
-	pub fn from(input: &str) -> Option<Self> {
-		let Ok(regex) = Regex::new(r#"<@[0-9]+>"#) else {
-			return None;
-		};
-
-		if !regex.is_match(&input) {
-			return None;
-		}
-
-		// input = "<@291585142164815873>"
-		if let Some((left, _)) = input.split_once(">") {
-			// left = "<@291585142164815873"
-			if let Some((_, id)) = left.split_once("@") {
-				// id = "291585142164815873"
-				if let Ok(id) = id.parse::<u64>() {
-					// id = 291585142164815873
-					return Some(Mention(id));
-				}
-			}
-		}
-
-		return None;
-	}
-}
 
 pub(crate) fn format_time(secs_float: f32) -> String {
 	let seconds = secs_float as u32;
@@ -54,65 +22,6 @@ pub(crate) fn format_time(secs_float: f32) -> String {
 	}
 
 	return s;
-}
-
-pub(crate) async fn retrieve_mode(
-	user: &User,
-	collection: &Collection<UserSchema>,
-) -> Result<Mode, String> {
-	match collection.find_one(doc! { "discordID": user.id.to_string() }, None).await {
-		Ok(document) => {
-			if let Some(entry) = document {
-				if let Some(mode) = entry.mode {
-					// TODO: migrate to a proper database
-					if mode.as_str() != "none" {
-						let mode =
-							Mode::from_str(&mode).expect("This must be valid at this point.");
-						return Ok(mode);
-					}
-				}
-			}
-			return Err(String::from(
-				"You need to specify a mode or set a default one via `/mode`.",
-			));
-		},
-		Err(why) => {
-			log::error!("[{}]: {} => {:?}", file!(), line!(), why);
-			return Err(String::from("Failed to access database."));
-		},
-	}
-}
-
-type PB = Result<gokz_rs::global_api::records::top::Record, gokz_rs::prelude::Error>;
-pub(crate) fn get_player_name(records: (&PB, &PB)) -> String {
-	match records.0 {
-		Ok(tp) => tp.player_name.clone().unwrap_or(String::from("unknown")),
-		Err(_) => match records.1 {
-			Ok(pro) => pro.player_name.clone().unwrap_or(String::from("unknown")),
-			Err(_) => String::from("unknown"),
-		},
-	}
-}
-
-pub(crate) async fn get_place(record: &PB, client: &reqwest::Client) -> String {
-	if let Ok(record) = record {
-		if let Ok(place) = global_api::get_place(&record.id, client).await {
-			return format!("[#{}]", place.0);
-		}
-	}
-	return String::new();
-}
-
-pub(crate) async fn get_replay_link(record: &PB) -> String {
-	if let Ok(record) = record {
-		if record.replay_id != 0 {
-			if let Ok(link) = global_api::get_replay(record.replay_id).await {
-				return link;
-			}
-		}
-	}
-
-	return String::new();
 }
 
 pub(crate) fn attach_replay_links(

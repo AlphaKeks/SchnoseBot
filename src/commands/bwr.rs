@@ -4,7 +4,9 @@ use {
 			GlobalState,
 			InteractionResponseData::{self, *},
 		},
-		util::{self, *},
+		util::*,
+		db::retrieve_mode,
+		gokz,
 	},
 	futures::future::join_all,
 	gokz_rs::{prelude::*, global_api::*},
@@ -55,7 +57,7 @@ pub(crate) async fn execute(
 			Ok(mode) => mode,
 			Err(why) => {
 				log::error!("[{}]: {} => {:?}", file!(), line!(), why);
-				return Ok(Message(why));
+				return Ok(Message(why.to_string()));
 			},
 		},
 	};
@@ -91,7 +93,7 @@ pub(crate) async fn execute(
 		return Ok(Message("No BWRs found 😔.".into()));
 	}
 
-	let links = (util::get_replay_link(&tp).await, util::get_replay_link(&pro).await);
+	let links = (gokz::get_replay_link(&tp).await, gokz::get_replay_link(&pro).await);
 
 	let mut embed = CreateEmbed::default()
 		.colour(state.colour)

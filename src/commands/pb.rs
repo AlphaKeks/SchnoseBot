@@ -5,7 +5,9 @@ use {
 			InteractionResponseData::{self, *},
 		},
 		schnose::Target,
-		util::{self, *},
+		util::*,
+		db::retrieve_mode,
+		gokz::{self, *},
 	},
 	futures::future::join_all,
 	gokz_rs::{prelude::*, global_api::*},
@@ -54,7 +56,7 @@ pub(crate) async fn execute(
 		Ok(player) => player,
 		Err(why) => {
 			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return Ok(Message(why));
+			return Ok(Message(why.to_string()));
 		},
 	};
 	let mode = match state.get::<String>("mode") {
@@ -63,7 +65,7 @@ pub(crate) async fn execute(
 			Ok(mode) => mode,
 			Err(why) => {
 				log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-				return Ok(Message(why));
+				return Ok(Message(why.to_string()));
 			},
 		},
 	};
@@ -101,10 +103,10 @@ pub(crate) async fn execute(
 
 	let player_name = get_player_name((&tp, &pro));
 	let (place_tp, place_pro) = (
-		util::get_place(&tp, &state.req_client).await,
-		util::get_place(&pro, &state.req_client).await,
+		gokz::get_place(&tp, &state.req_client).await,
+		gokz::get_place(&pro, &state.req_client).await,
 	);
-	let links = (util::get_replay_link(&tp).await, util::get_replay_link(&pro).await);
+	let links = (gokz::get_replay_link(&tp).await, gokz::get_replay_link(&pro).await);
 
 	let mut embed = CreateEmbed::default()
 		.colour(state.colour)

@@ -1,18 +1,37 @@
-use serenity::model::prelude::Message;
-
 use {
 	std::env,
-	crate::{events, db::UserSchema, util::Mention},
+	crate::{events, db::UserSchema},
 	bson::doc,
 	gokz_rs::prelude::*,
 	serde::{Serialize, Deserialize},
 	serenity::{
 		async_trait,
-		model::prelude::{Ready, interaction::Interaction, User},
+		model::prelude::{Ready, interaction::Interaction, User, Message},
 		prelude::{GatewayIntents, EventHandler, Context},
 	},
 	mongodb::Collection,
 };
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) enum SchnoseErr {
+	Custom(String),
+	Parse,
+	NoModeSpecified,
+	FailedDB,
+}
+
+impl std::fmt::Display for SchnoseErr {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let s = match self {
+			Self::Custom(msg) => &msg,
+			Self::Parse => "",
+			Self::NoModeSpecified => "You need to specify a mode or set a default one via `/mode`.",
+			Self::FailedDB => "Failed to access database.",
+		};
+
+		return write!(f, "{}", s);
+	}
+}
 
 #[derive(Debug, Clone)]
 pub(crate) struct BotData {
@@ -73,7 +92,7 @@ pub(crate) enum Target {
 	None,
 	Name(String),
 	SteamID(SteamID),
-	Mention(u64),
+	Mention(Mention),
 }
 
 impl Target {
@@ -84,8 +103,8 @@ impl Target {
 		if let Ok(steam_id) = SteamID::new(&input) {
 			return Target::SteamID(steam_id);
 		}
-		if let Some(mention) = Mention::from(&input) {
-			return Target::Mention(mention.0);
+		if let Ok(mention) = input.parse::<Mention>() {
+			return Target::Mention(mention);
 		}
 		return Target::Name(input);
 	}
@@ -94,12 +113,12 @@ impl Target {
 		self,
 		user: &User,
 		collection: &Collection<UserSchema>,
-	) -> Result<PlayerIdentifier, String> {
+	) -> Result<PlayerIdentifier, SchnoseErr> {
 		let (user_id, blame_user) = match self {
 			Target::SteamID(steam_id) => return Ok(PlayerIdentifier::SteamID(steam_id)),
 			Target::Name(name) => return Ok(PlayerIdentifier::Name(name)),
 			Target::Mention(user_id) => (user_id, false),
-			Target::None => (*user.id.as_u64(), true),
+			Target::None => (Mention::from(*user.id.as_u64()), true),
 		};
 
 		match collection.find_one(doc! { "discordID": user_id.to_string() }, None).await {
@@ -120,12 +139,48 @@ impl Target {
 					"The player you mentioned didn't save their SteamID in schnose's database. Tell them to use `/setsteam`!"
 				};
 
-				return Err(String::from(reply));
+				return Err(SchnoseErr::Custom(reply.to_owned()));
 			},
 			Err(why) => {
 				log::error!("[{}]: {} => {:?}", file!(), line!(), why);
-				return Err(String::from("Failed to access database."));
+				return Err(SchnoseErr::FailedDB);
 			},
 		}
+	}
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub(crate) struct Mention(pub u64);
+
+impl std::str::FromStr for Mention {
+	type Err = SchnoseErr;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		use regex::Regex;
+
+		let regex =
+			Regex::new(r#"^<@[0-9]+>$"#).expect("If it compiles once, it will always compile.");
+
+		if !regex.is_match(s) {
+			return Err(SchnoseErr::Parse);
+		}
+
+		let user_id = str::replace(s, "<@", "");
+		let user_id = str::replace(&user_id, ">", "");
+		let user_id = user_id.parse::<u64>().expect("This should be a valid u64.");
+
+		return Ok(Mention(user_id));
+	}
+}
+
+impl std::fmt::Display for Mention {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		return write!(f, "<@{}>", self.0);
+	}
+}
+
+impl From<u64> for Mention {
+	fn from(id: u64) -> Self {
+		return Self(id);
 	}
 }
