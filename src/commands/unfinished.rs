@@ -2,7 +2,7 @@ use {
 	crate::{
 		events::slash_commands::{
 			GlobalState,
-			InteractionResponseData::{Message, Embed},
+			InteractionResponseData::{self, *},
 		},
 		schnose::Target,
 		util::retrieve_mode,
@@ -56,7 +56,9 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 		});
 }
 
-pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
+pub(crate) async fn execute(
+	state: &mut GlobalState<'_>,
+) -> anyhow::Result<InteractionResponseData> {
 	state.defer().await?;
 
 	let target = Target::from(state.get::<String>("player"));
@@ -64,7 +66,7 @@ pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
 		Ok(player) => player,
 		Err(why) => {
 			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return state.reply(Message(&why)).await;
+			return Ok(Message(why));
 		},
 	};
 
@@ -74,7 +76,7 @@ pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
 			Ok(mode) => mode,
 			Err(why) => {
 				log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-				return state.reply(Message(&why)).await;
+				return Ok(Message(why));
 			},
 		},
 	};
@@ -115,7 +117,7 @@ pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
 			},
 			Err(why) => {
 				log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-				return state.reply(Message(&why.tldr)).await;
+				return Ok(Message(why.tldr));
 			},
 		};
 
@@ -139,5 +141,5 @@ pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
 		.footer(|f| f.text(format!("Player: {}", player_name)).icon_url(&state.icon))
 		.to_owned();
 
-	return state.reply(Embed(embed)).await;
+	return Ok(Embed(embed));
 }

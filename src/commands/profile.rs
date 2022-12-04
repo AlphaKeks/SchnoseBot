@@ -2,7 +2,7 @@ use {
 	crate::{
 		events::slash_commands::{
 			GlobalState,
-			InteractionResponseData::{Message, Embed},
+			InteractionResponseData::{self, *},
 		},
 		schnose::Target,
 		util::*,
@@ -37,7 +37,9 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 		});
 }
 
-pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
+pub(crate) async fn execute(
+	state: &mut GlobalState<'_>,
+) -> anyhow::Result<InteractionResponseData> {
 	state.defer().await?;
 
 	let target = Target::from(state.get::<String>("player"));
@@ -45,7 +47,7 @@ pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
 		Ok(player) => player,
 		Err(why) => {
 			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return state.reply(Message(&why)).await;
+			return Ok(Message(why));
 		},
 	};
 	let mode = match state.get::<String>("mode") {
@@ -54,7 +56,7 @@ pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
 			Ok(mode) => mode,
 			Err(why) => {
 				log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-				return state.reply(Message(&why)).await;
+				return Ok(Message(why));
 			},
 		},
 	};
@@ -63,7 +65,7 @@ pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
 		Ok(player) => player,
 		Err(why) => {
 			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return state.reply(Message(&why.tldr)).await;
+			return Ok(Message(why.tldr));
 		},
 	};
 
@@ -71,7 +73,7 @@ pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
 		Ok(steam_id) => steam_id,
 		Err(why) => {
 			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return state.reply(Message(&why.tldr)).await;
+			return Ok(Message(why.tldr));
 		},
 	};
 
@@ -80,7 +82,7 @@ pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
 			Ok(profile) => profile,
 			Err(why) => {
 				log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-				return state.reply(Message(&why.tldr)).await;
+				return Ok(Message(why.tldr));
 			},
 		};
 
@@ -135,7 +137,7 @@ pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
 		Ok(data) => (data.tp.total, data.pro.total),
 		Err(why) => {
 			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return state.reply(Message(&why.tldr)).await;
+			return Ok(Message(why.tldr));
 		},
 	};
 
@@ -212,5 +214,5 @@ Preferred Mode: {}
 		})
 		.to_owned();
 
-	return state.reply(Embed(embed)).await;
+	return Ok(Embed(embed));
 }

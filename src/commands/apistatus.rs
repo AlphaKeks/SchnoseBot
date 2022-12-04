@@ -1,7 +1,7 @@
 use {
 	crate::events::slash_commands::{
 		GlobalState,
-		InteractionResponseData::{Message, Embed},
+		InteractionResponseData::{self, *},
 	},
 	gokz_rs::global_api::health_check,
 	serenity::builder::{CreateApplicationCommand, CreateEmbed},
@@ -11,7 +11,9 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 	return cmd.name("apistatus").description("Check the GlobalAPI's health status.");
 }
 
-pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
+pub(crate) async fn execute(
+	state: &mut GlobalState<'_>,
+) -> anyhow::Result<InteractionResponseData> {
 	state.defer().await?;
 
 	match health_check(&reqwest::Client::new()).await {
@@ -46,11 +48,11 @@ pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
 				.field("Fast Responses", format!("{} / {}", response.fast_responses, 10), true)
 				.to_owned();
 
-			return state.reply(Embed(embed)).await;
+			return Ok(Embed(embed));
 		},
 		Err(why) => {
 			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return state.reply(Message(&why.tldr)).await;
+			return Ok(Message(why.tldr));
 		},
 	}
 }

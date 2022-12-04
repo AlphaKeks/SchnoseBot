@@ -1,5 +1,5 @@
 use {
-	crate::events::slash_commands::{GlobalState, InteractionResponseData::Message},
+	crate::events::slash_commands::InteractionResponseData::{self, *},
 	serenity::builder::CreateApplicationCommand,
 };
 
@@ -7,6 +7,6 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 	return cmd.name("ping").description("pong!");
 }
 
-pub(crate) async fn execute(state: GlobalState<'_>) -> anyhow::Result<()> {
-	return state.reply(Message("pong!")).await;
+pub(crate) async fn execute() -> anyhow::Result<InteractionResponseData> {
+	return Ok(Message("pong!".into()));
 }

@@ -2,7 +2,7 @@ use {
 	crate::{
 		events::slash_commands::{
 			GlobalState,
-			InteractionResponseData::{Message, Embed},
+			InteractionResponseData::{self, *},
 		},
 		schnose::Target,
 		util::{self, *},
@@ -49,7 +49,9 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 		});
 }
 
-pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
+pub(crate) async fn execute(
+	state: &mut GlobalState<'_>,
+) -> anyhow::Result<InteractionResponseData> {
 	state.defer().await?;
 
 	let map_name = state.get::<String>("map_name").expect("This option is marked as `required`.");
@@ -60,7 +62,7 @@ pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
 		Ok(player) => player,
 		Err(why) => {
 			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return state.reply(Message(&why)).await;
+			return Ok(Message(why));
 		},
 	};
 	let mode = match state.get::<String>("mode") {
@@ -69,7 +71,7 @@ pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
 			Ok(mode) => mode,
 			Err(why) => {
 				log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-				return state.reply(Message(&why)).await;
+				return Ok(Message(why));
 			},
 		},
 	};
@@ -78,7 +80,7 @@ pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
 		Ok(maps) => maps,
 		Err(why) => {
 			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return state.reply(Message(&why.tldr)).await;
+			return Ok(Message(why.tldr));
 		},
 	};
 
@@ -86,7 +88,7 @@ pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
 		Ok(map) => map,
 		Err(why) => {
 			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return state.reply(Message(&why.tldr)).await;
+			return Ok(Message(why.tldr));
 		},
 	};
 
@@ -102,7 +104,7 @@ pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
 	.expect("This cannot fail, look 6 lines up.");
 
 	if let (&Err(_), &Err(_)) = (&tp, &pro) {
-		return state.reply(Message("No BPBs found 😔.")).await;
+		return Ok(Message("No BPBs found 😔.".into()));
 	}
 
 	let player_name = get_player_name((&tp, &pro));
@@ -154,5 +156,5 @@ pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
 
 	attach_replay_links(&mut embed, links);
 
-	return state.reply(Embed(embed)).await;
+	return Ok(Embed(embed));
 }

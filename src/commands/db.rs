@@ -1,7 +1,7 @@
 use {
 	crate::events::slash_commands::{
 		GlobalState,
-		InteractionResponseData::{Message, Embed},
+		InteractionResponseData::{self, *},
 	},
 	bson::doc,
 	serenity::{
@@ -22,7 +22,9 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 		});
 }
 
-pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
+pub(crate) async fn execute(
+	state: &mut GlobalState<'_>,
+) -> anyhow::Result<InteractionResponseData> {
 	state.defer().await?;
 
 	let (user_id, blame_user) = match state.get::<u64>("user") {
@@ -50,24 +52,22 @@ pub(crate) async fn execute(mut state: GlobalState<'_>) -> anyhow::Result<()> {
 					))
 					.to_owned();
 
-				return state.reply(Embed(embed)).await;
+				return Ok(Embed(embed));
 			},
 			None => {
-				return state
-					.reply(Message(&format!(
-						"{} a database entry.",
-						if blame_user {
-							"You don't have"
-						} else {
-							"The user you specified doesn't have"
-						}
-					)))
-					.await
+				return Ok(Message(format!(
+					"{} a database entry.",
+					if blame_user {
+						"You don't have"
+					} else {
+						"The user you specified doesn't have"
+					}
+				)))
 			},
 		},
 		Err(why) => {
 			log::error!("[{}]: {} => {:?}", file!(), line!(), why);
-			return state.reply(Message("Failed to access database.")).await;
+			return Ok(Message("Failed to access database.".into()));
 		},
 	}
 }

@@ -1,5 +1,8 @@
 use {
-	crate::events::slash_commands::{GlobalState, InteractionResponseData::Message},
+	crate::events::slash_commands::{
+		GlobalState,
+		InteractionResponseData::{self, *},
+	},
 	gokz_rs::global_api::get_mapcycle,
 	rand::Rng,
 	serenity::{builder::CreateApplicationCommand, model::prelude::command::CommandOptionType},
@@ -21,17 +24,17 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 	});
 }
 
-pub(crate) async fn execute(state: GlobalState<'_>) -> anyhow::Result<()> {
+pub(crate) async fn execute(state: &GlobalState<'_>) -> anyhow::Result<InteractionResponseData> {
 	let tier = state.get::<u8>("tier");
 	let map_names = match get_mapcycle(tier, &state.req_client).await {
 		Ok(names) => names,
 		Err(why) => {
 			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return state.reply(Message(&why.tldr)).await;
+			return Ok(Message(why.tldr));
 		},
 	};
 
 	let rand = rand::thread_rng().gen_range(0..map_names.len());
 
-	return state.reply(Message(&format!("🎲 {}", map_names[rand]))).await;
+	return Ok(Message(format!("🎲 {}", map_names[rand])));
 }
