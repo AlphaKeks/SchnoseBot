@@ -12,11 +12,14 @@ use {
 	mongodb::Collection,
 };
 
+/// Custom Error type so I don't have to keep typing the same error messages everywhere
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) enum SchnoseErr {
 	Custom(String),
 	Parse,
-	NoModeSpecified,
+	// whether to blame the user for not specifying a SteamID or not
+	MissingSteamID(bool),
+	MissingMode,
 	FailedDB,
 }
 
@@ -25,7 +28,14 @@ impl std::fmt::Display for SchnoseErr {
 		let s = match self {
 			Self::Custom(msg) => &msg,
 			Self::Parse => "",
-			Self::NoModeSpecified => "You need to specify a mode or set a default one via `/mode`.",
+			Self::MissingMode => "You need to specify a mode or set a default one via `/mode`.",
+			Self::MissingSteamID(blame_user) => {
+				if *blame_user {
+					"You need to specify a player or save your SteamID in schnose's database via `/setsteam`."
+				} else {
+					"The player you mentioned didn't save their SteamID in schnose's database. Tell them to use `/setsteam`!"
+				}
+			},
 			Self::FailedDB => "Failed to access database.",
 		};
 
@@ -33,13 +43,14 @@ impl std::fmt::Display for SchnoseErr {
 	}
 }
 
+/// Global data for initializing a new bot instance
 #[derive(Debug, Clone)]
 pub(crate) struct BotData {
 	pub token: String,
 	pub intents: GatewayIntents,
 	pub db: Collection<UserSchema>,
 	pub req_client: reqwest::Client,
-	pub icon: String
+	pub icon: String,
 }
 
 impl BotData {
@@ -63,19 +74,22 @@ impl BotData {
 				| GatewayIntents::MESSAGE_CONTENT,
 			db: collection,
 			req_client,
-			icon
+			icon,
 		});
 	}
 }
 
 #[async_trait]
 impl EventHandler for BotData {
+	/// Gets triggered once on startup
 	async fn ready(&self, ctx: Context, ready: Ready) {
 		if let Err(why) = events::ready::handle(self, ctx, ready).await {
 			log::error!("Failed to respond to `ready` event.\n\n{:?}", why);
 		}
 	}
 
+	/// Gets triggered on every new interaction;
+	/// currently only /slash_commands are being handled
 	async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
 		match interaction {
 			Interaction::ApplicationCommand(slash_command) => {
@@ -89,6 +103,7 @@ impl EventHandler for BotData {
 		}
 	}
 
+	/// Gets triggered on every message the bot _can_ see (on any server).
 	async fn message(&self, ctx: Context, msg: Message) {
 		if let Err(why) = events::message::handle(ctx, msg).await {
 			log::error!("Failed to respond to `message` event.\n\n{:?}", why);
@@ -96,6 +111,8 @@ impl EventHandler for BotData {
 	}
 }
 
+/// A lot of commands have a `player` parameter which is used to determine who the user is
+/// targetting (e.g. on `/pb`). Regex is being used to disambiguate between the different kinds.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) enum Target {
 	None,
@@ -105,6 +122,12 @@ pub(crate) enum Target {
 }
 
 impl Target {
+	/// Create a new `Target` from user input. The intended way to use this is in combination with
+	/// calling `.get` on the `GlobalState` passed into every command.
+	/// ```
+	/// let user_input = state.get::<String>("player");
+	/// let target = Target::from(user_input);
+	/// ```
 	pub fn from(input: Option<String>) -> Self {
 		let Some(input) = input else {
 			return Target::None;
@@ -118,11 +141,13 @@ impl Target {
 		return Target::Name(input);
 	}
 
+	/// Turn a `Target` into a [PlayerIdentifier](gokz_rs::prelude::PlayerIdentifier)
 	pub async fn to_player(
 		self,
 		user: &User,
 		collection: &Collection<UserSchema>,
 	) -> Result<PlayerIdentifier, SchnoseErr> {
+		// `blame_user` determines the kind of error message sent later
 		let (user_id, blame_user) = match self {
 			Target::SteamID(steam_id) => return Ok(PlayerIdentifier::SteamID(steam_id)),
 			Target::Name(name) => return Ok(PlayerIdentifier::Name(name)),
@@ -130,9 +155,13 @@ impl Target {
 			Target::None => (*user.id.as_u64(), true),
 		};
 
+		// Search database for the user's Discord User ID
 		match collection.find_one(doc! { "discordID": user_id.to_string() }, None).await {
+			// Database connection successful
 			Ok(document) => {
+				// User has an entry in the database
 				if let Some(entry) = document {
+					// `steamID` field in the database entry is not null
 					if let Some(steam_id) = entry.steamID {
 						return Ok(PlayerIdentifier::SteamID(
 							SteamID::new(&steam_id).expect(
@@ -141,15 +170,9 @@ impl Target {
 						));
 					}
 				}
-
-				let reply = if blame_user {
-					"You need to specify a player or save your SteamID in schnose's database via `/setsteam`."
-				} else {
-					"The player you mentioned didn't save their SteamID in schnose's database. Tell them to use `/setsteam`!"
-				};
-
-				return Err(SchnoseErr::Custom(reply.to_owned()));
+				return Err(SchnoseErr::MissingSteamID(blame_user));
 			},
+			// Database connection failed
 			Err(why) => {
 				log::error!("[{}]: {} => {:?}", file!(), line!(), why);
 				return Err(SchnoseErr::FailedDB);
@@ -158,6 +181,7 @@ impl Target {
 	}
 }
 
+/// Helper type to handle Discord's @mention's easer
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub(crate) struct Mention(pub u64);
 

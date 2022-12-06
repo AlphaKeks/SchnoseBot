@@ -14,6 +14,7 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 pub(crate) async fn execute(
 	state: &mut GlobalState<'_>,
 ) -> anyhow::Result<InteractionResponseData> {
+	// Defer current interaction since this could take a while
 	state.defer().await?;
 
 	match health_check(&reqwest::Client::new()).await {

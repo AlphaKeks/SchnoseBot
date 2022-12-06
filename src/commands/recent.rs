@@ -29,9 +29,11 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 pub(crate) async fn execute(
 	state: &mut GlobalState<'_>,
 ) -> anyhow::Result<InteractionResponseData> {
+	// Defer current interaction since this could take a while
 	state.defer().await?;
 
 	let target = Target::from(state.get::<String>("player"));
+
 	let player = match target.to_player(state.user, state.db).await {
 		Ok(player) => player,
 		Err(why) => {
@@ -65,7 +67,7 @@ pub(crate) async fn execute(
 		},
 	};
 
-	let (discord_timestamp, fancy) =
+	let (discord_timestamp, footer_msg) =
 		match chrono::NaiveDateTime::parse_from_str(&recent.created_on, "%Y-%m-%dT%H:%M:%S") {
 			Ok(parsed_time) => (
 				format!("<t:{}:R>", parsed_time.timestamp()),
@@ -110,7 +112,7 @@ pub(crate) async fn execute(
 			}),
 			true,
 		)
-		.footer(|f| f.text(fancy).icon_url(&state.icon))
+		.footer(|f| f.text(footer_msg).icon_url(&state.icon))
 		.to_owned();
 
 	return Ok(Embed(embed));

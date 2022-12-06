@@ -41,9 +41,11 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 pub(crate) async fn execute(
 	state: &mut GlobalState<'_>,
 ) -> anyhow::Result<InteractionResponseData> {
+	// Defer current interaction since this could take a while
 	state.defer().await?;
 
 	let target = Target::from(state.get::<String>("player"));
+
 	let player = match target.to_player(state.user, state.db).await {
 		Ok(player) => player,
 		Err(why) => {
@@ -51,8 +53,10 @@ pub(crate) async fn execute(
 			return Ok(Message(why.to_string()));
 		},
 	};
+
 	let mode = match state.get::<String>("mode") {
-		Some(mode_name) => Mode::from_str(&mode_name).expect("This must be valid at this point."),
+		Some(mode_name) => Mode::from_str(&mode_name)
+			.expect("The possible values for this are hard-coded and should never be invalid."),
 		None => match retrieve_mode(state.user, state.db).await {
 			Ok(mode) => mode,
 			Err(why) => {
@@ -97,7 +101,7 @@ pub(crate) async fn execute(
 			if let Some(db_mode) = entry.mode {
 				if db_mode != "none" {
 					mode = Mode::from_str(&db_mode)
-						.expect("This must be valid at this point.")
+						.expect("This must be valid at this point. `mode_name` can only be valid or \"none\". The latter is already impossible because of the if-statement above.")
 						.to_fancy();
 				}
 			}
@@ -134,6 +138,7 @@ pub(crate) async fn execute(
 		}
 	}
 
+	// how many maps _can_ be finished in a certain mode?
 	let doable = match kzgo::completion::get_completion_count(&mode, &state.req_client).await {
 		Ok(data) => (data.tp.total, data.pro.total),
 		Err(why) => {
@@ -158,8 +163,9 @@ pub(crate) async fn execute(
 			&mode.to_fancy().to_lowercase()
 		))
 		.thumbnail(avatar)
+		// this is so incredibly whacky I'm scared to touch it ever again
 		.description(format!(
-			r"
+			r#"
 🏆 **World Records: {} (TP) | {} (PRO)**
 ────────────────────────
                       TP                                               PRO
@@ -176,7 +182,7 @@ Points: **{}**
 ────────────────────────
 Rank: **{}**
 Preferred Mode: {}
-			",
+			"#,
 			&player_profile.records.0,
 			&player_profile.records.1,
 			&player_profile.completion[7].0,

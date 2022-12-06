@@ -48,10 +48,12 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 pub(crate) async fn execute(
 	state: &mut GlobalState<'_>,
 ) -> anyhow::Result<InteractionResponseData> {
+	// Defer current interaction since this could take a while
 	state.defer().await?;
 
 	let map_name = state.get::<String>("map_name").expect("This option is marked as `required`.");
 	let target = Target::from(state.get::<String>("player"));
+
 	let player = match target.to_player(state.user, state.db).await {
 		Ok(player) => player,
 		Err(why) => {
@@ -59,8 +61,10 @@ pub(crate) async fn execute(
 			return Ok(Message(why.to_string()));
 		},
 	};
+
 	let mode = match state.get::<String>("mode") {
-		Some(mode_name) => Mode::from_str(&mode_name).expect("This must be valid at this point."),
+		Some(mode_name) => Mode::from_str(&mode_name)
+			.expect("The possible values for this are hard-coded and should never be invalid."),
 		None => match retrieve_mode(state.user, state.db).await {
 			Ok(mode) => mode,
 			Err(why) => {

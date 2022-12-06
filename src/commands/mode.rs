@@ -30,6 +30,7 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 pub(crate) async fn execute(
 	state: &mut GlobalState<'_>,
 ) -> anyhow::Result<InteractionResponseData> {
+	// Defer current interaction since this could take a while
 	state.defer().await?;
 
 	match state.get::<String>("mode") {
@@ -67,7 +68,7 @@ pub(crate) async fn execute(
 										format!(
 											" New Mode: `{}`",
 											Mode::from_str(&mode_name)
-												.expect("This must be valid at this point.")
+												.expect("This must be valid at this point. `mode_name` can only be valid or \"none\". The latter is already impossible because of the if-statement above.")
 										)
 									},
 								)));
@@ -142,7 +143,7 @@ pub(crate) async fn execute(
 						Some(mode) if mode != "none" => {
 							return Ok(Message(format!(
 								"Your current mode is set to: `{}`.",
-								Mode::from_str(&mode).expect("This must be valid at this point.")
+								Mode::from_str(&mode).expect("This must be valid at this point. `mode_name` can only be valid or \"none\". The latter is already impossible because of the if-statement above.")
 							)))
 						},
 						_ => return Ok(Message("You currently don't have a mode set.".into())),
