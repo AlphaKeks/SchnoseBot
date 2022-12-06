@@ -117,8 +117,8 @@ impl Target {
 		let (user_id, blame_user) = match self {
 			Target::SteamID(steam_id) => return Ok(PlayerIdentifier::SteamID(steam_id)),
 			Target::Name(name) => return Ok(PlayerIdentifier::Name(name)),
-			Target::Mention(user_id) => (user_id, false),
-			Target::None => (Mention::from(*user.id.as_u64()), true),
+			Target::Mention(user_id) => (user_id.into(), false),
+			Target::None => (*user.id.as_u64(), true),
 		};
 
 		match collection.find_one(doc! { "discordID": user_id.to_string() }, None).await {
@@ -182,5 +182,11 @@ impl std::fmt::Display for Mention {
 impl From<u64> for Mention {
 	fn from(id: u64) -> Self {
 		return Self(id);
+	}
+}
+
+impl Into<u64> for Mention {
+	fn into(self) -> u64 {
+		return self.0;
 	}
 }

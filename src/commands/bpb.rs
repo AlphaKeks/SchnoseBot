@@ -58,7 +58,6 @@ pub(crate) async fn execute(
 
 	let map_name = state.get::<String>("map_name").expect("This option is marked as `required`.");
 	let course = state.get::<u8>("course").unwrap_or(1);
-	dbg!(&course);
 	let target = Target::from(state.get::<String>("player"));
 	let player = match target.to_player(state.user, state.db).await {
 		Ok(player) => player,

@@ -37,7 +37,7 @@ pub(crate) async fn handle(_state: &BotData, ctx: Context, ready: Ready) -> anyh
 						// .create_application_command(|cmd| commands::pb::register(cmd))
 						// .create_application_command(|cmd| commands::profile::register(cmd))
 						// .create_application_command(|cmd| commands::random::register(cmd))
-						// .create_application_command(|cmd| commands::recent::register(cmd))
+						.create_application_command(|cmd| commands::recent::register(cmd))
 						.create_application_command(|cmd| commands::setsteam::register(cmd))
 					// .create_application_command(|cmd| commands::unfinished::register(cmd))
 					// .create_application_command(|cmd| commands::wr::register(cmd))
