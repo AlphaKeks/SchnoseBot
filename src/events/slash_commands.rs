@@ -1,5 +1,5 @@
 use {
-	std::{collections::HashMap, env},
+	std::collections::HashMap,
 	crate::{commands, schnose::BotData, db::UserSchema},
 	serenity::{
 		prelude::Context,
@@ -21,16 +21,19 @@ pub(crate) async fn handle(
 	let event_name = interaction.data.name.as_str();
 	log::info!("received slash command: `{}`", event_name);
 
-	let mut state = match GlobalState::new(&interaction, &ctx.http, &data.db) {
-		Ok(state) => {
-			log::trace!("Created new interaction data.");
-			state
-		},
-		Err(why) => {
-			log::error!("Failed to create new interaction data.\n\n{:?}", why);
-			return Err(why);
-		},
-	};
+	// (almost) every command will receive some global state to access information about the
+	// current interaction, the database etc.
+	let mut state =
+		match GlobalState::new(&interaction, &ctx.http, &data.db, &data.req_client, &data.icon) {
+			Ok(state) => {
+				log::trace!("Created new interaction data.");
+				state
+			},
+			Err(why) => {
+				log::error!("Failed to create new interaction data.\n\n{:?}", why);
+				return Err(why);
+			},
+		};
 
 	let response = match event_name {
 		"ping" => commands::ping::execute().await,
@@ -58,8 +61,17 @@ pub(crate) async fn handle(
 	match response {
 		Err(why) => log::error!("Failed executing command: {:?}", why),
 		Ok(response) => {
+			// attempt to reply with the generated response
 			if let Err(why) = state.reply(response).await {
 				log::error!("Failed replying to interaction: {:?}", why);
+				// if the intended response failed, try to respond with a backup message
+				// (this is very unlikely to happen)
+				if let Err(why) =
+					state.reply(InteractionResponseData::Message(
+						String::from("Something went wrong... I'm not entirely sure what it was but you should tell <@291585142164815873> about this.")
+					)).await {
+						log::error!("Failed replying to interaction with fallback message: {:?}", why);
+					}
 			}
 		},
 	}
@@ -67,17 +79,28 @@ pub(crate) async fn handle(
 	return Ok(());
 }
 
+/// Global State holding information that will be used for the entirety of the program;
+/// -> will be passed to most commands
 #[derive(Debug, Clone)]
 pub(crate) struct GlobalState<'h> {
 	http: &'h Http,
+	// original Discord Interaction which created this instance
 	interaction: &'h ApplicationCommandInteraction,
+	// interaction options holding `{ name: value }` pairs for each command parameter passed by
+	// the user
+	opts: HashMap<String, json::Value>,
+	// whether the current interaction has been deferred or not
 	pub deferred: bool,
+	// user who triggered this interaction
 	pub user: &'h User,
-	pub opts: HashMap<String, json::Value>,
+	// reference to the database; gets passed from `BotData`
 	pub db: &'h Collection<UserSchema>,
-	pub req_client: reqwest::Client,
+	// global reqwest Client to pass to `gokz_rs` functions that need it; gets passed from `BotData`
+	pub req_client: &'h reqwest::Client,
+	// #7480c2 -> only here so that I don't have to type it out over and over again
 	pub colour: (u8, u8, u8),
-	pub icon: String,
+	// icon to put into embed footers
+	pub icon: &'h String,
 }
 
 impl<'h> GlobalState<'h> {
@@ -85,8 +108,12 @@ impl<'h> GlobalState<'h> {
 		interaction: &'h ApplicationCommandInteraction,
 		http: &'h Http,
 		collection: &'h Collection<UserSchema>,
+		req_client: &'h reqwest::Client,
+		icon: &'h String,
 	) -> anyhow::Result<GlobalState<'h>> {
 		let mut opts = HashMap::<String, json::Value>::new();
+
+		// filter out the relevant information from the interaction data and put it into a HashMap
 		for opt in &interaction.data.options {
 			if let Some(value) = opt.value.to_owned() {
 				opts.insert(opt.name.clone(), value);
@@ -96,18 +123,17 @@ impl<'h> GlobalState<'h> {
 		return Ok(Self {
 			http,
 			interaction,
+			opts,
 			deferred: false,
 			user: &interaction.user,
-			opts,
 			db: collection,
-			req_client: reqwest::Client::new(),
+			req_client,
 			colour: (116, 128, 194),
-			icon: env::var("ICON_URL").unwrap_or(
-				String::from("https://cdn.discordapp.com/attachments/981130651094900756/981130719537545286/churchOfSchnose.png")
-			)
+			icon,
 		});
 	}
 
+	/// Wrapper function to defer the current interaction
 	pub async fn defer(&mut self) -> anyhow::Result<()> {
 		self.interaction.defer(self.http).await?;
 		self.deferred = true;
@@ -115,7 +141,10 @@ impl<'h> GlobalState<'h> {
 		return Ok(());
 	}
 
-	pub async fn reply(&self, content: InteractionResponseData) -> anyhow::Result<()> {
+	/// Will be used to reply to an interaction, once the data for the reply has finished being
+	/// generated
+	async fn reply(&self, content: InteractionResponseData) -> anyhow::Result<()> {
+		// Interaction has been deferred => edit original message
 		if self.deferred {
 			match self
 				.interaction
@@ -132,6 +161,7 @@ impl<'h> GlobalState<'h> {
 					why
 				),
 			}
+		// Interaction has not been deferred => create a new message to reply with
 		} else {
 			match self
 				.interaction
@@ -154,6 +184,7 @@ impl<'h> GlobalState<'h> {
 		return Ok(());
 	}
 
+	/// Wrapper function to easily get a value from `self.opts` as a native type, instead of JSON
 	pub fn get<T>(&self, name: &str) -> Option<T>
 	where
 		T: serde::de::DeserializeOwned,
@@ -164,7 +195,9 @@ impl<'h> GlobalState<'h> {
 		}
 	}
 
-	pub fn thumbnail(&self, map_name: &String) -> String {
+	/// Utility function to generate a map thumbnail URL so I don't have to type it over and over
+	/// again
+	pub fn thumbnail(&self, map_name: &str) -> String {
 		return format!(
 			"https://raw.githubusercontent.com/KZGlobalTeam/map-images/master/images/{}.jpg",
 			map_name
@@ -172,6 +205,7 @@ impl<'h> GlobalState<'h> {
 	}
 }
 
+/// Kind of data that can be generated by a slash command, so it can be sent to the user
 #[derive(Debug, Clone)]
 pub(crate) enum InteractionResponseData {
 	Message(String),

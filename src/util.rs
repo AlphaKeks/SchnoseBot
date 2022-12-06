@@ -5,6 +5,11 @@ use {
 	serenity::builder::CreateEmbed,
 };
 
+/// Turns an amount of seconds into a nicely formatted string, e.g.
+/// ```
+/// let time: f32 = 1263.7832;
+/// assert_eq!("00:21:03.78", &format_time(time));
+/// ```
 pub(crate) fn format_time(secs_float: f32) -> String {
 	let seconds = secs_float as u32;
 	let hours = ((seconds / 3600) % 24) as u8;
@@ -24,6 +29,7 @@ pub(crate) fn format_time(secs_float: f32) -> String {
 	return s;
 }
 
+/// Takes an embed and attaches properly formatted "Download Replays" links.
 pub(crate) fn attach_replay_links(
 	embed: &mut CreateEmbed,
 	links: (String, String),
@@ -50,6 +56,7 @@ pub(crate) fn attach_replay_links(
 	return embed;
 }
 
+/// Uses the Steam API to retreive a user's profile picture
 pub(crate) async fn get_steam_avatar(
 	steam_id64: &Option<String>,
 	client: &reqwest::Client,

@@ -29,7 +29,7 @@ pub(crate) async fn execute(state: &GlobalState<'_>) -> anyhow::Result<Interacti
 
 	let max = state.get::<f64>("max").expect("This option is marked as `required`.");
 
-	let result = distance + (max / 128f64) * 4f64;
+	let result = distance + (max / 128.) * 4.;
 
 	return Ok(Message(format!("Approximated distance: `{0:.4}`", result)));
 }

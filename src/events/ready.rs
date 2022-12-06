@@ -1,12 +1,8 @@
-use serenity::model::prelude::{GuildId, command::Command};
-
-use crate::commands;
-
 use {
 	std::env,
-	crate::schnose::BotData,
+	crate::{commands, schnose::BotData},
 	serenity::{
-		model::prelude::{Ready, Activity},
+		model::prelude::{Activity, GuildId, command::Command, Ready},
 		prelude::Context,
 	},
 };
@@ -17,6 +13,7 @@ pub(crate) async fn handle(_state: &BotData, ctx: Context, ready: Ready) -> anyh
 	ctx.set_activity(Activity::playing("kz_epiphany_v2")).await;
 	log::warn!("Connected to Discord as `{}`.", ready.user.tag());
 
+	// `MODE` will determine which scope the commands are being registered in
 	let mode = env::var("MODE")?;
 	match mode.as_str() {
 		// register commands on dev server only
@@ -37,7 +34,7 @@ pub(crate) async fn handle(_state: &BotData, ctx: Context, ready: Ready) -> anyh
 						// .create_application_command(|cmd| commands::pb::register(cmd))
 						// .create_application_command(|cmd| commands::profile::register(cmd))
 						// .create_application_command(|cmd| commands::random::register(cmd))
-						.create_application_command(|cmd| commands::recent::register(cmd))
+						// .create_application_command(|cmd| commands::recent::register(cmd))
 						.create_application_command(|cmd| commands::setsteam::register(cmd))
 					// .create_application_command(|cmd| commands::unfinished::register(cmd))
 					// .create_application_command(|cmd| commands::wr::register(cmd))

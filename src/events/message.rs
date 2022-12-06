@@ -3,7 +3,7 @@ use {
 	rand::{Rng, thread_rng},
 };
 
-pub async fn handle(ctx: Context, msg: Message) -> anyhow::Result<()> {
+pub(crate) async fn handle(ctx: Context, msg: Message) -> anyhow::Result<()> {
 	if msg.content.to_lowercase().starts_with("bing?") {
 		return chilling(ctx, msg).await;
 	}

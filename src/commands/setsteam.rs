@@ -26,16 +26,18 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 pub(crate) async fn execute(
 	state: &mut GlobalState<'_>,
 ) -> anyhow::Result<InteractionResponseData> {
+	// Defer current interaction since this could take a while
 	state.defer().await?;
 
 	let steam_id = state.get::<String>("steam_id").expect("This option is marked as `required`.");
 
+	// validate user input
 	if !SteamID::test(&steam_id) {
 		return Ok(Message("Please enter a valid SteamID (e.g. `STEAM_1:1:161178172`).".into()));
 	}
 
-	// TODO: normalize steam ids to `STEAM_1:1:XXXXXX`
-	// (`STEAM_0:1:XXXXXX` is bad)
+	// TODO: normalize SteamIDs to `STEAM_1:1:XXXXXX`
+	// -> GlobalAPI normalizes it, and if schnose doesn't, there could be inconsistencies.
 
 	match state.db.find_one(doc! { "discordID": state.user.id.to_string() }, None).await {
 		// user has an entry already => update

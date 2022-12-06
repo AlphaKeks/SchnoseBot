@@ -7,6 +7,7 @@ use {
 	mongodb::Collection,
 };
 
+/// Database schema for user entries
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(non_snake_case)]
 pub(crate) struct UserSchema {
@@ -16,6 +17,7 @@ pub(crate) struct UserSchema {
 	pub mode: Option<String>,
 }
 
+/// Utility function to get a user's mode from the database
 pub(crate) async fn retrieve_mode(
 	user: &User,
 	collection: &Collection<UserSchema>,
@@ -27,12 +29,12 @@ pub(crate) async fn retrieve_mode(
 					// TODO: migrate to a proper database
 					if mode.as_str() != "none" {
 						let mode =
-							Mode::from_str(&mode).expect("This must be valid at this point.");
+							Mode::from_str(&mode).expect("This must be valid at this point. `mode_name` can only be valid or \"none\". The latter is already impossible because of the if-statement above.");
 						return Ok(mode);
 					}
 				}
 			}
-			return Err(SchnoseErr::NoModeSpecified);
+			return Err(SchnoseErr::MissingMode);
 		},
 		Err(why) => {
 			log::error!("[{}]: {} => {:?}", file!(), line!(), why);

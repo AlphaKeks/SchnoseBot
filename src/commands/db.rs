@@ -25,6 +25,7 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 pub(crate) async fn execute(
 	state: &mut GlobalState<'_>,
 ) -> anyhow::Result<InteractionResponseData> {
+	// Defer current interaction since this could take a while
 	state.defer().await?;
 
 	let (user_id, blame_user) = match state.get::<u64>("user") {
@@ -32,8 +33,11 @@ pub(crate) async fn execute(
 		None => (*state.user.id.as_u64(), true),
 	};
 
+	// Search database for the user's Discord User ID
 	match state.db.find_one(doc! { "discordID": user_id.to_string() }, None).await {
+		// Database connection successful
 		Ok(document) => match document {
+			// User has an entry in the database
 			Some(entry) => {
 				let embed = CreateEmbed::default()
 					.colour(state.colour)
