@@ -50,7 +50,8 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 	let course = state.get::<u8>("course").unwrap_or(1);
 
 	let mode = match state.get::<String>("mode") {
-		Some(mode_name) => Mode::from_str(&mode_name)
+		Some(mode_name) => mode_name
+			.parse()
 			.expect("The possible values for this are hard-coded and should never be invalid."),
 		None => retrieve_mode(state.user, state.db).await?,
 	};

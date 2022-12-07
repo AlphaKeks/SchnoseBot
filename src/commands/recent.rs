@@ -47,7 +47,7 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 			Err(_) => (String::from(" "), String::from(" ")),
 		};
 
-	let mode = Mode::from_str(&recent.mode).expect("This must be valid.");
+	let mode = &recent.mode.parse::<Mode>().expect("This must be valid.");
 
 	let embed = CreateEmbed::default()
 		.color((116, 128, 194))

@@ -43,7 +43,8 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 	let map_name = state.get::<String>("map_name").expect("This option is marked as `required`.");
 
 	let mode = match state.get::<String>("mode") {
-		Some(mode_name) => Mode::from_str(&mode_name)
+		Some(mode_name) => mode_name
+			.parse::<Mode>()
 			.expect("The possible values for this are hard-coded and should never be invalid."),
 		None => retrieve_mode(state.user, state.db).await?,
 	};

@@ -63,7 +63,7 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 									} else {
 										format!(
 											" New Mode: `{}`",
-											Mode::from_str(&mode_name)
+											mode_name.parse::<Mode>()
 												.expect("This must be valid at this point. `mode_name` can only be valid or \"none\". The latter is already impossible because of the if-statement above.")
 										)
 									},
@@ -139,7 +139,7 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 						Some(mode) if mode != "none" => {
 							return Ok(Message(format!(
 								"Your current mode is set to: `{}`.",
-								Mode::from_str(&mode).expect("This must be valid at this point. `mode_name` can only be valid or \"none\". The latter is already impossible because of the if-statement above.")
+								mode.parse::<Mode>().expect("This must be valid at this point. `mode_name` can only be valid or \"none\". The latter is already impossible because of the if-statement above.")
 							)))
 						},
 						_ => return Err(SchnoseErr::Custom("You currently don't have a mode set.".into())),

@@ -52,7 +52,8 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 	let player = target.to_player(state.user, state.db).await?;
 
 	let mode = match state.get::<String>("mode") {
-		Some(mode_name) => Mode::from_str(&mode_name)
+		Some(mode_name) => mode_name
+			.parse::<Mode>()
 			.expect("The possible values for this are hard-coded and should never be invalid."),
 		None => retrieve_mode(state.user, state.db).await?,
 	};

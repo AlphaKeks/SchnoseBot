@@ -29,7 +29,7 @@ pub(crate) async fn retrieve_mode(
 					// TODO: migrate to a proper database
 					if mode.as_str() != "none" {
 						let mode =
-							Mode::from_str(&mode).expect("This must be valid at this point. `mode_name` can only be valid or \"none\". The latter is already impossible because of the if-statement above.");
+							mode.parse::<Mode>().expect("This must be valid at this point. `mode_name` can only be valid or \"none\". The latter is already impossible because of the if-statement above.");
 						return Ok(mode);
 					}
 				}

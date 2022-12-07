@@ -44,7 +44,8 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 	let player = target.to_player(state.user, state.db).await?;
 
 	let mode = match state.get::<String>("mode") {
-		Some(mode_name) => Mode::from_str(&mode_name)
+		Some(mode_name) => mode_name
+			.parse::<Mode>()
 			.expect("The possible values for this are hard-coded and should never be invalid."),
 		None => retrieve_mode(state.user, state.db).await?,
 	};
@@ -65,7 +66,7 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 		{
 			if let Some(db_mode) = entry.mode {
 				if db_mode != "none" {
-					mode = Mode::from_str(&db_mode)
+					mode = db_mode.parse::<Mode>()
 						.expect("This must be valid at this point. `mode_name` can only be valid or \"none\". The latter is already impossible because of the if-statement above.")
 						.to_fancy();
 				}
