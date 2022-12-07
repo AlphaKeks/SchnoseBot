@@ -1,10 +1,7 @@
 use {
 	crate::{
-		events::slash_commands::{
-			GlobalState,
-			InteractionResponseData::{self, *},
-		},
-		schnose::Target,
+		events::slash_commands::{InteractionState, InteractionResponseData::*},
+		schnose::{InteractionResult, Target},
 		db::retrieve_mode,
 	},
 	gokz_rs::{prelude::*, global_api::*},
@@ -56,38 +53,24 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 		});
 }
 
-pub(crate) async fn execute(
-	state: &mut GlobalState<'_>,
-) -> anyhow::Result<InteractionResponseData> {
+pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResult {
 	// Defer current interaction since this could take a while
 	state.defer().await?;
 
 	let target = Target::from(state.get::<String>("player"));
 
-	let player = match target.to_player(state.user, state.db).await {
-		Ok(player) => player,
-		Err(why) => {
-			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return Ok(Message(why.to_string()));
-		},
-	};
+	let player = target.to_player(state.user, state.db).await?;
 
 	let mode = match state.get::<String>("mode") {
 		Some(mode_name) => Mode::from_str(&mode_name)
 			.expect("The possible values for this are hard-coded and should never be invalid."),
-		None => match retrieve_mode(state.user, state.db).await {
-			Ok(mode) => mode,
-			Err(why) => {
-				log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-				return Ok(Message(why.to_string()));
-			},
-		},
+		None => retrieve_mode(state.user, state.db).await?,
 	};
 
 	let runtype = match state.get::<String>("runtype") {
 		// Discord supports booleans as parameters for slash commands, however you cannot customize
 		// the prompt for the user. It will simply be "True" or "False" which is not ideal. That's
-		// why we use Strings. It's fine though since these values are hard-coded.		// why we use Strings. It's fine though since these values are hard-coded.		// why we use Strings. It's fine though since these values are hard-coded.
+		// why we use Strings. It's fine though since these values are hard-coded.
 		Some(runtype) => match runtype.as_str() {
 			"true" => true,
 			"false" => false,
@@ -124,7 +107,7 @@ pub(crate) async fn execute(
 			},
 			Err(why) => {
 				log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-				return Ok(Message(why.tldr));
+				return Err(why.into());
 			},
 		};
 

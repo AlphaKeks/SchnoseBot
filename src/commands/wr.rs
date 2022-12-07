@@ -1,9 +1,7 @@
 use {
 	crate::{
-		events::slash_commands::{
-			GlobalState,
-			InteractionResponseData::{self, *},
-		},
+		events::slash_commands::{InteractionState, InteractionResponseData::*},
+		schnose::InteractionResult,
 		db::retrieve_mode,
 		util::*,
 		gokz,
@@ -38,9 +36,7 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 		});
 }
 
-pub(crate) async fn execute(
-	state: &mut GlobalState<'_>,
-) -> anyhow::Result<InteractionResponseData> {
+pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResult {
 	// Defer current interaction since this could take a while
 	state.defer().await?;
 
@@ -49,30 +45,12 @@ pub(crate) async fn execute(
 	let mode = match state.get::<String>("mode") {
 		Some(mode_name) => Mode::from_str(&mode_name)
 			.expect("The possible values for this are hard-coded and should never be invalid."),
-		None => match retrieve_mode(state.user, state.db).await {
-			Ok(mode) => mode,
-			Err(why) => {
-				log::error!("[{}]: {} => {:?}", file!(), line!(), why);
-				return Ok(Message(why.to_string()));
-			},
-		},
+		None => retrieve_mode(state.user, state.db).await?,
 	};
 
-	let global_maps = match get_maps(&state.req_client).await {
-		Ok(maps) => maps,
-		Err(why) => {
-			log::error!("[{}]: {} => {:?}", file!(), line!(), why);
-			return Ok(Message(why.tldr));
-		},
-	};
+	let global_maps = get_maps(&state.req_client).await?;
 
-	let map = match is_global(&MapIdentifier::Name(map_name), &global_maps).await {
-		Ok(map) => map,
-		Err(why) => {
-			log::error!("[{}]: {} => {:?}", file!(), line!(), why);
-			return Ok(Message(why.tldr));
-		},
-	};
+	let map = is_global(&MapIdentifier::Name(map_name), &global_maps).await?;
 
 	let map_identifier = MapIdentifier::Name(map.name.clone());
 

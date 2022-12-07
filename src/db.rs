@@ -38,7 +38,7 @@ pub(crate) async fn retrieve_mode(
 		},
 		Err(why) => {
 			log::error!("[{}]: {} => {:?}", file!(), line!(), why);
-			return Err(SchnoseErr::FailedDB);
+			return Err(SchnoseErr::DBAccess);
 		},
 	}
 }

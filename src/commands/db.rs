@@ -1,7 +1,7 @@
 use {
-	crate::events::slash_commands::{
-		GlobalState,
-		InteractionResponseData::{self, *},
+	crate::{
+		events::slash_commands::{InteractionState, InteractionResponseData::*},
+		schnose::{InteractionResult, SchnoseErr},
 	},
 	bson::doc,
 	serenity::{
@@ -22,9 +22,7 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 		});
 }
 
-pub(crate) async fn execute(
-	state: &mut GlobalState<'_>,
-) -> anyhow::Result<InteractionResponseData> {
+pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResult {
 	// Defer current interaction since this could take a while
 	state.defer().await?;
 
@@ -58,20 +56,11 @@ pub(crate) async fn execute(
 
 				return Ok(Embed(embed));
 			},
-			None => {
-				return Ok(Message(format!(
-					"{} a database entry.",
-					if blame_user {
-						"You don't have"
-					} else {
-						"The user you specified doesn't have"
-					}
-				)))
-			},
+			None => return Err(SchnoseErr::MissingDBEntry(blame_user)),
 		},
 		Err(why) => {
 			log::error!("[{}]: {} => {:?}", file!(), line!(), why);
-			return Ok(Message("Failed to access database.".into()));
+			return Err(SchnoseErr::DBAccess);
 		},
 	}
 }

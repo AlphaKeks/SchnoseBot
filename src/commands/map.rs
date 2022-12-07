@@ -1,7 +1,7 @@
 use {
-	crate::events::slash_commands::{
-		GlobalState,
-		InteractionResponseData::{self, *},
+	crate::{
+		events::slash_commands::{InteractionState, InteractionResponseData::*},
+		schnose::InteractionResult,
 	},
 	gokz_rs::{prelude::*, global_api::*, kzgo},
 	serenity::{
@@ -21,39 +21,17 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 	);
 }
 
-pub(crate) async fn execute(
-	state: &mut GlobalState<'_>,
-) -> anyhow::Result<InteractionResponseData> {
+pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResult {
+	// Defer current interaction since this could take a while
 	state.defer().await?;
 
 	let map_name = state.get::<String>("map_name").expect("This option is marked as `required`.");
 
 	let (map_api, map_kzgo) = {
-		let global_maps = match get_maps(&state.req_client).await {
-			Ok(maps) => maps,
-			Err(why) => {
-				log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-				return Ok(Message(why.tldr));
-			},
-		};
-
-		let map_api = match is_global(&MapIdentifier::Name(map_name), &global_maps).await {
-			Ok(map) => map,
-			Err(why) => {
-				log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-				return Ok(Message(why.tldr));
-			},
-		};
-
+		let global_maps = get_maps(&state.req_client).await?;
+		let map_api = is_global(&MapIdentifier::Name(map_name), &global_maps).await?;
 		let map_identifier = MapIdentifier::Name(map_api.name.clone());
-
-		let map_kzgo = match kzgo::maps::get_map(&map_identifier, &state.req_client).await {
-			Ok(map) => map,
-			Err(why) => {
-				log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-				return Ok(Message(why.tldr));
-			},
-		};
+		let map_kzgo = kzgo::maps::get_map(&map_identifier, &state.req_client).await?;
 
 		(map_api, map_kzgo)
 	};
@@ -90,7 +68,7 @@ pub(crate) async fn execute(
 		},
 		Err(why) => {
 			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return Ok(Message(why.tldr));
+			return Err(why.into());
 		},
 	};
 

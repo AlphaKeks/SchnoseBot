@@ -1,6 +1,10 @@
 use {
 	std::collections::HashMap,
-	crate::{commands, schnose::BotData, db::UserSchema},
+	crate::{
+		commands,
+		schnose::{BotData, SchnoseErr, InteractionResult},
+		db::UserSchema,
+	},
 	serenity::{
 		prelude::Context,
 		model::{
@@ -23,17 +27,22 @@ pub(crate) async fn handle(
 
 	// (almost) every command will receive some global state to access information about the
 	// current interaction, the database etc.
-	let mut state =
-		match GlobalState::new(&interaction, &ctx.http, &data.db, &data.req_client, &data.icon) {
-			Ok(state) => {
-				log::trace!("Created new interaction data.");
-				state
-			},
-			Err(why) => {
-				log::error!("Failed to create new interaction data.\n\n{:?}", why);
-				return Err(why);
-			},
-		};
+	let mut state = match InteractionState::new(
+		&interaction,
+		&ctx.http,
+		&data.db,
+		&data.req_client,
+		&data.icon,
+	) {
+		Ok(state) => {
+			log::trace!("Created new interaction data.");
+			state
+		},
+		Err(why) => {
+			log::error!("Failed to create new interaction data.\n\n{:?}", why);
+			return Err(why);
+		},
+	};
 
 	let response = match event_name {
 		"ping" => commands::ping::execute().await,
@@ -58,31 +67,22 @@ pub(crate) async fn handle(
 		},
 	};
 
-	match response {
-		Err(why) => log::error!("Failed executing command: {:?}", why),
-		Ok(response) => {
-			// attempt to reply with the generated response
-			if let Err(why) = state.reply(response).await {
-				log::error!("Failed replying to interaction: {:?}", why);
-				// if the intended response failed, try to respond with a backup message
-				// (this is very unlikely to happen)
-				if let Err(why) =
-					state.reply(InteractionResponseData::Message(
-						String::from("Something went wrong... I'm not entirely sure what it was but you should tell <@291585142164815873> about this.")
-					)).await {
-						log::error!("Failed replying to interaction with fallback message: {:?}", why);
-					}
-			}
-		},
-	}
+	if let Err(why) = state.reply(response).await {
+		log::error!(
+			"[{}]: {} => Something happened when replying to an interaction",
+			file!(),
+			line!()
+		);
+		log::error!("[{}]: {} => {:?}", file!(), line!(), why);
+	};
 
 	return Ok(());
 }
 
-/// Global State holding information that will be used for the entirety of the program;
+/// Global State object holding information about the current interaction
 /// -> will be passed to most commands
 #[derive(Debug, Clone)]
-pub(crate) struct GlobalState<'h> {
+pub(crate) struct InteractionState<'h> {
 	http: &'h Http,
 	// original Discord Interaction which created this instance
 	interaction: &'h ApplicationCommandInteraction,
@@ -103,14 +103,14 @@ pub(crate) struct GlobalState<'h> {
 	pub icon: &'h String,
 }
 
-impl<'h> GlobalState<'h> {
+impl<'h> InteractionState<'h> {
 	pub fn new(
 		interaction: &'h ApplicationCommandInteraction,
 		http: &'h Http,
 		collection: &'h Collection<UserSchema>,
 		req_client: &'h reqwest::Client,
 		icon: &'h String,
-	) -> anyhow::Result<GlobalState<'h>> {
+	) -> anyhow::Result<InteractionState<'h>> {
 		let mut opts = HashMap::<String, json::Value>::new();
 
 		// filter out the relevant information from the interaction data and put it into a HashMap
@@ -134,8 +134,11 @@ impl<'h> GlobalState<'h> {
 	}
 
 	/// Wrapper function to defer the current interaction
-	pub async fn defer(&mut self) -> anyhow::Result<()> {
-		self.interaction.defer(self.http).await?;
+	pub async fn defer(&mut self) -> Result<(), SchnoseErr> {
+		if let Err(why) = self.interaction.defer(self.http).await {
+			log::error!("[{}]: {} => {:?}", file!(), line!(), why);
+			return Err(SchnoseErr::Defer);
+		}
 		self.deferred = true;
 		log::info!("deferred interaction `{}`", &self.interaction.data.name);
 		return Ok(());
@@ -143,7 +146,18 @@ impl<'h> GlobalState<'h> {
 
 	/// Will be used to reply to an interaction, once the data for the reply has finished being
 	/// generated
-	async fn reply(&self, content: InteractionResponseData) -> anyhow::Result<()> {
+	async fn reply(&self, content: InteractionResult) -> anyhow::Result<()> {
+		let content = match content {
+			Ok(reply) => {
+				log::trace!("Received successful interaction: {:?}", &reply);
+				reply
+			},
+			Err(error) => {
+				log::trace!("Received failed interaction: {:?}", &error);
+				InteractionResponseData::Message(error.to_string())
+			},
+		};
+
 		// Interaction has been deferred => edit original message
 		if self.deferred {
 			match self

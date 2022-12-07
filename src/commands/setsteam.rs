@@ -1,10 +1,8 @@
 use {
 	crate::{
 		db::UserSchema,
-		events::slash_commands::{
-			GlobalState,
-			InteractionResponseData::{self, *},
-		},
+		events::slash_commands::{InteractionState, InteractionResponseData::*},
+		schnose::{InteractionResult, SchnoseErr},
 	},
 	bson::doc,
 	gokz_rs::prelude::*,
@@ -23,9 +21,7 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 		});
 }
 
-pub(crate) async fn execute(
-	state: &mut GlobalState<'_>,
-) -> anyhow::Result<InteractionResponseData> {
+pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResult {
 	// Defer current interaction since this could take a while
 	state.defer().await?;
 
@@ -33,7 +29,7 @@ pub(crate) async fn execute(
 
 	// validate user input
 	if !SteamID::test(&steam_id) {
-		return Ok(Message("Please enter a valid SteamID (e.g. `STEAM_1:1:161178172`).".into()));
+		return Err(SchnoseErr::UserInput(steam_id));
 	}
 
 	// TODO: normalize SteamIDs to `STEAM_1:1:XXXXXX`
@@ -67,7 +63,7 @@ pub(crate) async fn execute(
 					},
 					Err(why) => {
 						log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-						return Ok(Message("Failed to update database.".into()));
+						return Err(SchnoseErr::DBUpdate);
 					},
 				}
 			},
@@ -101,14 +97,14 @@ pub(crate) async fn execute(
 					},
 					Err(why) => {
 						log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-						return Ok(Message("Failed to create database entry.".into()));
+						return Err(SchnoseErr::DBUpdate);
 					},
 				}
 			},
 		},
 		Err(why) => {
 			log::error!("[{}]: {} => {:?}", file!(), line!(), why);
-			return Ok(Message("Failed to access database.".into()));
+			return Err(SchnoseErr::DBAccess);
 		},
 	}
 }

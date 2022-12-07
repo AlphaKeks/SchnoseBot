@@ -1,7 +1,7 @@
 use {
-	crate::events::slash_commands::{
-		GlobalState,
-		InteractionResponseData::{self, *},
+	crate::{
+		events::slash_commands::{InteractionState, InteractionResponseData::*},
+		schnose::InteractionResult,
 	},
 	serenity::{builder::CreateApplicationCommand, model::prelude::command::CommandOptionType},
 };
@@ -24,7 +24,7 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 		});
 }
 
-pub(crate) async fn execute(state: &GlobalState<'_>) -> anyhow::Result<InteractionResponseData> {
+pub(crate) async fn execute(state: &InteractionState<'_>) -> InteractionResult {
 	let distance = state.get::<f64>("distance").expect("This option is marked as `required`.");
 
 	let max = state.get::<f64>("max").expect("This option is marked as `required`.");

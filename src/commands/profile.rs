@@ -1,10 +1,7 @@
 use {
 	crate::{
-		events::slash_commands::{
-			GlobalState,
-			InteractionResponseData::{self, *},
-		},
-		schnose::Target,
+		events::slash_commands::{InteractionState, InteractionResponseData::*},
+		schnose::{InteractionResult, Target},
 		util::*,
 		db::retrieve_mode,
 	},
@@ -38,58 +35,26 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 		});
 }
 
-pub(crate) async fn execute(
-	state: &mut GlobalState<'_>,
-) -> anyhow::Result<InteractionResponseData> {
+pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResult {
 	// Defer current interaction since this could take a while
 	state.defer().await?;
 
 	let target = Target::from(state.get::<String>("player"));
 
-	let player = match target.to_player(state.user, state.db).await {
-		Ok(player) => player,
-		Err(why) => {
-			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return Ok(Message(why.to_string()));
-		},
-	};
+	let player = target.to_player(state.user, state.db).await?;
 
 	let mode = match state.get::<String>("mode") {
 		Some(mode_name) => Mode::from_str(&mode_name)
 			.expect("The possible values for this are hard-coded and should never be invalid."),
-		None => match retrieve_mode(state.user, state.db).await {
-			Ok(mode) => mode,
-			Err(why) => {
-				log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-				return Ok(Message(why.to_string()));
-			},
-		},
+		None => retrieve_mode(state.user, state.db).await?,
 	};
 
-	let player = match get_player(&player, &state.req_client).await {
-		Ok(player) => player,
-		Err(why) => {
-			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return Ok(Message(why.tldr));
-		},
-	};
+	let player = get_player(&player, &state.req_client).await?;
 
-	let steam_id = match SteamID::new(&player.steam_id) {
-		Ok(steam_id) => steam_id,
-		Err(why) => {
-			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return Ok(Message(why.tldr));
-		},
-	};
+	let steam_id = SteamID::new(&player.steam_id)?;
 
 	let player_profile =
-		match get_profile(&PlayerIdentifier::SteamID(steam_id), &mode, &state.req_client).await {
-			Ok(profile) => profile,
-			Err(why) => {
-				log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-				return Ok(Message(why.tldr));
-			},
-		};
+		get_profile(&PlayerIdentifier::SteamID(steam_id), &mode, &state.req_client).await?;
 
 	let avatar = get_steam_avatar(&player_profile.steam_id64, &state.req_client).await;
 
@@ -143,7 +108,7 @@ pub(crate) async fn execute(
 		Ok(data) => (data.tp.total, data.pro.total),
 		Err(why) => {
 			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return Ok(Message(why.tldr));
+			return Err(why.into());
 		},
 	};
 

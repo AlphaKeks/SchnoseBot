@@ -1,7 +1,7 @@
 use {
-	crate::events::slash_commands::{
-		GlobalState,
-		InteractionResponseData::{self, *},
+	crate::{
+		events::slash_commands::{InteractionState, InteractionResponseData::*},
+		schnose::InteractionResult,
 	},
 	gokz_rs::global_api::get_mapcycle,
 	rand::Rng,
@@ -24,15 +24,10 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 	});
 }
 
-pub(crate) async fn execute(state: &GlobalState<'_>) -> anyhow::Result<InteractionResponseData> {
+pub(crate) async fn execute(state: &InteractionState<'_>) -> InteractionResult {
 	let tier = state.get::<u8>("tier");
-	let map_names = match get_mapcycle(tier, &state.req_client).await {
-		Ok(names) => names,
-		Err(why) => {
-			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return Ok(Message(why.tldr));
-		},
-	};
+
+	let map_names = get_mapcycle(tier, &state.req_client).await?;
 
 	let rand = rand::thread_rng().gen_range(0..map_names.len());
 

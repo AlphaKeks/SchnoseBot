@@ -1,10 +1,8 @@
 use {
 	crate::{
 		db::UserSchema,
-		events::slash_commands::{
-			GlobalState,
-			InteractionResponseData::{self, *},
-		},
+		events::slash_commands::{InteractionState, InteractionResponseData::*},
+		schnose::{InteractionResult, SchnoseErr},
 	},
 	bson::doc,
 	gokz_rs::prelude::*,
@@ -27,9 +25,7 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 		});
 }
 
-pub(crate) async fn execute(
-	state: &mut GlobalState<'_>,
-) -> anyhow::Result<InteractionResponseData> {
+pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResult {
 	// Defer current interaction since this could take a while
 	state.defer().await?;
 
@@ -75,7 +71,7 @@ pub(crate) async fn execute(
 							},
 							Err(why) => {
 								log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-								return Ok(Message("Failed to update database.".into()));
+								return Err(SchnoseErr::DBUpdate);
 							},
 						}
 					},
@@ -117,13 +113,13 @@ pub(crate) async fn execute(
 								},
 								Err(why) => {
 									log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-									return Ok(Message("Failed to create database entry.".into()));
+									return Err(SchnoseErr::DBUpdate);
 								},
 							}
 						} else {
 							// user doesn't have any database entries but wants to set their mode
 							// to "none"
-							return Ok(Message(
+							return Err(SchnoseErr::Custom(
 								"Your tactics confuse and frighten me, sir.".into(),
 							));
 						}
@@ -131,7 +127,7 @@ pub(crate) async fn execute(
 				},
 				Err(why) => {
 					log::error!("[{}]: {} => {:?}", file!(), line!(), why);
-					return Ok(Message("Failed to access database.".into()));
+					return Err(SchnoseErr::DBAccess);
 				},
 			}
 		},
@@ -146,7 +142,7 @@ pub(crate) async fn execute(
 								Mode::from_str(&mode).expect("This must be valid at this point. `mode_name` can only be valid or \"none\". The latter is already impossible because of the if-statement above.")
 							)))
 						},
-						_ => return Ok(Message("You currently don't have a mode set.".into())),
+						_ => return Err(SchnoseErr::Custom("You currently don't have a mode set.".into())),
 					},
 					None => {
 						log::warn!(
@@ -155,7 +151,7 @@ pub(crate) async fn execute(
 							line!(),
 							&state.user.name
 						);
-						return Ok(Message("You don't have any database entries.".into()));
+						return Err(SchnoseErr::MissingDBEntry(true));
 					},
 				},
 				Err(why) => {

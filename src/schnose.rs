@@ -1,6 +1,9 @@
 use {
 	std::env,
-	crate::{events, db::UserSchema},
+	crate::{
+		events::{self, slash_commands::InteractionResponseData},
+		db::UserSchema,
+	},
 	bson::doc,
 	gokz_rs::prelude::*,
 	serde::{Serialize, Deserialize},
@@ -12,44 +15,72 @@ use {
 	mongodb::Collection,
 };
 
+pub(crate) type InteractionResult = Result<InteractionResponseData, SchnoseErr>;
+
 /// Custom Error type so I don't have to keep typing the same error messages everywhere
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) enum SchnoseErr {
-	Custom(String),
-	Parse,
-	// whether to blame the user for not specifying a SteamID or not
+	UserInput(String),
+	GOKZ(String),
+	Parse(String),
 	MissingSteamID(bool),
 	MissingMode,
-	FailedDB,
+	MissingDBEntry(bool),
+	DBAccess,
+	DBUpdate,
+	Defer,
+	Custom(String),
 }
 
 impl std::fmt::Display for SchnoseErr {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let s = match self {
-			Self::Custom(msg) => &msg,
-			Self::Parse => "",
-			Self::MissingMode => "You need to specify a mode or set a default one via `/mode`.",
-			Self::MissingSteamID(blame_user) => {
+			SchnoseErr::UserInput(input) => format!("`{}` is not a valid input.", input),
+			SchnoseErr::GOKZ(err_msg) => format!("{}", err_msg),
+			SchnoseErr::Parse(source) => format!("Failed parsing {}.", source),
+			SchnoseErr::MissingSteamID(blame_user) => format!("{}",
 				if *blame_user {
-					"You need to specify a player or save your SteamID in schnose's database via `/setsteam`."
+					"You need to either specify a player or save your SteamID in schnose's database via `/setsteam`."
 				} else {
-					"The player you mentioned didn't save their SteamID in schnose's database. Tell them to use `/setsteam`!"
+					"The player you specified didn't save their SteamID in schnose's database. Tell them to use `/setsteam`!"
 				}
-			},
-			Self::FailedDB => "Failed to access database.",
+			),
+			SchnoseErr::MissingMode => format!("You need to either specify a mode or save your favorite one in schnose's database via `/mode`."),
+			SchnoseErr::MissingDBEntry(blame_user) => format!("{}",
+				if *blame_user {
+					"You don't have any database entries yet."
+				} else {
+					"The player you specified doesn't have any database entries yet."
+				}
+			),
+			SchnoseErr::DBAccess => format!("Failed to access database. Please report this incident to `<@291585142164815873>`."),
+			SchnoseErr::DBUpdate => format!("Failed to update database. Please report this incident to `<@291585142164815873>`."),
+			SchnoseErr::Defer => format!("Failed to defer message. Please report this incident to `<@291585142164815873>`."),
+			SchnoseErr::Custom(msg) => format!("{}", msg)
 		};
 
 		return write!(f, "{}", s);
 	}
 }
 
+impl From<gokz_rs::prelude::Error> for SchnoseErr {
+	fn from(error: gokz_rs::prelude::Error) -> Self {
+		return Self::GOKZ(error.tldr);
+	}
+}
+
 /// Global data for initializing a new bot instance
 #[derive(Debug, Clone)]
 pub(crate) struct BotData {
+	// Discord API token
 	pub token: String,
+	// https://discord.com/developers/docs/topics/gateway
 	pub intents: GatewayIntents,
+	// the database storing all the user data
 	pub db: Collection<UserSchema>,
+	// global reqwest Client to pass to `gokz_rs` functions that need it
 	pub req_client: reqwest::Client,
+	// icon to put into embed footers
 	pub icon: String,
 }
 
@@ -123,7 +154,7 @@ pub(crate) enum Target {
 
 impl Target {
 	/// Create a new `Target` from user input. The intended way to use this is in combination with
-	/// calling `.get` on the `GlobalState` passed into every command.
+	/// calling `.get` on the `InteractionState` passed into every command.
 	/// ```
 	/// let user_input = state.get::<String>("player");
 	/// let target = Target::from(user_input);
@@ -175,7 +206,7 @@ impl Target {
 			// Database connection failed
 			Err(why) => {
 				log::error!("[{}]: {} => {:?}", file!(), line!(), why);
-				return Err(SchnoseErr::FailedDB);
+				return Err(SchnoseErr::DBAccess);
 			},
 		}
 	}
@@ -195,7 +226,7 @@ impl std::str::FromStr for Mention {
 			Regex::new(r#"^<@[0-9]+>$"#).expect("If it compiles once, it will always compile.");
 
 		if !regex.is_match(s) {
-			return Err(SchnoseErr::Parse);
+			return Err(SchnoseErr::UserInput(s.to_owned()));
 		}
 
 		let user_id = str::replace(s, "<@", "");

@@ -1,10 +1,7 @@
 use {
 	crate::{
-		events::slash_commands::{
-			GlobalState,
-			InteractionResponseData::{self, *},
-		},
-		schnose::Target,
+		events::slash_commands::{InteractionState, InteractionResponseData::*},
+		schnose::{InteractionResult, Target},
 		util::format_time,
 	},
 	gokz_rs::{prelude::*, global_api::*},
@@ -26,46 +23,20 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 		});
 }
 
-pub(crate) async fn execute(
-	state: &mut GlobalState<'_>,
-) -> anyhow::Result<InteractionResponseData> {
+pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResult {
 	// Defer current interaction since this could take a while
 	state.defer().await?;
 
 	let target = Target::from(state.get::<String>("player"));
 
-	let player = match target.to_player(state.user, state.db).await {
-		Ok(player) => player,
-		Err(why) => {
-			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return Ok(Message(why.to_string()));
-		},
-	};
+	let player = target.to_player(state.user, state.db).await?;
 
-	let recent = match get_recent(&player, &state.req_client).await {
-		Ok(record) => record,
-		Err(why) => {
-			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return Ok(Message(why.tldr));
-		},
-	};
+	let recent = get_recent(&player, &state.req_client).await?;
 
-	let map = match get_map(&MapIdentifier::Name(recent.map_name.clone()), &state.req_client).await
-	{
-		Ok(map) => map,
-		Err(why) => {
-			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return Ok(Message(why.tldr));
-		},
-	};
+	let map = get_map(&MapIdentifier::Name(recent.map_name.clone()), &state.req_client).await?;
 
-	let place = match get_place(&recent.id, &state.req_client).await {
-		Ok(place) => format!("[#{}]", place.0),
-		Err(why) => {
-			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return Ok(Message(why.tldr));
-		},
-	};
+	let place = get_place(&recent.id, &state.req_client).await?;
+	let place = format!("[#{}]", place.0);
 
 	let (discord_timestamp, footer_msg) =
 		match chrono::NaiveDateTime::parse_from_str(&recent.created_on, "%Y-%m-%dT%H:%M:%S") {
