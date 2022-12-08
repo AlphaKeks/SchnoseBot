@@ -1,3 +1,5 @@
+use crate::events::slash_commands::PaginationEmbeds;
+
 use {
 	std::env,
 	crate::{
@@ -132,6 +134,56 @@ impl EventHandler for BotData {
 			Interaction::ApplicationCommand(slash_command) => {
 				if let Err(why) = events::slash_commands::handle(self, ctx, slash_command).await {
 					log::error!("Failed to respond to slash command.\n\n{:?}", why);
+				}
+			},
+			Interaction::MessageComponent(component) => {
+				// let interaction_id = component.id.as_u64();
+				let _ = component
+					.create_interaction_response(&ctx.http, |response| {
+						response.kind(serenity::model::prelude::interaction::InteractionResponseType::UpdateMessage).interaction_response_data(|response| {
+							response.content("Loading...")
+						})
+					})
+					.await;
+
+				let interaction_id = component.get_interaction_response(&ctx.http).await.unwrap();
+				let interaction_id = interaction_id.interaction.unwrap().id.as_u64().to_owned();
+				let mut global_data = ctx.data.write().await;
+				let embed_data = global_data.get::<PaginationEmbeds>().unwrap();
+				dbg!(&embed_data);
+				let old_idx = embed_data.get(&interaction_id).unwrap().idx;
+				dbg!(&old_idx);
+				let go_back = if old_idx == 0 { 0 } else { old_idx - 1 };
+				let go_forward = if old_idx == 9 { 9 } else { old_idx + 1 };
+				let embeds = global_data.get_mut::<PaginationEmbeds>().unwrap();
+				let embed_data = embeds.get_mut(&interaction_id).unwrap();
+
+				dbg!(&go_back, &go_forward);
+
+				match component.data.custom_id.as_str() {
+					"back" => {
+						if let Err(why) = component
+							.edit_original_interaction_response(ctx.http, |response| {
+								response.set_embed(embed_data.embeds[go_back].clone())
+							})
+							.await
+						{
+							println!("got err: {:?}", why);
+						}
+						embed_data.idx = go_back;
+					},
+					"forward" => {
+						if let Err(why) = component
+							.edit_original_interaction_response(ctx.http, |response| {
+								response.set_embed(embed_data.embeds[go_forward].clone())
+							})
+							.await
+						{
+							println!("got err: {:?}", why);
+						}
+						embed_data.idx = go_forward;
+					},
+					_ => todo!(),
 				}
 			},
 			unknown_interaction => {

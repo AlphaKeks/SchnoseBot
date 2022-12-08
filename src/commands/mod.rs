@@ -1,5 +1,6 @@
 pub(crate) mod apistatus;
 pub(crate) mod bpb;
+pub(crate) mod button_test;
 pub(crate) mod bwr;
 pub(crate) mod db;
 pub(crate) mod invite;

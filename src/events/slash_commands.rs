@@ -61,13 +61,14 @@ pub(crate) async fn handle(
 		"setsteam" => commands::setsteam::execute(&mut state).await,
 		"unfinished" => commands::unfinished::execute(&mut state).await,
 		"wr" => commands::wr::execute(&mut state).await,
+		"testmedaddy" => commands::button_test::execute(&mut state).await,
 		unknown_command => {
 			log::warn!("encountered unknown slash command: {}", unknown_command);
 			return Ok(());
 		},
 	};
 
-	state.reply(response).await;
+	state.reply(ctx.data, response).await;
 	return Ok(());
 }
 
@@ -148,7 +149,11 @@ impl<'h> InteractionState<'h> {
 
 	/// Will be used to reply to an interaction, once the data for the reply has finished being
 	/// generated
-	async fn reply(&self, content: InteractionResult) {
+	async fn reply(
+		&self,
+		global_data: std::sync::Arc<tokio::sync::RwLock<serenity::prelude::TypeMap>>,
+		content: InteractionResult,
+	) {
 		let content = match content {
 			Ok(reply) => {
 				log::trace!("Received successful interaction: {:?}", &reply);
@@ -160,6 +165,8 @@ impl<'h> InteractionState<'h> {
 			},
 		};
 
+		let mut data = global_data.write().await;
+
 		// Interaction has been deferred => edit original message
 		if self.deferred {
 			match self
@@ -168,6 +175,54 @@ impl<'h> InteractionState<'h> {
 					return match content {
 						InteractionResponseData::Message(message) => response.content(message),
 						InteractionResponseData::Embed(embed) => response.set_embed(embed),
+						InteractionResponseData::Pagination(embed_list) => {
+							let pagination_embeds = EmbedData { idx: 0, embeds: embed_list };
+
+							let old_data = match data.get_mut::<PaginationEmbeds>() {
+								Some(data) => data,
+								None => {
+									data.insert::<PaginationEmbeds>(HashMap::from([(
+										*self.interaction.id.as_u64(),
+										pagination_embeds,
+									)]));
+									data.get_mut::<PaginationEmbeds>().unwrap()
+								},
+							};
+
+							let new_map = HashMap::from_iter(
+								old_data
+									.keys()
+									.zip(old_data.values())
+									.map(|(i, e)| (*i, e.to_owned())),
+							);
+
+							data.insert::<PaginationEmbeds>(new_map.clone());
+
+							response.set_embed(
+								new_map.get(self.interaction.id.as_u64()).unwrap().embeds[0]
+									.clone(),
+							);
+
+							serenity::builder::CreateButton::default();
+							response.components(|h| {
+								h.create_action_row(|row| {
+									row.create_button(|button| {
+										button.label("<");
+										button.style(
+												serenity::model::prelude::component::ButtonStyle::Primary,
+											);
+										button.custom_id("back")
+									})
+									.create_button(|button| {
+										button.label(">");
+										button.style(
+												serenity::model::prelude::component::ButtonStyle::Primary,
+											);
+										button.custom_id("forward")
+									})
+								})
+							})
+						},
 					};
 				})
 				.await
@@ -191,6 +246,46 @@ impl<'h> InteractionState<'h> {
 						return match content {
 							InteractionResponseData::Message(message) => response.content(message),
 							InteractionResponseData::Embed(embed) => response.set_embed(embed),
+							InteractionResponseData::Pagination(embed_list) => {
+								let pagination_embeds = EmbedData { idx: 0, embeds: embed_list };
+
+								let old_data = data.get_mut::<PaginationEmbeds>().unwrap();
+								old_data.insert(*self.interaction.id.as_u64(), pagination_embeds);
+
+								let new_map = HashMap::from_iter(
+									old_data
+										.keys()
+										.zip(old_data.values())
+										.map(|(i, e)| (*i, e.to_owned())),
+								);
+
+								data.insert::<PaginationEmbeds>(new_map.clone());
+
+								response.set_embed(
+									new_map.get(self.interaction.id.as_u64()).unwrap().embeds[0]
+										.clone(),
+								);
+
+								serenity::builder::CreateButton::default();
+								response.components(|h| {
+									h.create_action_row(|row| {
+										row.create_button(|button| {
+											button.label("<");
+											button.style(
+												serenity::model::prelude::component::ButtonStyle::Primary,
+											);
+											button.custom_id("back")
+										})
+										.create_button(|button| {
+											button.label(">");
+											button.style(
+												serenity::model::prelude::component::ButtonStyle::Primary,
+											);
+											button.custom_id("forward")
+										})
+									})
+								})
+							},
 						};
 					})
 				})
@@ -232,4 +327,17 @@ impl<'h> InteractionState<'h> {
 pub(crate) enum InteractionResponseData {
 	Message(String),
 	Embed(CreateEmbed),
+	Pagination(Vec<CreateEmbed>),
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct EmbedData {
+	pub idx: usize,
+	pub embeds: Vec<CreateEmbed>,
+}
+
+pub(crate) struct PaginationEmbeds;
+
+impl serenity::prelude::TypeMapKey for PaginationEmbeds {
+	type Value = HashMap<u64, EmbedData>;
 }
