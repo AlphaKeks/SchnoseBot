@@ -50,7 +50,7 @@ pub(crate) async fn handle(
 		"bpb" => commands::bpb::execute(&mut state).await,
 		"bwr" => commands::bwr::execute(&mut state).await,
 		"db" => commands::db::execute(&mut state).await,
-		"invite" => commands::invite::execute().await,
+		"invite" => commands::invite::execute(&mut state).await,
 		"map" => commands::map::execute(&mut state).await,
 		"mode" => commands::mode::execute(&mut state).await,
 		"nocrouch" => commands::nocrouch::execute(&state).await,
@@ -67,15 +67,7 @@ pub(crate) async fn handle(
 		},
 	};
 
-	if let Err(why) = state.reply(response).await {
-		log::error!(
-			"[{}]: {} => Something happened when replying to an interaction",
-			file!(),
-			line!()
-		);
-		log::error!("[{}]: {} => {:?}", file!(), line!(), why);
-	};
-
+	state.reply(response).await;
 	return Ok(());
 }
 
@@ -89,8 +81,10 @@ pub(crate) struct InteractionState<'h> {
 	// interaction options holding `{ name: value }` pairs for each command parameter passed by
 	// the user
 	opts: HashMap<String, json::Value>,
+	// whether to send an ephemeral response or not
+	ephemeral: bool,
 	// whether the current interaction has been deferred or not
-	pub deferred: bool,
+	deferred: bool,
 	// user who triggered this interaction
 	pub user: &'h User,
 	// reference to the database; gets passed from `BotData`
@@ -124,6 +118,7 @@ impl<'h> InteractionState<'h> {
 			http,
 			interaction,
 			opts,
+			ephemeral: false,
 			deferred: false,
 			user: &interaction.user,
 			db: collection,
@@ -131,6 +126,13 @@ impl<'h> InteractionState<'h> {
 			colour: (116, 128, 194),
 			icon,
 		});
+	}
+
+	/// Wrapper function send an ephemeral response
+	/// Note: can only be used on non-deferred functions. (for now at least)
+	pub fn ephemeral(&mut self) {
+		self.ephemeral = true;
+		log::info!("turned interaction `{}` ephemeral", &self.interaction.data.name);
 	}
 
 	/// Wrapper function to defer the current interaction
@@ -146,7 +148,7 @@ impl<'h> InteractionState<'h> {
 
 	/// Will be used to reply to an interaction, once the data for the reply has finished being
 	/// generated
-	async fn reply(&self, content: InteractionResult) -> anyhow::Result<()> {
+	async fn reply(&self, content: InteractionResult) {
 		let content = match content {
 			Ok(reply) => {
 				log::trace!("Received successful interaction: {:?}", &reply);
@@ -154,7 +156,7 @@ impl<'h> InteractionState<'h> {
 			},
 			Err(error) => {
 				log::trace!("Received failed interaction: {:?}", &error);
-				InteractionResponseData::Message(error.to_string())
+				InteractionResponseData::Message(error.into())
 			},
 		};
 
@@ -162,9 +164,11 @@ impl<'h> InteractionState<'h> {
 		if self.deferred {
 			match self
 				.interaction
-				.edit_original_interaction_response(self.http, |response| match content {
-					InteractionResponseData::Message(message) => response.content(message),
-					InteractionResponseData::Embed(embed) => response.set_embed(embed),
+				.edit_original_interaction_response(self.http, |response| {
+					return match content {
+						InteractionResponseData::Message(message) => response.content(message),
+						InteractionResponseData::Embed(embed) => response.set_embed(embed),
+					};
 				})
 				.await
 			{
@@ -180,9 +184,14 @@ impl<'h> InteractionState<'h> {
 			match self
 				.interaction
 				.create_interaction_response(self.http, |response| {
-					response.interaction_response_data(|response| match content {
-						InteractionResponseData::Message(message) => response.content(message),
-						InteractionResponseData::Embed(embed) => response.set_embed(embed),
+					response.interaction_response_data(|response| {
+						if self.ephemeral {
+							response.ephemeral(true);
+						}
+						return match content {
+							InteractionResponseData::Message(message) => response.content(message),
+							InteractionResponseData::Embed(embed) => response.set_embed(embed),
+						};
 					})
 				})
 				.await
@@ -195,7 +204,6 @@ impl<'h> InteractionState<'h> {
 				),
 			}
 		}
-		return Ok(());
 	}
 
 	/// Wrapper function to easily get a value from `self.opts` as a native type, instead of JSON

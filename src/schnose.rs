@@ -63,6 +63,12 @@ impl std::fmt::Display for SchnoseErr {
 	}
 }
 
+impl Into<String> for SchnoseErr {
+	fn into(self) -> String {
+		return self.to_string();
+	}
+}
+
 impl From<gokz_rs::prelude::Error> for SchnoseErr {
 	fn from(error: gokz_rs::prelude::Error) -> Self {
 		return Self::GOKZ(error.tldr);
