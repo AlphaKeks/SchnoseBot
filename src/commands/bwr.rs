@@ -3,9 +3,7 @@ use {
 		prelude::InteractionResult,
 		events::interactions::InteractionState,
 		database::util as DB,
-		formatting::{
-			get_player_name, get_place_formatted, get_replay_link, format_time, attach_replay_links,
-		},
+		formatting::{get_place_formatted, get_replay_link, format_time, attach_replay_links},
 	},
 	gokz_rs::{
 		prelude::*,
@@ -79,7 +77,6 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 		return Ok("No BWRs found 😔.".into());
 	}
 
-	let player_name = get_player_name((&tp, &pro));
 	let (place_tp, place_pro) = (
 		get_place_formatted(&tp, &state.req_client).await,
 		get_place_formatted(&pro, &state.req_client).await,
@@ -88,10 +85,7 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 
 	let mut embed = CreateEmbed::default()
 		.colour(state.colour)
-		.title(format!(
-			"[BWR {}] {} on {} (T{})",
-			&course, &player_name, &map.name, &map.difficulty
-		))
+		.title(format!("[BWR {}] {} (T{})", &course, &map.name, &map.difficulty))
 		.url(format!(
 			"{}?bonus={}&{}=",
 			state.map_link(&map.name),
