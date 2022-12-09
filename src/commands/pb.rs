@@ -4,7 +4,8 @@ use {
 		events::interactions::InteractionState,
 		database::util as DB,
 		formatting::{
-			get_player_name, get_place_formatted, get_replay_link, format_time, attach_replay_links,
+			get_player_name, get_place_formatted, get_replay_links, format_time,
+			attach_replay_links,
 		},
 	},
 	gokz_rs::{
@@ -86,7 +87,7 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 		get_place_formatted(&tp, &state.req_client).await,
 		get_place_formatted(&pro, &state.req_client).await,
 	);
-	let links = (get_replay_link(&tp).await, get_replay_link(&pro).await);
+	let links = (get_replay_links(&tp).await, get_replay_links(&pro).await);
 
 	let mut embed = CreateEmbed::default()
 		.colour(state.colour)

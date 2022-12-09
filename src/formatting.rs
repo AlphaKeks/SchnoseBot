@@ -27,24 +27,30 @@ pub(crate) fn format_time(secs_float: f32) -> String {
 /// Takes an embed and attaches properly formatted "Download Replays" links.
 pub(crate) fn attach_replay_links(
 	embed: &mut CreateEmbed,
-	links: (String, String),
+	links: ((String, String), (String, String)),
 ) -> &mut CreateEmbed {
-	let tp = links.0.len() > 0;
-	let pro = links.1.len() > 0;
+	let tp = links.0 .0.len() > 0;
+	let pro = links.1 .0.len() > 0;
 
 	if tp || pro {
-		let mut description = String::from("Download Replays:");
-
 		let text = if tp && !pro {
-			format!(" [TP]({})", links.0)
+			format!(
+				"Watch Replays:            [TP]({})\nDownload Replays:     [TP]({})",
+				links.0 .0, links.0 .1
+			)
 		} else if !tp && pro {
-			format!(" [PRO]({})", links.1)
+			format!(
+				"Watch Replays:            [PRO]({})\nDownload Replays:     [PRO]({})",
+				links.1 .0, links.1 .1
+			)
 		} else {
-			format!(" [TP]({}) | [PRO]({})", links.0, links.1)
+			format!(
+				"Watch Replays:            [TP]({}) | [PRO]({})\nDownload Replays:     [TP]({}) | [PRO]({})",
+				links.0 .0, links.1 .0, links.1 .0, links.1 .1
+			)
 		};
 
-		description.push_str(&text);
-		embed.description(description);
+		embed.description(text);
 		return embed;
 	}
 
@@ -77,14 +83,20 @@ pub(crate) async fn get_place_formatted(record: &PB, client: &reqwest::Client) -
 }
 
 /// Utility function to generate a replay download link
-pub(crate) async fn get_replay_link(record: &PB) -> String {
+pub(crate) async fn get_replay_links(record: &PB) -> (String, String) {
 	if let Ok(record) = record {
 		if record.replay_id != 0 {
 			if let Ok(link) = global_api::get_replay(record.replay_id).await {
-				return link;
+				return (
+					format!(
+						"http://gokzmaptest.site.nfoservers.com/GlobalReplays/?replay={}",
+						&record.replay_id
+					),
+					link,
+				);
 			}
 		}
 	}
 
-	return String::new();
+	return (String::new(), String::new());
 }

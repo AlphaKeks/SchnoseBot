@@ -3,7 +3,7 @@ use {
 		prelude::InteractionResult,
 		events::interactions::InteractionState,
 		database::util as DB,
-		formatting::{get_replay_link, format_time, attach_replay_links},
+		formatting::{get_replay_links, format_time, attach_replay_links},
 	},
 	gokz_rs::{
 		prelude::*,
@@ -85,7 +85,7 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 		(player_tp, player_pro)
 	};
 
-	let links = (get_replay_link(&tp).await, get_replay_link(&pro).await);
+	let links = (get_replay_links(&tp).await, get_replay_links(&pro).await);
 
 	let mut embed = CreateEmbed::default()
 		.colour(state.colour)
@@ -95,7 +95,7 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 		.field(
 			"TP",
 			format!(
-				"{} {}",
+				"{} ({})",
 				match &tp {
 					Ok(rec) => format_time(rec.time),
 					_ => String::from("😔"),
@@ -107,7 +107,7 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 		.field(
 			"PRO",
 			format!(
-				"{} {}",
+				"{} ({})",
 				match &pro {
 					Ok(rec) => format_time(rec.time),
 					_ => String::from("😔"),

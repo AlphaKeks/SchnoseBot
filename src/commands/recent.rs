@@ -65,7 +65,14 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 			format!("> {} {}\n> {}{}", format_time(recent.time), place, discord_timestamp, {
 				if &recent.replay_id != &0 {
 					match get_replay(recent.replay_id).await {
-						Ok(link) => format!("\n> [Download Replay]({})", link),
+						Ok(link) => format!(
+							"\n> [Watch Replay]({})\n> [Download Replay]({})",
+							format!(
+								"http://gokzmaptest.site.nfoservers.com/GlobalReplays/?replay={}",
+								&recent.replay_id
+							),
+							link
+						),
 						Err(why) => {
 							error!(
 								"Failed to get replay link for id {}: {:?}",
