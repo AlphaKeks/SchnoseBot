@@ -76,7 +76,8 @@ impl GlobalState {
 
 		let req_client = reqwest::Client::new();
 
-		let icon = env::var("ICON_URL").unwrap_or("https://cdn.discordapp.com/attachments/981130651094900756/981130719537545286/churchOfSchnose.png".into());
+		let icon = env::var("ICON_URL")
+			.unwrap_or("https://cdn.discordapp.com/attachments/981130651094900756/981130719537545286/churchOfSchnose.png".into());
 
 		return Ok(GlobalState {
 			token,
@@ -113,6 +114,7 @@ impl EventHandler for GlobalState {
 	/// As of right now only slash commands are being handled, but Buttons and menus are planned.
 	async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
 		use Interaction::*;
+
 		match interaction {
 			ApplicationCommand(slash_command) => {
 				if let Err(why) =

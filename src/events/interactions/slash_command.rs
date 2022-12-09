@@ -16,7 +16,6 @@ pub(crate) async fn handle(
 
 	trace!("Received slash command: `{}`", command_name);
 
-	#[allow(unused_mut)]
 	let mut interaction_state = InteractionState::new(
 		&ctx.http,
 		&interaction,

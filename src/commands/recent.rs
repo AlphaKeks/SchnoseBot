@@ -5,6 +5,7 @@ use {
 		formatting::format_time,
 	},
 	gokz_rs::{prelude::*, global_api::*},
+	log::error,
 	serenity::{
 		builder::{CreateApplicationCommand, CreateEmbed},
 		model::prelude::command::CommandOptionType,
@@ -66,14 +67,10 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 					match get_replay(recent.replay_id).await {
 						Ok(link) => format!("\n> [Download Replay]({})", link),
 						Err(why) => {
-							log::error!(
-								"[{}]: {} => {}\n{:#?}",
-								file!(),
-								line!(),
-								format!("Failed to get replay link for id {}", &recent.replay_id),
-								why
+							error!(
+								"Failed to get replay link for id {}: {:?}",
+								&recent.replay_id, why
 							);
-
 							String::new()
 						},
 					}
