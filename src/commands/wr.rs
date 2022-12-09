@@ -3,7 +3,7 @@ use {
 		prelude::InteractionResult,
 		events::interactions::InteractionState,
 		database::util as DB,
-		formatting::{get_place_formatted, get_replay_link, format_time, attach_replay_links},
+		formatting::{get_replay_link, format_time, attach_replay_links},
 	},
 	gokz_rs::{
 		prelude::*,
@@ -70,10 +70,21 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 		return Ok("No WRs found 😔.".into());
 	}
 
-	let (place_tp, place_pro) = (
-		get_place_formatted(&tp, &state.req_client).await,
-		get_place_formatted(&pro, &state.req_client).await,
-	);
+	let (player_tp, player_pro) = {
+		let (mut player_tp, mut player_pro) = (String::from("unknown"), String::from("unknown"));
+		if let Ok(rec) = &tp {
+			if let Some(name) = rec.player_name.clone() {
+				player_tp = name;
+			}
+		}
+		if let Ok(rec) = &pro {
+			if let Some(name) = rec.player_name.clone() {
+				player_pro = name;
+			}
+		}
+		(player_tp, player_pro)
+	};
+
 	let links = (get_replay_link(&tp).await, get_replay_link(&pro).await);
 
 	let mut embed = CreateEmbed::default()
@@ -89,7 +100,7 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 					Ok(rec) => format_time(rec.time),
 					_ => String::from("😔"),
 				},
-				place_tp
+				player_tp
 			),
 			true,
 		)
@@ -101,7 +112,7 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 					Ok(rec) => format_time(rec.time),
 					_ => String::from("😔"),
 				},
-				place_pro
+				player_pro
 			),
 			true,
 		)
