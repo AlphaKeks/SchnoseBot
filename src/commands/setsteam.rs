@@ -1,9 +1,11 @@
+use crate::database::schemas::UserSchema;
+
 use {
 	crate::{
-		db::UserSchema,
-		events::slash_commands::{InteractionState, InteractionResponseData::*},
-		schnose::{InteractionResult, SchnoseErr},
+		events::interactions::InteractionState,
+		prelude::{InteractionResult, SchnoseError},
 	},
+	log::{info, warn, error},
 	bson::doc,
 	gokz_rs::prelude::*,
 	serenity::{builder::CreateApplicationCommand, model::prelude::command::CommandOptionType},
@@ -29,7 +31,7 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 
 	// validate user input
 	if !SteamID::test(&steam_id) {
-		return Err(SchnoseErr::UserInput(steam_id));
+		return Err(SchnoseError::UserInput(steam_id));
 	}
 
 	// TODO: normalize SteamIDs to `STEAM_1:1:XXXXXX`
@@ -39,12 +41,7 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 		// user has an entry already => update
 		Ok(document) => match document {
 			Some(_old_entry) => {
-				log::info!(
-					"[{}]: {} => Modifying database entry\n\n{:?}",
-					file!(),
-					line!(),
-					_old_entry
-				);
+				info!("Modifying database entry...");
 				match state
 					.db
 					.find_one_and_update(
@@ -55,26 +52,22 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 					.await
 				{
 					Ok(_) => {
-						return Ok(Message(format!(
+						return Ok(format!(
 							"Successfully set SteamID `{}` for <@{}>.",
 							&steam_id,
 							state.user.id.as_u64(),
-						)))
+						)
+						.into())
 					},
 					Err(why) => {
-						log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-						return Err(SchnoseErr::DBUpdate);
+						error!("Failed to update database: {:?}", why);
+						return Err(SchnoseError::DBUpdate);
 					},
 				}
 			},
 			// user does not yet have an entry => create a new one
 			None => {
-				log::warn!(
-					"[{}]: {} => {} doesn't have a database entry.",
-					file!(),
-					line!(),
-					&state.user.name
-				);
+				warn!("{} doesn't have a database entry.", &state.user.name);
 				match state
 					.db
 					.insert_one(
@@ -89,22 +82,23 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 					.await
 				{
 					Ok(_) => {
-						return Ok(Message(format!(
+						return Ok((format!(
 							"Successfully set SteamID `{}` for <@{}>.",
 							steam_id,
 							state.user.id.as_u64()
-						)))
+						))
+						.into())
 					},
 					Err(why) => {
-						log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-						return Err(SchnoseErr::DBUpdate);
+						error!("Failed to update database: {:?}", why);
+						return Err(SchnoseError::DBUpdate);
 					},
 				}
 			},
 		},
 		Err(why) => {
-			log::error!("[{}]: {} => {:?}", file!(), line!(), why);
-			return Err(SchnoseErr::DBAccess);
+			error!("Failed to access database: {:?}", why);
+			return Err(SchnoseError::DBAccess);
 		},
 	}
 }

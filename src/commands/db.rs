@@ -1,7 +1,7 @@
 use {
 	crate::{
-		events::slash_commands::{InteractionState, InteractionResponseData::*},
-		schnose::{InteractionResult, SchnoseErr},
+		events::interactions::InteractionState,
+		prelude::{InteractionResult, SchnoseError},
 	},
 	bson::doc,
 	serenity::{
@@ -54,13 +54,13 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 					))
 					.to_owned();
 
-				return Ok(Embed(embed));
+				return Ok(embed.into());
 			},
-			None => return Err(SchnoseErr::MissingDBEntry(blame_user)),
+			None => return Err(SchnoseError::MissingDBEntry(blame_user)),
 		},
 		Err(why) => {
 			log::error!("[{}]: {} => {:?}", file!(), line!(), why);
-			return Err(SchnoseErr::DBAccess);
+			return Err(SchnoseError::DBAccess);
 		},
 	}
 }

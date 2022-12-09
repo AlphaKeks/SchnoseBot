@@ -1,8 +1,8 @@
 use {
 	crate::{
-		events::slash_commands::{InteractionState, InteractionResponseData::*},
-		schnose::{InteractionResult, Target},
-		db::retrieve_mode,
+		prelude::{InteractionResult, Target},
+		events::interactions::InteractionState,
+		database::util as DB,
 	},
 	gokz_rs::{prelude::*, global_api::*},
 	serenity::{
@@ -65,7 +65,7 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 		Some(mode_name) => mode_name
 			.parse::<Mode>()
 			.expect("The possible values for this are hard-coded and should never be invalid."),
-		None => retrieve_mode(state.user, state.db).await?,
+		None => DB::fetch_mode(state.user, state.db, true).await?,
 	};
 
 	let runtype = match state.get::<String>("runtype") {
@@ -132,5 +132,5 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 		.footer(|f| f.text(format!("Player: {}", player_name)).icon_url(&state.icon))
 		.to_owned();
 
-	return Ok(Embed(embed));
+	return Ok(embed.into());
 }

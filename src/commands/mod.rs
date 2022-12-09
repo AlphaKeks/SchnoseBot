@@ -15,22 +15,13 @@ pub(crate) mod setsteam;
 pub(crate) mod unfinished;
 pub(crate) mod wr;
 
-// use {
-// 	crate::events::slash_commands::{
-// 		InteractionData,
-// 		InteractionResponseData::{Message, Embed},
-// 	},
-// 	gokz_rs::{prelude::*, global_api::*},
-// 	serenity::{
-// 		builder::{CreateApplicationCommand, CreateEmbed},
-// 		model::prelude::command::CommandOptionType,
-// 	},
-// };
+// Example command structure
+// use {crate::InteractionResult, serenity::builder::CreateApplicationCommand};
 //
 // pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
-// 	return cmd.name("").description("");
+// 	return cmd.name("ping").description("pong!");
 // }
 //
-// pub(crate) async fn execute(data: InteractionData<'_>) -> anyhow::Result<()> {
-// 	return data.reply(Message("hi mom")).await;
+// pub(crate) async fn execute() -> InteractionResult {
+// 	return Ok("pong!".into());
 // }

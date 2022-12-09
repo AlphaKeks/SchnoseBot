@@ -1,8 +1,8 @@
 use {
 	crate::{
-		events::slash_commands::{InteractionState, InteractionResponseData::*},
-		schnose::{InteractionResult, Target},
-		util::format_time,
+		prelude::{InteractionResult, Target},
+		events::interactions::InteractionState,
+		formatting::format_time,
 	},
 	gokz_rs::{prelude::*, global_api::*},
 	serenity::{
@@ -57,8 +57,8 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 			&map.name,
 			&map.difficulty
 		))
-		.url(format!("https://kzgo.eu/maps/{}?{}=", &map.name, &mode.to_fancy()))
-		.thumbnail(&state.thumbnail(&map.name))
+		.url(format!("{}?{}=", state.map_link(&map.name), &mode.to_fancy().to_lowercase()))
+		.thumbnail(&state.map_thumbnail(&map.name))
 		.field(
 			format!("{} {}", mode.to_fancy(), if &recent.teleports > &0 { "TP" } else { "PRO" }),
 			format!("> {} {}\n> {}{}", format_time(recent.time), place, discord_timestamp, {
@@ -86,5 +86,5 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 		.footer(|f| f.text(footer_msg).icon_url(&state.icon))
 		.to_owned();
 
-	return Ok(Embed(embed));
+	return Ok(embed.into());
 }

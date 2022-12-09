@@ -1,9 +1,10 @@
 use {
 	crate::{
-		db::UserSchema,
-		events::slash_commands::{InteractionState, InteractionResponseData::*},
-		schnose::{InteractionResult, SchnoseErr},
+		prelude::{InteractionResult, SchnoseError},
+		events::interactions::InteractionState,
+		database::schemas::UserSchema,
 	},
+	log::{info, warn, error},
 	bson::doc,
 	gokz_rs::prelude::*,
 	serenity::{builder::CreateApplicationCommand, model::prelude::command::CommandOptionType},
@@ -38,12 +39,7 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 				// user has an entry already => update
 				Ok(document) => match document {
 					Some(_old_entry) => {
-						log::info!(
-							"[{}]: {} => Modifying database entry\n\n{:?}",
-							file!(),
-							line!(),
-							_old_entry
-						);
+						info!("Modifying database entry...");
 						match state
 							.db
 							.find_one_and_update(
@@ -54,7 +50,7 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 							.await
 						{
 							Ok(_) => {
-								return Ok(Message(format!(
+								return Ok(format!(
 									"Successfully {} mode for <@{}>.{}",
 									if mode_name == "none" { "cleared" } else { "set" },
 									state.user.id.as_u64(),
@@ -67,22 +63,17 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 												.expect("This must be valid at this point. `mode_name` can only be valid or \"none\". The latter is already impossible because of the if-statement above.")
 										)
 									},
-								)));
+								).into());
 							},
 							Err(why) => {
-								log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-								return Err(SchnoseErr::DBUpdate);
+								error!("Failed to update database: {:?}", why);
+								return Err(SchnoseError::DBUpdate);
 							},
 						}
 					},
 					// user does not yet have an entry => create a new one
 					None => {
-						log::warn!(
-							"[{}]: {} => {} doesn't have a database entry.",
-							file!(),
-							line!(),
-							&state.user.name
-						);
+						warn!("{} doesn't have a database entry.", &state.user.name);
 						if mode_name != "none" {
 							match state
 								.db
@@ -99,35 +90,39 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 							{
 								Ok(_) => {
 									return if mode_name == "none" {
-										Ok(Message(format!(
+										Ok(format!(
 											"Successfully cleared mode for <@{}>.",
 											state.user.id.as_u64()
-										)))
+										)
+										.into())
 									} else {
-										Ok(Message(format!(
+										Ok(format!(
 											"Successfully set mode `{}` for <@{}>.",
 											mode_name,
 											state.user.id.as_u64()
-										)))
+										)
+										.into())
 									}
 								},
 								Err(why) => {
-									log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-									return Err(SchnoseErr::DBUpdate);
+									error!("Failed to update database: {:?}", why);
+									return Err(SchnoseError::DBUpdate);
 								},
 							}
 						} else {
 							// user doesn't have any database entries but wants to set their mode
 							// to "none"
-							return Err(SchnoseErr::Custom(
+							let err = SchnoseError::Custom(
 								"Your tactics confuse and frighten me, sir.".into(),
-							));
+							);
+							info!("{}", &err);
+							return Err(err);
 						}
 					},
 				},
 				Err(why) => {
-					log::error!("[{}]: {} => {:?}", file!(), line!(), why);
-					return Err(SchnoseErr::DBAccess);
+					error!("Failed to access database: {:?}", why);
+					return Err(SchnoseError::DBAccess);
 				},
 			}
 		},
@@ -137,26 +132,21 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 				Ok(document) => match document {
 					Some(entry) => match entry.mode {
 						Some(mode) if mode != "none" => {
-							return Ok(Message(format!(
+							return Ok(format!(
 								"Your current mode is set to: `{}`.",
 								mode.parse::<Mode>().expect("This must be valid at this point. `mode_name` can only be valid or \"none\". The latter is already impossible because of the if-statement above.")
-							)))
+							).into())
 						},
-						_ => return Err(SchnoseErr::Custom("You currently don't have a mode set.".into())),
+						_ => return Err(SchnoseError::Custom("You currently don't have a mode set.".into())),
 					},
 					None => {
-						log::warn!(
-							"[{}]: {} => {} doesn't have a database entry.",
-							file!(),
-							line!(),
-							&state.user.name
-						);
-						return Err(SchnoseErr::MissingDBEntry(true));
+						warn!("{} doesn't have a database entry.", &state.user.name);
+						return Err(SchnoseError::MissingDBEntry(true));
 					},
 				},
 				Err(why) => {
-					log::error!("[{}]: {} => {:?}", file!(), line!(), why);
-					return Ok(Message("Failed to access database.".into()));
+					error!("Failed to access database: {:?}", why);
+					return Err(SchnoseError::DBAccess);
 				},
 			}
 		},

@@ -1,12 +1,18 @@
 use {
 	crate::{
-		events::slash_commands::{InteractionState, InteractionResponseData::*},
-		schnose::{InteractionResult, Target},
-		util::*,
-		db::retrieve_mode,
+		prelude::{InteractionResult, Target},
+		events::interactions::InteractionState,
+		database::util as DB,
+		util::get_steam_avatar,
 	},
+	log::warn,
 	bson::doc,
-	gokz_rs::{prelude::*, global_api::*, custom::get_profile, kzgo},
+	gokz_rs::{
+		prelude::{Mode, SteamID, PlayerIdentifier},
+		global_api::get_player,
+		custom::get_profile,
+		kzgo,
+	},
 	num_format::{ToFormattedString, Locale},
 	serenity::{
 		builder::{CreateApplicationCommand, CreateEmbed},
@@ -47,7 +53,7 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 		Some(mode_name) => mode_name
 			.parse::<Mode>()
 			.expect("The possible values for this are hard-coded and should never be invalid."),
-		None => retrieve_mode(state.user, state.db).await?,
+		None => DB::fetch_mode(state.user, state.db, true).await?,
 	};
 
 	let player = get_player(&player, &state.req_client).await?;
@@ -108,7 +114,7 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 	let doable = match kzgo::completion::get_completion_count(&mode, &state.req_client).await {
 		Ok(data) => (data.tp.total, data.pro.total),
 		Err(why) => {
-			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
+			warn!("{}", why);
 			return Err(why.into());
 		},
 	};
@@ -187,5 +193,5 @@ Preferred Mode: {}
 		})
 		.to_owned();
 
-	return Ok(Embed(embed));
+	return Ok(embed.into());
 }

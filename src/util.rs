@@ -1,67 +1,11 @@
-use {
-	std::{env, fmt::Write},
-	bson::doc,
-	serde::{Serialize, Deserialize},
-	serenity::builder::CreateEmbed,
-};
-
-/// Turns an amount of seconds into a nicely formatted string, e.g.
-/// ```
-/// let time: f32 = 1263.7832;
-/// assert_eq!("00:21:03.78", &format_time(time));
-/// ```
-pub(crate) fn format_time(secs_float: f32) -> String {
-	let seconds = secs_float as u32;
-	let hours = ((seconds / 3600) % 24) as u8;
-	let seconds = seconds % 3600;
-	let minutes = (seconds / 60) as u8;
-	let seconds = seconds % 60;
-	let millis = ((secs_float - (secs_float as u32) as f32) * 1000.0) as u16;
-
-	let mut s = String::new();
-
-	let _ = write!(&mut s, "{:02}:{:02}.{:03}", minutes, seconds, millis);
-
-	if hours > 0 {
-		s = format!("{:02}:{}", hours, s);
-	}
-
-	return s;
-}
-
-/// Takes an embed and attaches properly formatted "Download Replays" links.
-pub(crate) fn attach_replay_links(
-	embed: &mut CreateEmbed,
-	links: (String, String),
-) -> &mut CreateEmbed {
-	let tp = links.0.len() > 0;
-	let pro = links.1.len() > 0;
-
-	if tp || pro {
-		let mut description = String::from("Download Replays:");
-
-		let text = if tp && !pro {
-			format!(" [TP]({})", links.0)
-		} else if !tp && pro {
-			format!(" [PRO]({})", links.1)
-		} else {
-			format!(" [TP]({}) | [PRO]({})", links.0, links.1)
-		};
-
-		description.push_str(&text);
-		embed.description(description);
-		return embed;
-	}
-
-	return embed;
-}
+use std::env;
 
 /// Uses the Steam API to retreive a user's profile picture
 pub(crate) async fn get_steam_avatar(
 	steam_id64: &Option<String>,
 	client: &reqwest::Client,
 ) -> String {
-	#[derive(Debug, Serialize, Deserialize)]
+	#[derive(Debug, serde::Serialize, serde::Deserialize)]
 	struct Player {
 		pub steamid: Option<String>,
 		pub communityvisibilitystate: Option<i32>,
@@ -82,12 +26,12 @@ pub(crate) async fn get_steam_avatar(
 		pub loccountrycode: Option<String>,
 	}
 
-	#[derive(Debug, Serialize, Deserialize)]
+	#[derive(Debug, serde::Serialize, serde::Deserialize)]
 	struct Response {
 		pub players: Vec<Player>,
 	}
 
-	#[derive(Debug, Serialize, Deserialize)]
+	#[derive(Debug, serde::Serialize, serde::Deserialize)]
 	struct Wrapper {
 		pub response: Response,
 	}

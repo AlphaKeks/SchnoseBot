@@ -1,8 +1,5 @@
 use {
-	crate::{
-		events::slash_commands::{InteractionState, InteractionResponseData::*},
-		schnose::InteractionResult,
-	},
+	crate::{prelude::InteractionResult, events::interactions::InteractionState},
 	gokz_rs::global_api::get_mapcycle,
 	rand::Rng,
 	serenity::{builder::CreateApplicationCommand, model::prelude::command::CommandOptionType},
@@ -31,5 +28,5 @@ pub(crate) async fn execute(state: &InteractionState<'_>) -> InteractionResult {
 
 	let rand = rand::thread_rng().gen_range(0..map_names.len());
 
-	return Ok(Message(format!("🎲 {}", map_names[rand])));
+	return Ok(format!("🎲 {}", map_names[rand]).into());
 }

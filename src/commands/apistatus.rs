@@ -1,8 +1,5 @@
 use {
-	crate::{
-		events::slash_commands::{InteractionState, InteractionResponseData::*},
-		schnose::InteractionResult,
-	},
+	crate::{events::interactions::InteractionState, prelude::InteractionResult},
 	gokz_rs::global_api::health_check,
 	serenity::builder::{CreateApplicationCommand, CreateEmbed},
 };
@@ -47,5 +44,5 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 		.field("Fast Responses", format!("{} / {}", response.fast_responses, 10), true)
 		.to_owned();
 
-	return Ok(Embed(embed));
+	return Ok(embed.into());
 }

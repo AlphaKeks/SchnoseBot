@@ -1,8 +1,5 @@
 use {
-	crate::{
-		events::slash_commands::{InteractionState, InteractionResponseData::*},
-		schnose::InteractionResult,
-	},
+	crate::{prelude::InteractionResult, events::interactions::InteractionState},
 	serenity::{builder::CreateApplicationCommand, model::prelude::command::CommandOptionType},
 };
 
@@ -31,5 +28,5 @@ pub(crate) async fn execute(state: &InteractionState<'_>) -> InteractionResult {
 
 	let result = distance + (max / 128.) * 4.;
 
-	return Ok(Message(format!("Approximated distance: `{0:.4}`", result)));
+	return Ok(format!("Approximated distance: `{0:.4}`", result).into());
 }

@@ -1,9 +1,10 @@
 use {
-	crate::{
-		events::slash_commands::{InteractionState, InteractionResponseData::*},
-		schnose::InteractionResult,
+	crate::{events::interactions::InteractionState, prelude::InteractionResult},
+	gokz_rs::{
+		prelude::*,
+		global_api::{get_maps, is_global, get_filters},
+		kzgo,
 	},
-	gokz_rs::{prelude::*, global_api::*, kzgo},
 	serenity::{
 		builder::{CreateApplicationCommand, CreateEmbed},
 		model::prelude::command::CommandOptionType,
@@ -75,8 +76,8 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 	let embed = CreateEmbed::default()
 		.color(state.colour)
 		.title(&map_api.name)
-		.url(format!("https://kzgo.eu/maps/{}", &map_api.name))
-		.thumbnail(&state.thumbnail(&map_api.name))
+		.url(state.map_link(&map_api.name))
+		.thumbnail(&state.map_thumbnail(&map_api.name))
 		.description(format!(
 			r#"
 🢂 API Tier: {}
@@ -99,5 +100,5 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 		.field("VNL", filters.2, true)
 		.to_owned();
 
-	return Ok(Embed(embed));
+	return Ok(embed.into());
 }

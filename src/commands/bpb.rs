@@ -1,18 +1,22 @@
 use {
 	crate::{
-		events::slash_commands::{InteractionState, InteractionResponseData::*},
-		schnose::{InteractionResult, Target},
-		db::retrieve_mode,
-		util::*,
-		gokz::{self, *},
+		prelude::{InteractionResult, Target},
+		events::interactions::InteractionState,
+		database::util as DB,
+		formatting::{
+			get_player_name, get_place_formatted, get_replay_link, format_time, attach_replay_links,
+		},
 	},
-	futures::future::join_all,
-	gokz_rs::{prelude::*, global_api::*},
-	itertools::Itertools,
+	gokz_rs::{
+		prelude::*,
+		global_api::{get_maps, is_global, get_pb},
+	},
 	serenity::{
 		builder::{CreateApplicationCommand, CreateEmbed},
 		model::prelude::command::CommandOptionType,
 	},
+	futures::future::join_all,
+	itertools::Itertools,
 };
 
 pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
@@ -62,7 +66,7 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 		Some(mode_name) => mode_name
 			.parse()
 			.expect("The possible values for this are hard-coded and should never be invalid."),
-		None => retrieve_mode(state.user, state.db).await?,
+		None => DB::fetch_mode(state.user, state.db, true).await?,
 	};
 
 	let global_maps = get_maps(&state.req_client).await?;
@@ -81,15 +85,15 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 	.expect("This cannot fail, look 6 lines up.");
 
 	if let (&Err(_), &Err(_)) = (&tp, &pro) {
-		return Ok(Message("No BPBs found 😔.".into()));
+		return Ok("No BPBs found 😔.".into());
 	}
 
 	let player_name = get_player_name((&tp, &pro));
 	let (place_tp, place_pro) = (
-		gokz::get_place(&tp, &state.req_client).await,
-		gokz::get_place(&pro, &state.req_client).await,
+		get_place_formatted(&tp, &state.req_client).await,
+		get_place_formatted(&pro, &state.req_client).await,
 	);
-	let links = (gokz::get_replay_link(&tp).await, gokz::get_replay_link(&pro).await);
+	let links = (get_replay_link(&tp).await, get_replay_link(&pro).await);
 
 	let mut embed = CreateEmbed::default()
 		.colour(state.colour)
@@ -98,12 +102,12 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 			&course, &player_name, &map.name, &map.difficulty
 		))
 		.url(format!(
-			"https://kzgo.eu/maps/{}?bonus={}&{}=",
-			&map.name,
+			"{}?bonus={}&{}=",
+			state.map_link(&map.name),
 			&course,
 			&mode.to_fancy().to_lowercase()
 		))
-		.thumbnail(state.thumbnail(&map.name))
+		.thumbnail(state.map_thumbnail(&map.name))
 		.field(
 			"TP",
 			format!(
@@ -133,5 +137,5 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 
 	attach_replay_links(&mut embed, links);
 
-	return Ok(Embed(embed));
+	return Ok(embed.into());
 }
