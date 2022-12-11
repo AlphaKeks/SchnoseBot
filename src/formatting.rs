@@ -73,7 +73,7 @@ pub(crate) fn get_player_name(records: (&PB, &PB)) -> String {
 
 /// Utility function to fetch a record's place and return either a nicely formatted, or an empty
 /// String
-pub(crate) async fn get_place_formatted(record: &PB, client: &reqwest::Client) -> String {
+pub(crate) async fn get_place_formatted(record: &PB, client: &gokz_rs::Client) -> String {
 	if let Ok(record) = record {
 		if let Ok(place) = global_api::get_place(&record.id, client).await {
 			return format!("[#{}]", place.0);

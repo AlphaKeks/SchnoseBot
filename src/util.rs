@@ -3,7 +3,7 @@ use std::env;
 /// Uses the Steam API to retreive a user's profile picture
 pub(crate) async fn get_steam_avatar(
 	steam_id64: &Option<String>,
-	client: &reqwest::Client,
+	client: &gokz_rs::Client,
 ) -> String {
 	#[derive(Debug, serde::Serialize, serde::Deserialize)]
 	struct Player {

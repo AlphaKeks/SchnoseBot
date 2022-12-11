@@ -55,7 +55,7 @@ pub(crate) struct GlobalState {
 	// database for accessing user information
 	pub db: Collection<UserSchema>,
 	// global HTTPS client for making API calls
-	pub req_client: reqwest::Client,
+	pub req_client: gokz_rs::Client,
 	// Icon URL for embed footers
 	pub icon: String,
 	// #7480c2
@@ -74,7 +74,7 @@ impl GlobalState {
 		let collection =
 			mongo_client.database(database_name).collection::<UserSchema>(collection_name);
 
-		let req_client = reqwest::Client::new();
+		let req_client = gokz_rs::Client::new();
 
 		let icon = env::var("ICON_URL")
 			.unwrap_or("https://cdn.discordapp.com/attachments/981130651094900756/981130719537545286/churchOfSchnose.png".into());

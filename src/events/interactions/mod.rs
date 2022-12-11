@@ -36,7 +36,7 @@ pub(crate) struct InteractionState<'a> {
 	// reference to the MongoDB Database collection stored in `GlobalState`
 	pub db: &'a Collection<UserSchema>,
 	// reference to the reqwest Client stored in `GlobalState`
-	pub req_client: &'a reqwest::Client,
+	pub req_client: &'a gokz_rs::Client,
 	// #7480c2
 	pub colour: (u8, u8, u8),
 	// Icon URL for embed footers
@@ -48,7 +48,7 @@ impl<'a> InteractionState<'a> {
 		http: &'a Http,
 		interaction: &'a ApplicationCommandInteraction,
 		database_collection: &'a Collection<UserSchema>,
-		req_client: &'a reqwest::Client,
+		req_client: &'a gokz_rs::Client,
 		colour: (u8, u8, u8),
 		icon: &'a String,
 	) -> InteractionState<'a> {
