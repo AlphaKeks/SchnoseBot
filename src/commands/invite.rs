@@ -14,5 +14,5 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 		.to_owned();
 
 	state.ephemeralize();
-	return Ok(embed.into());
+	Ok(embed.into())
 }

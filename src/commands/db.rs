@@ -49,18 +49,18 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 						"#,
 						&entry.name,
 						&entry.discordID,
-						&entry.steamID.unwrap_or(String::from("none")),
-						&entry.mode.unwrap_or(String::from("none")),
+						&entry.steamID.unwrap_or_else(|| String::from("none")),
+						&entry.mode.unwrap_or_else(|| String::from("none")),
 					))
 					.to_owned();
 
-				return Ok(embed.into());
+				Ok(embed.into())
 			},
-			None => return Err(SchnoseError::MissingDBEntry(blame_user)),
+			None => Err(SchnoseError::MissingDBEntry(blame_user)),
 		},
 		Err(why) => {
 			log::error!("[{}]: {} => {:?}", file!(), line!(), why);
-			return Err(SchnoseError::DBAccess);
+			Err(SchnoseError::DBAccess)
 		},
 	}
 }

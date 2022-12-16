@@ -28,5 +28,5 @@ pub(crate) async fn execute(state: &InteractionState<'_>) -> InteractionResult {
 
 	let result = distance + (max / 128.) * 4.;
 
-	return Ok(format!("Approximated distance: `{0:.4}`", result).into());
+	Ok(format!("Approximated distance: `{0:.4}`", result).into())
 }

@@ -42,7 +42,7 @@ async fn main() -> anyhow::Result<()> {
 		panic!("Failed to connect to Discord: {:?}", why);
 	}
 
-	return Ok(());
+	Ok(())
 }
 
 /// Global State object used for handling Discord events and passing static data around
@@ -77,9 +77,9 @@ impl GlobalState {
 		let req_client = gokz_rs::Client::new();
 
 		let icon = env::var("ICON_URL")
-			.unwrap_or("https://cdn.discordapp.com/attachments/981130651094900756/981130719537545286/churchOfSchnose.png".into());
+			.unwrap_or_else(|_| "https://cdn.discordapp.com/attachments/981130651094900756/981130719537545286/churchOfSchnose.png".into());
 
-		return Ok(GlobalState {
+		Ok(GlobalState {
 			token,
 			intents: GatewayIntents::GUILDS
 				| GatewayIntents::GUILD_MEMBERS
@@ -90,7 +90,7 @@ impl GlobalState {
 			req_client,
 			icon,
 			colour: (116, 128, 194),
-		});
+		})
 	}
 }
 
@@ -118,7 +118,7 @@ impl EventHandler for GlobalState {
 		match interaction {
 			ApplicationCommand(slash_command) => {
 				if let Err(why) =
-					events::interactions::slash_command::handle(&self, &ctx, &slash_command).await
+					events::interactions::slash_command::handle(self, &ctx, &slash_command).await
 				{
 					error!("Failed to handle `INTERACTION_CREATE` event: {:?}", why);
 				}

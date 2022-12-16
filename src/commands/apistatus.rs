@@ -12,7 +12,7 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 	// Defer current interaction since this could take a while
 	state.defer().await?;
 
-	let response = health_check(&state.req_client).await?;
+	let response = health_check(state.req_client).await?;
 
 	let (success, mut status, mut color) = (
 		(response.successful_responses + response.fast_responses) as f32 / 2f32,
@@ -44,5 +44,5 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 		.field("Fast Responses", format!("{} / {}", response.fast_responses, 10), true)
 		.to_owned();
 
-	return Ok(embed.into());
+	Ok(embed.into())
 }

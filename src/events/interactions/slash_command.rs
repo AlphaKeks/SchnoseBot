@@ -18,7 +18,7 @@ pub(crate) async fn handle(
 
 	let mut interaction_state = InteractionState::new(
 		&ctx.http,
-		&interaction,
+		interaction,
 		&global_state.db,
 		&global_state.req_client,
 		global_state.colour,
@@ -48,5 +48,5 @@ pub(crate) async fn handle(
 		},
 	};
 
-	return interaction_state.reply(response).await;
+	interaction_state.reply(response).await
 }

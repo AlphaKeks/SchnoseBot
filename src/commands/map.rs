@@ -29,10 +29,10 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 	let map_name = state.get::<String>("map_name").expect("This option is marked as `required`.");
 
 	let (map_api, map_kzgo) = {
-		let global_maps = get_maps(&state.req_client).await?;
+		let global_maps = get_maps(state.req_client).await?;
 		let map_api = is_global(&MapIdentifier::Name(map_name), &global_maps).await?;
 		let map_identifier = MapIdentifier::Name(map_api.name.clone());
-		let map_kzgo = kzgo::maps::get_map(&map_identifier, &state.req_client).await?;
+		let map_kzgo = kzgo::maps::get_map(&map_identifier, state.req_client).await?;
 
 		(map_api, map_kzgo)
 	};
@@ -53,7 +53,7 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 		mappers
 	};
 
-	let filters = match get_filters(map_api.id, &state.req_client).await {
+	let filters = match get_filters(map_api.id, state.req_client).await {
 		Ok(filters) => {
 			let filters = filters.into_iter().filter(|f| f.stage == 0).collect::<Vec<_>>();
 			let mut res = ("❌", "❌", "❌");
@@ -100,5 +100,5 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 		.field("VNL", filters.2, true)
 		.to_owned();
 
-	return Ok(embed.into());
+	Ok(embed.into())
 }
