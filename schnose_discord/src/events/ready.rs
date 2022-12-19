@@ -23,7 +23,7 @@ pub(crate) async fn handle(ctx: &Context, ready: &Ready) -> anyhow::Result<()> {
 		invalid_mode => panic!("`{}` is not a valid mode. Please set the `MODE` environment variable to either `DEV` or `PROD`.", invalid_mode)
 	}
 
-	return Ok(());
+	Ok(())
 }
 
 async fn register_dev_commands(ctx: &Context, mode: &str) -> anyhow::Result<()> {
@@ -55,7 +55,7 @@ async fn register_dev_commands(ctx: &Context, mode: &str) -> anyhow::Result<()> 
 		print_commands(commands, mode);
 	}
 
-	return Ok(());
+	Ok(())
 }
 
 async fn register_global_commands(ctx: &Context, mode: &str) {
@@ -90,7 +90,7 @@ fn print_commands(commands: Vec<Command>, mode: &str) {
 	println!(
 		"[MODE: {}] {}",
 		mode,
-		if names.len() > 0 {
+		if !names.is_empty() {
 			format!("Registered commands:\n> {}", names.join("\n> "))
 		} else {
 			String::from("No commands registered.")

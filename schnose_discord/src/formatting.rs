@@ -21,7 +21,7 @@ pub(crate) fn format_time(secs_float: f32) -> String {
 		s = format!("{:02}:{}", hours, s);
 	}
 
-	return s;
+	s
 }
 
 /// Takes an embed and attaches properly formatted "Download Replays" links.
@@ -29,8 +29,8 @@ pub(crate) fn attach_replay_links(
 	embed: &mut CreateEmbed,
 	links: ((String, String), (String, String)),
 ) -> &mut CreateEmbed {
-	let tp = links.0 .0.len() > 0;
-	let pro = links.1 .0.len() > 0;
+	let tp = links.0 .0.is_empty();
+	let pro = links.1 .0.is_empty();
 
 	if tp || pro {
 		let text = if tp && !pro {
@@ -54,7 +54,7 @@ pub(crate) fn attach_replay_links(
 		return embed;
 	}
 
-	return embed;
+	embed
 }
 
 type PB = Result<gokz_rs::global_api::records::top::Record, gokz_rs::prelude::Error>;
@@ -63,9 +63,9 @@ type PB = Result<gokz_rs::global_api::records::top::Record, gokz_rs::prelude::Er
 /// where there are 2 runs by the same player, e.g. `/pb` or similar.
 pub(crate) fn get_player_name(records: (&PB, &PB)) -> String {
 	match records.0 {
-		Ok(tp) => tp.player_name.clone().unwrap_or(String::from("unknown")),
+		Ok(tp) => tp.player_name.clone().unwrap_or_else(|| String::from("unknown")),
 		Err(_) => match records.1 {
-			Ok(pro) => pro.player_name.clone().unwrap_or(String::from("unknown")),
+			Ok(pro) => pro.player_name.clone().unwrap_or_else(|| String::from("unknown")),
 			Err(_) => String::from("unknown"),
 		},
 	}
@@ -79,7 +79,7 @@ pub(crate) async fn get_place_formatted(record: &PB, client: &gokz_rs::Client) -
 			return format!("[#{}]", place.0);
 		}
 	}
-	return String::new();
+	String::new()
 }
 
 /// Utility function to generate a replay download link
@@ -97,6 +97,5 @@ pub(crate) async fn get_replay_links(record: &PB) -> (String, String) {
 			}
 		}
 	}
-
-	return (String::new(), String::new());
+	(String::new(), String::new())
 }

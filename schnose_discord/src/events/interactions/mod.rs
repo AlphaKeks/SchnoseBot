@@ -61,7 +61,7 @@ impl<'a> InteractionState<'a> {
 			}
 		}
 
-		return InteractionState {
+		InteractionState {
 			http,
 			interaction,
 			opts,
@@ -72,7 +72,7 @@ impl<'a> InteractionState<'a> {
 			req_client,
 			colour,
 			icon,
-		};
+		}
 	}
 
 	/// Wrapper function to defer the current interaction's response
@@ -85,7 +85,7 @@ impl<'a> InteractionState<'a> {
 		self.deferred = true;
 		trace!("Deferred Interaction `{}`.", &self.interaction.data.name);
 
-		return Ok(());
+		Ok(())
 	}
 
 	/// Wrapper function to ephemeralize the current interaction's response
@@ -107,15 +107,15 @@ impl<'a> InteractionState<'a> {
 
 	/// Convenience function for linking to a map's KZGO page
 	pub fn map_link(&self, map_name: &str) -> String {
-		return format!("https://kzgo.eu/maps/{}", map_name);
+		format!("https://kzgo.eu/maps/{}", map_name)
 	}
 
 	/// Convenience function for displaying a map's thumbnail
 	pub fn map_thumbnail(&self, map_name: &str) -> String {
-		return format!(
+		format!(
 			"https://raw.githubusercontent.com/KZGlobalTeam/map-images/master/images/{}.jpg",
 			map_name
-		);
+		)
 	}
 
 	async fn reply(&self, content: InteractionResult) -> anyhow::Result<()> {
@@ -195,6 +195,6 @@ impl<'a> InteractionState<'a> {
 			}
 		}
 
-		return Ok(());
+		Ok(())
 	}
 }

@@ -13,15 +13,15 @@ pub(crate) async fn fetch_mode(
 			Some(entry) => match entry.mode {
 				Some(mode_name) if mode_name != "none" => {
 					let mode: Mode = mode_name.parse().expect("This must be valid.");
-					return Ok(mode);
+					Ok(mode)
 				},
-				_ => return Err(SchnoseError::MissingMode(blame_user)),
+				_ => Err(SchnoseError::MissingMode(blame_user)),
 			},
-			None => return Err(SchnoseError::MissingDBEntry(blame_user)),
+			None => Err(SchnoseError::MissingDBEntry(blame_user)),
 		},
 		Err(why) => {
 			error!("{}", why.to_string());
-			return Err(SchnoseError::DBAccess);
+			Err(SchnoseError::DBAccess)
 		},
 	}
 }

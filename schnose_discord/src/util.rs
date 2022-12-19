@@ -61,10 +61,10 @@ pub(crate) async fn get_steam_avatar(
 		Ok(data) => match data.json::<Wrapper>().await {
 			Ok(json) => {
 				let player = &json.response.players[0];
-
-				match &player.avatarfull {
-					Some(avatar) => return avatar.to_owned(),
-					None => return default_url,
+				if let Some(url) = &player.avatarfull {
+					url.to_owned()
+				} else {
+					default_url
 				}
 			},
 			Err(why) => {
@@ -75,8 +75,7 @@ pub(crate) async fn get_steam_avatar(
 					"Failed to get Steam Avatar.",
 					why
 				);
-
-				return default_url;
+				default_url
 			},
 		},
 		Err(why) => {
@@ -87,8 +86,7 @@ pub(crate) async fn get_steam_avatar(
 				"Failed to get Steam Avatar.",
 				why
 			);
-
-			return default_url;
+			default_url
 		},
 	}
 }

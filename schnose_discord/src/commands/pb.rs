@@ -54,7 +54,7 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 	let map_name = state.get::<String>("map_name").expect("This option is marked as `required`.");
 	let target = Target::from(state.get::<String>("player"));
 
-	let player = target.to_player(state.user, state.db).await?;
+	let player = target.into_player(state.user, state.db).await?;
 
 	let mode = match state.get::<String>("mode") {
 		Some(mode_name) => mode_name

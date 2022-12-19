@@ -51,15 +51,15 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 		None => DB::fetch_mode(state.user, state.db, true).await?,
 	};
 
-	let global_maps = get_maps(&state.req_client).await?;
+	let global_maps = get_maps(state.req_client).await?;
 
 	let map = is_global(&MapIdentifier::Name(map_name), &global_maps).await?;
 
 	let map_identifier = MapIdentifier::Name(map.name.clone());
 
 	let (tp, pro) = join_all([
-		get_wr(&map_identifier, &mode, true, 0, &state.req_client),
-		get_wr(&map_identifier, &mode, false, 0, &state.req_client),
+		get_wr(&map_identifier, &mode, true, 0, state.req_client),
+		get_wr(&map_identifier, &mode, false, 0, state.req_client),
 	])
 	.await
 	.into_iter()
@@ -116,10 +116,10 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 			),
 			true,
 		)
-		.footer(|f| f.text(format!("Mode: {}", mode.to_fancy())).icon_url(&state.icon))
+		.footer(|f| f.text(format!("Mode: {}", mode.to_fancy())).icon_url(state.icon))
 		.to_owned();
 
 	attach_replay_links(&mut embed, links);
 
-	return Ok(embed.into());
+	Ok(embed.into())
 }

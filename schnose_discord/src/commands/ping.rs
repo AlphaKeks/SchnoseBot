@@ -5,5 +5,5 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 }
 
 pub(crate) async fn execute() -> InteractionResult {
-	return Ok("pong!".into());
+	Ok("pong!".into())
 }

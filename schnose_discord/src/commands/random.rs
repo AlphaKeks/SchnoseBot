@@ -24,7 +24,7 @@ pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplica
 pub(crate) async fn execute(state: &InteractionState<'_>) -> InteractionResult {
 	let tier = state.get::<u8>("tier");
 
-	let map_names = get_mapcycle(tier, &state.req_client).await?;
+	let map_names = get_mapcycle(tier, state.req_client).await?;
 
 	let rand = rand::thread_rng().gen_range(0..map_names.len());
 

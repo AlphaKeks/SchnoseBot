@@ -61,7 +61,7 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 					},
 					Err(why) => {
 						error!("Failed to update database: {:?}", why);
-						return Err(SchnoseError::DBUpdate);
+						Err(SchnoseError::DBUpdate)
 					},
 				}
 			},
@@ -91,14 +91,14 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 					},
 					Err(why) => {
 						error!("Failed to update database: {:?}", why);
-						return Err(SchnoseError::DBUpdate);
+						Err(SchnoseError::DBUpdate)
 					},
 				}
 			},
 		},
 		Err(why) => {
 			error!("Failed to access database: {:?}", why);
-			return Err(SchnoseError::DBAccess);
+			Err(SchnoseError::DBAccess)
 		},
 	}
 }

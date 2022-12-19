@@ -47,7 +47,7 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 
 	let target = Target::from(state.get::<String>("player"));
 
-	let player = target.to_player(state.user, state.db).await?;
+	let player = target.into_player(state.user, state.db).await?;
 
 	let mode = match state.get::<String>("mode") {
 		Some(mode_name) => mode_name
@@ -56,14 +56,14 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 		None => DB::fetch_mode(state.user, state.db, true).await?,
 	};
 
-	let player = get_player(&player, &state.req_client).await?;
+	let player = get_player(&player, state.req_client).await?;
 
 	let steam_id = SteamID::new(&player.steam_id)?;
 
 	let player_profile =
-		get_profile(&PlayerIdentifier::SteamID(steam_id), &mode, &state.req_client).await?;
+		get_profile(&PlayerIdentifier::SteamID(steam_id), &mode, state.req_client).await?;
 
-	let avatar = get_steam_avatar(&player_profile.steam_id64, &state.req_client).await;
+	let avatar = get_steam_avatar(&player_profile.steam_id64, state.req_client).await;
 
 	let fav_mode = {
 		let mut mode = String::new();
@@ -89,11 +89,11 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 			let amount = (&player_profile.completion_percentage[i].0 / 10.0) as u32;
 
 			for _ in 0..amount {
-				bars[0][i].push_str("█");
+				bars[0][i].push('█');
 			}
 
 			for _ in 0..(10 - amount) {
-				bars[0][i].push_str("░");
+				bars[0][i].push('░');
 			}
 		}
 
@@ -101,17 +101,17 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 			let amount = (&player_profile.completion_percentage[i].1 / 10.0) as u32;
 
 			for _ in 0..amount {
-				bars[1][i].push_str("█");
+				bars[1][i].push('█');
 			}
 
 			for _ in 0..(10 - amount) {
-				bars[1][i].push_str("░");
+				bars[1][i].push('░');
 			}
 		}
 	}
 
 	// how many maps _can_ be finished in a certain mode?
-	let doable = match kzgo::completion::get_completion_count(&mode, &state.req_client).await {
+	let doable = match kzgo::completion::get_completion_count(&mode, state.req_client).await {
 		Ok(data) => (data.tp.total, data.pro.total),
 		Err(why) => {
 			warn!("{}", why);
@@ -123,7 +123,7 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 		.colour(state.colour)
 		.title(format!(
 			"{} - {} Profile",
-			&player_profile.name.unwrap_or(String::from("unknown")),
+			&player_profile.name.unwrap_or_else(|| String::from("unknown")),
 			&mode.to_fancy()
 		))
 		.url(format!(
@@ -177,7 +177,7 @@ Preferred Mode: {}
 			&bars[1][5],
 			&bars[0][6],
 			&bars[1][6],
-			(&player_profile.points.0 + &player_profile.points.1).to_formatted_string(&Locale::en),
+			(player_profile.points.0 + player_profile.points.1).to_formatted_string(&Locale::en),
 			match &player_profile.rank {
 				Some(rank) => rank.to_string(),
 				None => String::from("unknown"),
@@ -187,11 +187,11 @@ Preferred Mode: {}
 		.footer(|f| {
 			f.text(format!(
 				"SteamID: {}",
-				&player_profile.steam_id.unwrap_or(String::from("unknown"))
+				&player_profile.steam_id.unwrap_or_else(|| String::from("unknown"))
 			))
-			.icon_url(&state.icon)
+			.icon_url(state.icon)
 		})
 		.to_owned();
 
-	return Ok(embed.into());
+	Ok(embed.into())
 }

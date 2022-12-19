@@ -61,7 +61,7 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 	let course = state.get::<u8>("course").unwrap_or(1);
 	let target = Target::from(state.get::<String>("player"));
 
-	let player = target.to_player(state.user, state.db).await?;
+	let player = target.into_player(state.user, state.db).await?;
 
 	let mode = match state.get::<String>("mode") {
 		Some(mode_name) => mode_name

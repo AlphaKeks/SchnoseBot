@@ -59,7 +59,7 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 
 	let target = Target::from(state.get::<String>("player"));
 
-	let player = target.to_player(state.user, state.db).await?;
+	let player = target.into_player(state.user, state.db).await?;
 
 	let mode = match state.get::<String>("mode") {
 		Some(mode_name) => mode_name
@@ -82,7 +82,7 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 
 	let tier = state.get::<u8>("tier");
 
-	let player_name = match get_player(&player, &state.req_client).await {
+	let player_name = match get_player(&player, state.req_client).await {
 		Ok(player) => player.name,
 		Err(why) => {
 			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
@@ -91,7 +91,7 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 	};
 
 	let (description, amount) =
-		match get_unfinished(&player, &mode, runtype, tier, &state.req_client).await {
+		match get_unfinished(&player, &mode, runtype, tier, state.req_client).await {
 			Ok(map_list) => {
 				let description = if map_list.len() <= 10 {
 					map_list.join("\n")
@@ -124,13 +124,13 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 				None => String::new(),
 			}
 		))
-		.description(if description.len() > 0 {
+		.description(if !description.is_empty() {
 			description
 		} else {
 			String::from("You have no maps left to complete! Congrats! 🥳")
 		})
-		.footer(|f| f.text(format!("Player: {}", player_name)).icon_url(&state.icon))
+		.footer(|f| f.text(format!("Player: {}", player_name)).icon_url(state.icon))
 		.to_owned();
 
-	return Ok(embed.into());
+	Ok(embed.into())
 }

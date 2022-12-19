@@ -9,15 +9,15 @@ pub(crate) async fn handle(ctx: &Context, msg: &Message) -> anyhow::Result<()> {
 		return chilling(ctx, msg).await;
 	}
 
-	return Ok(());
+	Ok(())
 }
 
 async fn chilling(ctx: &Context, msg: &Message) -> anyhow::Result<()> {
 	let response = match msg.author.id.as_u64() {
 		// AlphaKeks
-		&291585142164815873 => "chilling 🥶",
+		291585142164815873 => "chilling 🥶",
 		// jucci
-		&241247299769073665 => "<:whatsapp:998940776136450128>",
+		241247299769073665 => "<:whatsapp:998940776136450128>",
 		// everybody else
 		_ => {
 			if thread_rng().gen_bool(0.69 /* (͡ ͡° ͜ つ ͡͡°) */) {
@@ -33,5 +33,5 @@ async fn chilling(ctx: &Context, msg: &Message) -> anyhow::Result<()> {
 	info!("{}: {}", &msg.author.name, &msg.content);
 	info!("schnose: {}", response);
 
-	return Ok(());
+	Ok(())
 }
