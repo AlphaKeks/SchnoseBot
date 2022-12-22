@@ -1,4 +1,5 @@
 use {
+	std::collections::HashMap,
 	crate::database::schemas::UserSchema,
 	bson::doc,
 	gokz_rs::prelude::*,
@@ -70,6 +71,7 @@ impl From<gokz_rs::prelude::Error> for SchnoseError {
 pub(crate) enum InteractionResponseData {
 	Message(String),
 	Embed(CreateEmbed),
+	Pagination(Vec<CreateEmbed>),
 }
 
 impl From<&str> for InteractionResponseData {
@@ -90,10 +92,27 @@ impl From<CreateEmbed> for InteractionResponseData {
 	}
 }
 
+impl From<Vec<CreateEmbed>> for InteractionResponseData {
+	fn from(embeds: Vec<CreateEmbed>) -> Self {
+		Self::Pagination(embeds)
+	}
+}
+
 impl From<SchnoseError> for InteractionResponseData {
 	fn from(error: SchnoseError) -> Self {
 		Self::Message(error.to_string())
 	}
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct PaginationData {
+	pub current_index: usize,
+	pub created_at: usize,
+	pub embed_list: Vec<CreateEmbed>,
+}
+
+impl serenity::prelude::TypeMapKey for PaginationData {
+	type Value = HashMap<u64, PaginationData>;
 }
 
 pub(crate) type InteractionResult = Result<InteractionResponseData, SchnoseError>;

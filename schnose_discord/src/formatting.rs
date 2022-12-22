@@ -34,18 +34,12 @@ pub(crate) fn attach_replay_links(
 
 	if tp || pro {
 		let text = if tp && !pro {
-			format!(
-				"Watch Replays:            [TP]({})\nDownload Replays:     [TP]({})",
-				links.0 .0, links.0 .1
-			)
+			format!("Watch Replays: [TP]({})\nDownload Replays: [TP]({})", links.0 .0, links.0 .1)
 		} else if !tp && pro {
-			format!(
-				"Watch Replays:            [PRO]({})\nDownload Replays:     [PRO]({})",
-				links.1 .0, links.1 .1
-			)
+			format!("Watch Replays: [PRO]({})\nDownload Replays: [PRO]({})", links.1 .0, links.1 .1)
 		} else {
 			format!(
-				"Watch Replays:            [TP]({}) | [PRO]({})\nDownload Replays:     [TP]({}) | [PRO]({})",
+				"Watch Replays: [TP]({}) | [PRO]({})\nDownload Replays: [TP]({}) | [PRO]({})",
 				links.0 .0, links.1 .0, links.1 .0, links.1 .1
 			)
 		};

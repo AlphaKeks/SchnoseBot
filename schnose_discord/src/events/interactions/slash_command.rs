@@ -9,7 +9,7 @@ use {
 
 pub(crate) async fn handle(
 	global_state: &GlobalState,
-	ctx: &Context,
+	ctx: Context,
 	interaction: &ApplicationCommandInteraction,
 ) -> anyhow::Result<()> {
 	let command_name = interaction.data.name.as_str();
@@ -48,5 +48,5 @@ pub(crate) async fn handle(
 		},
 	};
 
-	interaction_state.reply(response).await
+	interaction_state.reply(ctx.data, response).await
 }

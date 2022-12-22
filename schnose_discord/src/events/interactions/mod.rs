@@ -1,4 +1,7 @@
 #![allow(dead_code)]
+
+use {crate::prelude::PaginationData, serenity::model::prelude::component::ButtonStyle};
+
 pub(crate) mod slash_command;
 
 use {
@@ -118,7 +121,11 @@ impl<'a> InteractionState<'a> {
 		)
 	}
 
-	async fn reply(&self, content: InteractionResult) -> anyhow::Result<()> {
+	async fn reply(
+		&self,
+		global_data: std::sync::Arc<tokio::sync::RwLock<serenity::prelude::TypeMap>>,
+		content: InteractionResult,
+	) -> anyhow::Result<()> {
 		let content = match content {
 			Ok(reply) => {
 				trace!("Successful Interaction Response: {:?}", &reply);
@@ -129,6 +136,8 @@ impl<'a> InteractionState<'a> {
 				why.into()
 			},
 		};
+
+		let mut global_data = global_data.write().await;
 
 		// Interaction has been deferred => edit original message
 		if self.deferred {
@@ -144,6 +153,35 @@ impl<'a> InteractionState<'a> {
 						response.set_embed(embed);
 
 						response
+					},
+					InteractionResponseData::Pagination(embed_list) => {
+						let interaction_id = *self.interaction.id.as_u64();
+						let now = chrono::Utc::now().timestamp() as usize;
+						let pagination_data =
+							PaginationData { current_index: 0, created_at: now, embed_list };
+
+						// insert data for current interaction into global data
+						let initial_data =
+							HashMap::from([(interaction_id, pagination_data.clone())]);
+
+						global_data.insert::<PaginationData>(initial_data);
+
+						// set the first embed to send as initial message
+						response.set_embed(pagination_data.embed_list[0].clone());
+
+						// attach 2 buttons to message
+						response.components(|components| {
+							components.create_action_row(|row| {
+								row.create_button(|btn| {
+									btn.label("<").custom_id("go-back").style(ButtonStyle::Primary)
+								})
+								.create_button(|btn| {
+									btn.label(">")
+										.custom_id("go-forward")
+										.style(ButtonStyle::Primary)
+								})
+							})
+						})
 					},
 				})
 				.await
@@ -177,6 +215,40 @@ impl<'a> InteractionState<'a> {
 								response.set_embed(embed);
 
 								response
+							},
+							InteractionResponseData::Pagination(embed_list) => {
+								let interaction_id = *self.interaction.id.as_u64();
+								let now = chrono::Utc::now().timestamp() as usize;
+								let pagination_data = PaginationData {
+									current_index: 0,
+									created_at: now,
+									embed_list,
+								};
+
+								// insert data for current interaction into global data
+								let initial_data =
+									HashMap::from([(interaction_id, pagination_data.clone())]);
+
+								global_data.insert::<PaginationData>(initial_data);
+
+								// set the first embed to send as initial message
+								response.set_embed(pagination_data.embed_list[0].clone());
+
+								// attach 2 buttons to message
+								response.components(|components| {
+									components.create_action_row(|row| {
+										row.create_button(|btn| {
+											btn.label("<")
+												.custom_id("go-back")
+												.style(ButtonStyle::Primary)
+										})
+										.create_button(|btn| {
+											btn.label(">")
+												.custom_id("go-forward")
+												.style(ButtonStyle::Primary)
+										})
+									})
+								})
 							},
 						}
 					})
