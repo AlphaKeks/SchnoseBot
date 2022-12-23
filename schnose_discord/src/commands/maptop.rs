@@ -69,10 +69,12 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 	let map_identifier = MapIdentifier::Name(map.name.clone());
 
 	let leaderboard = get_maptop(&map_identifier, &mode, runtype, 0, state.req_client).await?;
+	let len = leaderboard.len();
 
 	let link = get_replay_links(&Ok(leaderboard[0].clone())).await;
 
 	let mut embeds: Vec<CreateEmbed> = Vec::new();
+
 	let get_embed = |i| {
 		let mut embed = CreateEmbed::default()
 			.colour(state.colour)
@@ -85,20 +87,18 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 			))
 			.url(format!("{}?{}=", state.map_link(&map.name), &mode.to_fancy().to_lowercase()))
 			.thumbnail(state.map_thumbnail(&map.name))
-			.footer(|f| f.text(format!("Page: {}", i)).icon_url(state.icon))
+			.footer(|f| f.text(format!("Page: {} / {}", i, len / 12 + 1)).icon_url(state.icon))
 			.to_owned();
 
 		// only checking one of them is fine
 		if !link.0.is_empty() {
-			embed
-				.description(format!("[Watch Replay]({}) | [Download Replay]({})", link.0, link.1));
+			embed.description(format!("[Watch WR]({}) | [Download WR]({})", link.0, link.1));
 		}
 		embed
 	};
 
 	let mut temp = get_embed(1);
 
-	let len = leaderboard.len();
 	for (i, record) in leaderboard.into_iter().enumerate() {
 		let first_page = i == 0;
 		let full_page = i % 12 == 0;
