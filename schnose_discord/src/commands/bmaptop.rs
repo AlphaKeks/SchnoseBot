@@ -65,7 +65,7 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 
 	let runtype = match state.get::<String>("runtype") {
 		Some(runtype) => runtype == "true",
-		None => true,
+		None => false,
 	};
 
 	let course = state.get::<u8>("course").unwrap_or(1);
@@ -85,15 +85,16 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 		let mut embed = CreateEmbed::default()
 			.colour(state.colour)
 			.title(format!(
-				"[Top 100 {}] {} - Bonus {} (T{})",
+				"[Top 100 {} {}] {} - Bonus {} (T{})",
 				&mode.to_fancy(),
+				if runtype { "TP" } else { "PRO" },
 				&map.name,
 				course,
 				&map.difficulty
 			))
 			.url(format!("{}?{}=", state.map_link(&map.name), &mode.to_fancy().to_lowercase()))
 			.thumbnail(state.map_thumbnail(&map.name))
-			.footer(|f| f.text(format!("Page: {} / {}", i, i % 12)).icon_url(state.icon))
+			.footer(|f| f.text(format!("Page: {}", i)).icon_url(state.icon))
 			.to_owned();
 
 		// only checking one of them is fine
