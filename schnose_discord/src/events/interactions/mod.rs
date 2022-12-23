@@ -2,6 +2,7 @@
 
 use {crate::prelude::PaginationData, serenity::model::prelude::component::ButtonStyle};
 
+pub(crate) mod button;
 pub(crate) mod slash_command;
 
 use {
@@ -157,17 +158,24 @@ impl<'a> InteractionState<'a> {
 					InteractionResponseData::Pagination(embed_list) => {
 						let interaction_id = *self.interaction.id.as_u64();
 						let now = chrono::Utc::now().timestamp() as usize;
-						let pagination_data =
+						let mut pagination_data =
 							PaginationData { current_index: 0, created_at: now, embed_list };
 
 						// insert data for current interaction into global data
-						let initial_data =
-							HashMap::from([(interaction_id, pagination_data.clone())]);
-
-						global_data.insert::<PaginationData>(initial_data);
+						match global_data.get_mut::<PaginationData>() {
+							Some(data) => {
+								data.insert(interaction_id, pagination_data.clone());
+							},
+							// if there is no global data, insert a fresh hashmap
+							None => {
+								let initial_data =
+									HashMap::from([(interaction_id, pagination_data.clone())]);
+								global_data.insert::<PaginationData>(initial_data);
+							},
+						};
 
 						// set the first embed to send as initial message
-						response.set_embed(pagination_data.embed_list[0].clone());
+						response.set_embed(pagination_data.embed_list.remove(0));
 
 						// attach 2 buttons to message
 						response.components(|components| {

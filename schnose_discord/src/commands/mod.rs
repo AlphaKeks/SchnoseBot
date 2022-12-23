@@ -1,9 +1,11 @@
 pub(crate) mod apistatus;
+pub(crate) mod bmaptop;
 pub(crate) mod bpb;
 pub(crate) mod bwr;
 pub(crate) mod db;
 pub(crate) mod invite;
 pub(crate) mod map;
+pub(crate) mod maptop;
 pub(crate) mod mode;
 pub(crate) mod nocrouch;
 pub(crate) mod pb;

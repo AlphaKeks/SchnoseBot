@@ -1,10 +1,3 @@
-use std::time::Duration;
-
-use log::trace;
-use serenity::model::prelude::interaction::InteractionResponseType;
-
-use crate::prelude::PaginationData;
-
 mod commands;
 mod database;
 mod events;
@@ -13,7 +6,8 @@ mod prelude;
 mod util;
 
 use {
-	std::env,
+	std::{env, time::Duration},
+	crate::prelude::PaginationData,
 	database::schemas::UserSchema,
 	log::{info, warn, error},
 	mongodb::Collection,
@@ -112,7 +106,7 @@ impl EventHandler for GlobalState {
 		// "garbage collector" for global data
 		tokio::spawn(async move {
 			loop {
-				// clean up data once a minutes
+				// clean up data once a minute
 				// Note: this is probably dumb, :dontcare:
 				tokio::time::sleep(Duration::from_secs(60)).await;
 				warn!("STARTING TO CLEAR GLOBAL DATA.");
@@ -124,7 +118,7 @@ impl EventHandler for GlobalState {
 				};
 
 				// remove entries older than 10 minutes
-				global_data.retain(|_, value| value.created_at + 600 > now);
+				global_data.retain(|_, value| now - value.created_at < 600);
 				warn!("FINISHED CLEARING GLOBAL DATA.");
 			}
 		});
@@ -151,60 +145,9 @@ impl EventHandler for GlobalState {
 				}
 			},
 			MessageComponent(component) => {
-				if let Err(why) = component
-					.create_interaction_response(&ctx.http, |response| {
-						response
-							.kind(InteractionResponseType::UpdateMessage)
-							.interaction_response_data(|response| response.content(""))
-					})
-					.await
+				if let Err(why) = events::interactions::button::handle(self, ctx, &component).await
 				{
-					error!("Failed to respond to interaction: {:?}", why);
-				}
-
-				let Ok(message) = component.get_interaction_response(&ctx.http).await else {
-					return error!("Failed to get original message.");
-				};
-
-				let Some(interaction) = message.interaction else {
-					return error!("Failed to get original interaction.");
-				};
-
-				let interaction_id = *interaction.id.as_u64();
-
-				let mut global_data = ctx.data.write().await;
-				let global_data = global_data
-					.get_mut::<PaginationData>()
-					.expect("Buttons should never be created if there is no global data.");
-
-				let Some(current_data) = global_data.get_mut(&interaction_id) else {
-					return trace!("no data, got deleted probably");
-				};
-
-				let current_index = current_data.current_index;
-				let offset_back = if current_index == 0 { 0 } else { current_index - 1 };
-				let offset_forward = if current_index == 0 { 0 } else { current_index + 1 };
-
-				let new_embed = match component.data.custom_id.as_str() {
-					"go-back" => {
-						current_data.current_index = offset_back;
-						current_data.embed_list[offset_back].clone()
-					},
-					"go-forward" => {
-						current_data.current_index = offset_forward;
-						current_data.embed_list[offset_forward].clone()
-					},
-					unknown_id => return warn!("Encountered unknown component_id: {}", unknown_id),
-				};
-
-				// update message
-				if let Err(why) = component
-					.edit_original_interaction_response(&ctx.http, |response| {
-						response.set_embed(new_embed)
-					})
-					.await
-				{
-					warn!("Failed to update message: {:?}", why);
+					error!("Failed to handle `BUTTON` event: {:?}", why);
 				}
 			},
 			unknown_interaction => {
