@@ -33,11 +33,11 @@ pub(crate) async fn handle(
 	let interaction_id = *interaction.id.as_u64();
 
 	let mut global_data = ctx.data.write().await;
-	let global_data = global_data
-		.get_mut::<PaginationData>()
-		.expect("Buttons should never be created if there is no global data.");
-
-	global_data.keys().for_each(|k| println!("{k}"));
+	let Some(global_data) = global_data.get_mut::<PaginationData>() else {
+		// a button has been clicked which was created before the bot process started
+		// this scenario is fine to ignore.
+		return Ok(());
+	};
 
 	let Some(current_data) = global_data.get_mut(&interaction_id) else {
 		trace!("no data, got deleted probably");

@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use {crate::prelude::PaginationData, serenity::model::prelude::component::ButtonStyle};
 
 pub(crate) mod button;
@@ -157,9 +155,7 @@ impl<'a> InteractionState<'a> {
 					},
 					InteractionResponseData::Pagination(embed_list) => {
 						let interaction_id = *self.interaction.id.as_u64();
-						let now = chrono::Utc::now().timestamp() as usize;
-						let mut pagination_data =
-							PaginationData { current_index: 0, created_at: now, embed_list };
+						let mut pagination_data = PaginationData { current_index: 0, embed_list };
 
 						// insert data for current interaction into global data
 						match global_data.get_mut::<PaginationData>() {
@@ -226,12 +222,8 @@ impl<'a> InteractionState<'a> {
 							},
 							InteractionResponseData::Pagination(embed_list) => {
 								let interaction_id = *self.interaction.id.as_u64();
-								let now = chrono::Utc::now().timestamp() as usize;
-								let pagination_data = PaginationData {
-									current_index: 0,
-									created_at: now,
-									embed_list,
-								};
+								let pagination_data =
+									PaginationData { current_index: 0, embed_list };
 
 								// insert data for current interaction into global data
 								let initial_data =

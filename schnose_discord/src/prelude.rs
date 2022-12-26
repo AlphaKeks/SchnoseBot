@@ -107,7 +107,6 @@ impl From<SchnoseError> for InteractionResponseData {
 #[derive(Debug, Clone)]
 pub(crate) struct PaginationData {
 	pub current_index: usize,
-	pub created_at: usize,
 	pub embed_list: Vec<CreateEmbed>,
 }
 

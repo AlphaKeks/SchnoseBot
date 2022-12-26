@@ -1,5 +1,8 @@
 use {
-	crate::{commands, GlobalState, events::interactions::InteractionState},
+	crate::{
+		prelude::InteractionResponseData, commands, GlobalState,
+		events::interactions::InteractionState,
+	},
 	log::{trace, warn},
 	serenity::{
 		prelude::Context,
@@ -11,7 +14,7 @@ pub(crate) async fn handle(
 	global_state: &GlobalState,
 	ctx: Context,
 	interaction: &ApplicationCommandInteraction,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<Option<u64>> {
 	let command_name = interaction.data.name.as_str();
 
 	trace!("Received slash command: `{}`", command_name);
@@ -46,9 +49,18 @@ pub(crate) async fn handle(
 		"wr" => commands::wr::execute(&mut interaction_state).await,
 		unknown_command => {
 			warn!("Encountered unknown slash command `{}`.", unknown_command);
-			return Ok(());
+			return Ok(None);
 		},
 	};
 
-	interaction_state.reply(ctx.data, response).await
+	// check if there is the need to spawn a garbage collector
+	let spawn_gc = matches!(response, Ok(InteractionResponseData::Pagination(_)));
+
+	interaction_state.reply(ctx.data, response).await?;
+
+	if spawn_gc {
+		Ok(Some(*interaction.id.as_u64()))
+	} else {
+		Ok(None)
+	}
 }

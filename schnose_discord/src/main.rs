@@ -6,7 +6,7 @@ mod prelude;
 mod util;
 
 use {
-	std::{env, time::Duration},
+	std::{env, time::Duration, sync::Arc},
 	crate::prelude::PaginationData,
 	database::schemas::UserSchema,
 	log::{info, warn, error},
@@ -14,7 +14,7 @@ use {
 	serenity::{
 		prelude::{GatewayIntents, EventHandler, Context},
 		async_trait,
-		model::prelude::{Ready, Message, interaction::Interaction},
+		model::prelude::{Ready, Message, interaction::Interaction, component::ComponentType},
 	},
 };
 
@@ -102,26 +102,6 @@ impl EventHandler for GlobalState {
 		if let Err(why) = events::ready::handle(&ctx, &ready).await {
 			error!("Failed to handle `READY` event: {:?}", why);
 		}
-
-		// "garbage collector" for global data
-		tokio::spawn(async move {
-			loop {
-				// clean up data once a minute
-				// Note: this is probably dumb, :dontcare:
-				tokio::time::sleep(Duration::from_secs(60)).await;
-				warn!("STARTING TO CLEAR GLOBAL DATA.");
-
-				let now = chrono::Utc::now().timestamp() as usize;
-				let mut global_data = ctx.data.write().await;
-				let Some(global_data) = global_data.get_mut::<PaginationData>() else {
-					continue;
-				};
-
-				// remove entries older than 10 minutes
-				global_data.retain(|_, value| now - value.created_at < 600);
-				warn!("FINISHED CLEARING GLOBAL DATA.");
-			}
-		});
 	}
 
 	/// Gets triggered on every message the bot reads
@@ -131,24 +111,50 @@ impl EventHandler for GlobalState {
 		}
 	}
 
-	/// Gets triggered on [interactions](https://discord.com/developers/docs/interactions/receiving-and-responding).
-	/// As of right now only slash commands are being handled, but Buttons and menus are planned.
+	/// Gets triggered on [interactions] (https://discord.com/developers/docs/interactions/receiving-and-responding).
 	async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
 		use Interaction::*;
 
+		let global_data = Arc::clone(&ctx.data);
+
 		match interaction {
 			ApplicationCommand(slash_command) => {
-				if let Err(why) =
-					events::interactions::slash_command::handle(self, ctx, &slash_command).await
-				{
-					error!("Failed to handle `INTERACTION_CREATE` event: {:?}", why);
+				match events::interactions::slash_command::handle(self, ctx, &slash_command).await {
+					// failed interaction
+					Err(why) => {
+						error!("Failed to handle `INTERACTION_CREATE` event: {:?}", why);
+					},
+					// paginated interaction, clean data after 10 minutes
+					Ok(Some(interaction_id)) => {
+						tokio::spawn(async move {
+							warn!(
+								"Clearing data for interaction `{}` in 10 minutes from now.",
+								interaction_id
+							);
+							tokio::time::sleep(Duration::from_secs(600)).await;
+
+							let mut global_data = global_data.write().await;
+							if let Some(global_data) = global_data.get_mut::<PaginationData>() {
+								global_data.remove(&interaction_id);
+								warn!("Cleared data for interaction `{}`.", interaction_id);
+							};
+						});
+					},
+					// normal interaction, do nothing
+					_ => {},
 				}
 			},
-			MessageComponent(component) => {
-				if let Err(why) = events::interactions::button::handle(self, ctx, &component).await
-				{
-					error!("Failed to handle `BUTTON` event: {:?}", why);
-				}
+			MessageComponent(component) => match component.data.component_type {
+				ComponentType::Button => {
+					if let Err(why) =
+						events::interactions::button::handle(self, ctx, &component).await
+					{
+						error!("Failed to handle `BUTTON` event: {:?}", why);
+					}
+				},
+				unknown_component => {
+					warn!("Encountered unknown component `{:?}`.", unknown_component)
+				},
 			},
 			unknown_interaction => {
 				warn!("Encountered unknown interaction `{:?}`.", unknown_interaction)
