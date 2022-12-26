@@ -116,6 +116,7 @@ impl EventHandler for GlobalState {
 		use Interaction::*;
 
 		let global_data = Arc::clone(&ctx.data);
+		let http = Arc::clone(&ctx.http);
 
 		match interaction {
 			ApplicationCommand(slash_command) => {
@@ -138,6 +139,17 @@ impl EventHandler for GlobalState {
 								global_data.remove(&interaction_id);
 								warn!("Cleared data for interaction `{}`.", interaction_id);
 							};
+
+							// remove buttons
+							if let Err(why) = slash_command
+								.edit_original_interaction_response(&http, |response| {
+									response
+										.components(|components| components.set_action_rows(vec![]))
+								})
+								.await
+							{
+								error!("Failed to remove buttons from message: {:?}", why);
+							}
 						});
 					},
 					// normal interaction, do nothing
