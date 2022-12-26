@@ -62,10 +62,9 @@ pub(crate) async fn get_steam_avatar(
 			Ok(json) => {
 				let player = &json.response.players[0];
 				if let Some(url) = &player.avatarfull {
-					url.to_owned()
-				} else {
-					default_url
+					return url.to_owned();
 				}
+				default_url
 			},
 			Err(why) => {
 				log::error!(

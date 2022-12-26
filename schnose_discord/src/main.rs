@@ -39,9 +39,7 @@ async fn main() -> anyhow::Result<()> {
 		.await?;
 
 	info!("Connecting to Discord...");
-	if let Err(why) = client.start().await {
-		panic!("Failed to connect to Discord: {:?}", why);
-	}
+	client.start().await.expect("Failed to connect to Discord: {:?}");
 
 	Ok(())
 }

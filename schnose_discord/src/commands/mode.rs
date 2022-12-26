@@ -50,23 +50,22 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 							.await
 						{
 							error!("Failed to update database: {:?}", why);
-							Err(SchnoseError::DBUpdate)
-						} else {
-							Ok(format!(
-									    "Successfully {} mode for <@{}>.{}",
-									    if mode_name == "none" { "cleared" } else { "set" },
-									    state.user.id.as_u64(),
-									    if mode_name == "none" {
-										    String::new()
-									    } else {
-										    format!(
-											    " New Mode: `{}`",
-											    mode_name.parse::<Mode>()
-												    .expect("This must be valid at this point. `mode_name` can only be valid or \"none\". The latter is already impossible because of the if-statement above.")
-										    )
-									    },
-								    ).into())
+							return Err(SchnoseError::DBUpdate);
 						}
+						Ok(format!(
+							"Successfully {} mode for <@{}>.{}",
+							if mode_name == "none" { "cleared" } else { "set" },
+								state.user.id.as_u64(),
+							if mode_name == "none" {
+								String::new()
+							} else {
+								format!(
+									" New Mode: `{}`",
+									mode_name
+										.parse::<Mode>()
+										.expect("This must be valid at this point. `mode_name` can only be valid or \"none\". The latter is already impossible because of the if-statement above.")
+								)
+							}).into())
 					},
 					// user does not yet have an entry => create a new one
 					None => {
@@ -86,21 +85,23 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 								.await
 							{
 								error!("Failed to update database: {:?}", why);
-								Err(SchnoseError::DBUpdate)
-							} else if mode_name == "none" {
-								Ok(format!(
+								return Err(SchnoseError::DBUpdate);
+							}
+
+							if mode_name == "none" {
+								return Ok(format!(
 									"Successfully cleared mode for <@{}>.",
 									state.user.id.as_u64()
 								)
-								.into())
-							} else {
-								Ok(format!(
-									"Successfully set mode `{}` for <@{}>.",
-									mode_name,
-									state.user.id.as_u64()
-								)
-								.into())
+								.into());
 							}
+
+							Ok(format!(
+								"Successfully set mode `{}` for <@{}>.",
+								mode_name,
+								state.user.id.as_u64()
+							)
+							.into())
 						} else {
 							// user doesn't have any database entries but wants to set their mode
 							// to "none"

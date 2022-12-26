@@ -39,14 +39,9 @@ pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResu
 
 	let mappers = {
 		let mut mappers: Vec<String> = Vec::new();
-		if let Some(names) = map_kzgo.mapperNames {
-			if let Some(ids) = map_kzgo.mapperIds {
-				for (i, name) in names.into_iter().enumerate() {
-					mappers.push(format!(
-						"[{}](https://steamcommunity.com/profiles/{})",
-						name, ids[i]
-					));
-				}
+		if let Some((names, ids)) = map_kzgo.mapperNames.zip(map_kzgo.mapperIds) {
+			for (i, name) in names.into_iter().enumerate() {
+				mappers.push(format!("[{}](https://steamcommunity.com/profiles/{})", name, ids[i]));
 			}
 		}
 
