@@ -101,10 +101,10 @@ impl<'a> InteractionState<'a> {
 	where
 		T: serde::de::DeserializeOwned,
 	{
-		return match self.opts.get(name) {
+		match self.opts.get(name) {
 			Some(value) => serde_json::from_value(value.to_owned()).ok(),
 			None => None,
-		};
+		}
 	}
 
 	/// Convenience function for linking to a map's KZGO page
@@ -185,7 +185,9 @@ impl<'a> InteractionState<'a> {
 										.style(ButtonStyle::Primary)
 								})
 							})
-						})
+						});
+
+						response
 					},
 				})
 				.await
@@ -248,7 +250,9 @@ impl<'a> InteractionState<'a> {
 												.style(ButtonStyle::Primary)
 										})
 									})
-								})
+								});
+
+								response
 							},
 						}
 					})
