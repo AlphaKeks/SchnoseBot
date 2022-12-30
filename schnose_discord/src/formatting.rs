@@ -29,8 +29,8 @@ pub(crate) fn attach_replay_links(
 	embed: &mut CreateEmbed,
 	links: ((String, String), (String, String)),
 ) -> &mut CreateEmbed {
-	let tp = links.0 .0.is_empty();
-	let pro = links.1 .0.is_empty();
+	let tp = !links.0 .0.is_empty();
+	let pro = !links.1 .0.is_empty();
 
 	if tp || pro {
 		let text = if tp && !pro {
