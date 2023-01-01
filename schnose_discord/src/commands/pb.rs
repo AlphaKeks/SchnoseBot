@@ -1,127 +1,92 @@
 use {
+	super::{MAP_NAMES, autocomplete_map, handle_err, ModeChoice, Target},
 	crate::{
-		prelude::{InteractionResult, Target},
-		events::interactions::InteractionState,
-		database::util as DB,
-		formatting::{
-			get_player_name, get_place_formatted, get_replay_links, format_time,
-			attach_replay_links,
-		},
+		GlobalStateAccess, formatting,
+		SchnoseError::{self, *},
+		gokz::ExtractRecordInfo,
 	},
-	gokz_rs::{
-		prelude::*,
-		global_api::{get_maps, is_global, get_pb},
-	},
-	serenity::{
-		builder::{CreateApplicationCommand, CreateEmbed},
-		model::prelude::command::CommandOptionType,
-	},
-	futures::future::join_all,
-	itertools::Itertools,
+	log::trace,
+	gokz_rs::{prelude::*, GlobalAPI},
 };
 
-pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
-	return cmd
-		.name("pb")
-		.description("Check a player's personal best on a map.")
-		.create_option(|opt| {
-			opt.kind(CommandOptionType::String)
-				.name("map_name")
-				.description("Specify a map.")
-				.required(true)
-		})
-		.create_option(|opt| {
-			opt.kind(CommandOptionType::String)
-				.name("mode")
-				.description("Choose a mode.")
-				.add_string_choice("KZT", "kz_timer")
-				.add_string_choice("SKZ", "kz_simple")
-				.add_string_choice("VNL", "kz_vanilla")
-				.required(false)
-		})
-		.create_option(|opt| {
-			opt.kind(CommandOptionType::String)
-				.name("player")
-				.description("Specify a player.")
-				.required(false)
-		});
-}
+/// Check a player's personal best on a map.
+#[poise::command(slash_command, on_error = "handle_err")]
+pub async fn pb(
+	ctx: crate::Context<'_>,
+	#[autocomplete = "autocomplete_map"] map_name: String,
+	#[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
+	#[description = "The player you want to target."] player: Option<String>,
+) -> Result<(), SchnoseError> {
+	ctx.defer().await?;
 
-pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResult {
-	// Defer current interaction since this could take a while
-	state.defer().await?;
+	trace!("[/pb] map_name: `{:?}` mode: `{:?}` player: `{:?}`", &map_name, &mode, &player);
 
-	let map_name = state.get::<String>("map_name").expect("This option is marked as `required`.");
-	let target = Target::from(state.get::<String>("player"));
-
-	let player = target.into_player(state.user, state.db).await?;
-
-	let mode = match state.get::<String>("mode") {
-		Some(mode_name) => mode_name
-			.parse()
-			.expect("The possible values for this are hard-coded and should never be invalid."),
-		None => DB::fetch_mode(state.user, state.db, true).await?,
+	let Some(map_name) = (*MAP_NAMES).iter().find(|name| name.contains(&map_name.to_lowercase())) else {
+		return Err(InvalidMapName(map_name));
+	};
+	let map_name = MapIdentifier::Name(map_name.to_owned());
+	let target = Target::from_input(player, *ctx.author().id.as_u64());
+	let mode = match mode {
+		Some(choice) => choice.into(),
+		None => target.get_mode(ctx.database()).await?,
 	};
 
-	let global_maps = get_maps(state.req_client).await?;
+	let map = GlobalAPI::get_map(&map_name, ctx.gokz_client()).await?;
 
-	let map = is_global(&MapIdentifier::Name(map_name), &global_maps).await?;
+	let player = target.to_player(ctx.database()).await?;
 
-	let map_identifier = MapIdentifier::Name(map.name.clone());
-
-	let (tp, pro) = join_all([
-		get_pb(&player, &map_identifier, &mode, true, 0, state.req_client),
-		get_pb(&player, &map_identifier, &mode, false, 0, state.req_client),
-	])
-	.await
-	.into_iter()
-	.collect_tuple()
-	.expect("This cannot fail, look 6 lines up.");
-
-	if let (&Err(_), &Err(_)) = (&tp, &pro) {
-		return Ok("No PBs found 😔.".into());
-	}
-
-	let player_name = get_player_name((&tp, &pro));
-	let (place_tp, place_pro) = (
-		get_place_formatted(&tp, state.req_client).await,
-		get_place_formatted(&pro, state.req_client).await,
+	let (tp_req, pro_req) = (
+		GlobalAPI::get_pb(&player, &map_name, mode, true, 0, ctx.gokz_client()).await,
+		GlobalAPI::get_pb(&player, &map_name, mode, false, 0, ctx.gokz_client()).await,
 	);
-	let links = (get_replay_links(&tp).await, get_replay_links(&pro).await);
 
-	let mut embed = CreateEmbed::default()
-		.colour(state.colour)
-		.title(format!("[PB] {} on {} (T{})", &player_name, &map.name, &map.difficulty))
-		.url(format!("{}?{}=", state.map_link(&map.name), &mode.to_fancy().to_lowercase()))
-		.thumbnail(state.map_thumbnail(&map.name))
-		.field(
-			"TP",
-			format!(
-				"{} {}",
-				match &tp {
-					Ok(rec) => format_time(rec.time),
-					_ => String::from("😔"),
-				},
-				place_tp
-			),
-			true,
+	let (view_link, download_link) = (&tp_req, &pro_req).get_replay_links();
+
+	let tp = if let Ok(ref tp) = tp_req {
+		format!(
+			"{}{}",
+			formatting::format_time(tp.time),
+			match GlobalAPI::get_place(tp.id, ctx.gokz_client()).await {
+				Ok(place) => format!(" [#{}]", place),
+				_ => String::new(),
+			}
 		)
-		.field(
-			"PRO",
-			format!(
-				"{} {}",
-				match &pro {
-					Ok(rec) => format_time(rec.time),
-					_ => String::from("😔"),
-				},
-				place_pro
-			),
-			true,
+	} else {
+		String::from("😔")
+	};
+
+	let pro = if let Ok(ref pro) = pro_req {
+		format!(
+			"{}{}",
+			formatting::format_time(pro.time),
+			match GlobalAPI::get_place(pro.id, ctx.gokz_client()).await {
+				Ok(place) => format!(" [#{}]", place),
+				_ => String::new(),
+			}
 		)
-		.footer(|f| f.text(format!("Mode: {}", mode.to_fancy())).icon_url(state.icon))
-		.to_owned();
+	} else {
+		String::from("😔")
+	};
 
-	attach_replay_links(&mut embed, links);
+	let player_name = (&tp_req, &pro_req).get_player_name();
 
-	Ok(embed.into())
+	ctx.send(|reply| {
+		reply.embed(|e| {
+			e.color((116, 128, 194))
+				.title(format!("[PB] {} on {} (T{})", player_name, &map.name, &map.difficulty))
+				.url(format!(
+					"{}?{}=",
+					formatting::map_link(&map.name),
+					mode.short().to_lowercase()
+				))
+				.thumbnail(formatting::map_thumbnail(&map.name))
+				.field("TP", tp, true)
+				.field("PRO", pro, true)
+				.description(format!("{}\n{}", view_link, download_link))
+				.footer(|f| f.text(format!("Mode: {}", mode)).icon_url(crate::ICON))
+		})
+	})
+	.await?;
+
+	Ok(())
 }

@@ -1,8 +1,10 @@
-use std::env;
+use log::error;
 
 /// Uses the Steam API to retreive a user's profile picture
-pub(crate) async fn get_steam_avatar(
-	steam_id64: &Option<String>,
+pub async fn get_steam_avatar(
+	steam_id64: &str,
+	default_url: &str,
+	steam_api_key: &str,
 	client: &gokz_rs::Client,
 ) -> String {
 	#[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -36,25 +38,9 @@ pub(crate) async fn get_steam_avatar(
 		pub response: Response,
 	}
 
-	let default_url = env::var("ICON_URL")
-		.expect("The bot should've crashed before this point if `ICON_URL` didn't exist.");
-
-	let api_key: String = match env::var("STEAM_API") {
-		Ok(key) => key,
-		Err(why) => {
-			log::error!("[{}]: {} => {}\n{:#?}", file!(), line!(), "No Steam API Key found.", why);
-
-			return default_url;
-		},
-	};
-
 	let url = format!(
 		"https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key={}&steamids={}",
-		api_key,
-		match steam_id64 {
-			Some(id) => id,
-			None => return default_url,
-		}
+		steam_api_key, steam_id64
 	);
 
 	match client.get(url).send().await {
@@ -62,30 +48,18 @@ pub(crate) async fn get_steam_avatar(
 			Ok(json) => {
 				let player = &json.response.players[0];
 				if let Some(url) = &player.avatarfull {
-					return url.to_owned();
+					return url.clone();
 				}
-				default_url
+				String::from(default_url)
 			},
 			Err(why) => {
-				log::error!(
-					"[{}]: {} => {}\n{:#?}",
-					file!(),
-					line!(),
-					"Failed to get Steam Avatar.",
-					why
-				);
-				default_url
+				error!("Failed to get Steam Avatar: {:?}", why);
+				String::from(default_url)
 			},
 		},
 		Err(why) => {
-			log::error!(
-				"[{}]: {} => {}\n{:#?}",
-				file!(),
-				line!(),
-				"Failed to get Steam Avatar.",
-				why
-			);
-			default_url
+			error!("Failed to get Steam Avatar: {:?}", why);
+			String::from(default_url)
 		},
 	}
 }

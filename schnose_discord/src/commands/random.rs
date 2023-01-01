@@ -1,32 +1,33 @@
 use {
-	crate::{prelude::InteractionResult, events::interactions::InteractionState},
-	gokz_rs::global_api::get_mapcycle,
+	super::{handle_err, TierChoice, GLOBAL_MAPS},
+	crate::SchnoseError,
+	log::trace,
 	rand::Rng,
-	serenity::{builder::CreateApplicationCommand, model::prelude::command::CommandOptionType},
 };
 
-pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
-	return cmd.name("random").description("Get a random KZ map.").create_option(|opt| {
-		opt.kind(CommandOptionType::Integer)
-			.name("tier")
-			.description("Filter by tier")
-			.add_int_choice("1 (Very Easy)", 1)
-			.add_int_choice("2 (Easy)", 2)
-			.add_int_choice("3 (Medium)", 3)
-			.add_int_choice("4 (Hard)", 4)
-			.add_int_choice("5 (Very Hard)", 5)
-			.add_int_choice("6 (Extreme)", 6)
-			.add_int_choice("7 (Death)", 7)
-			.required(false)
-	});
-}
+/// Generate a random KZ map.
+#[poise::command(slash_command, on_error = "handle_err")]
+pub async fn random(
+	ctx: crate::Context<'_>,
+	#[description = "Filter by map difficulty."] tier: Option<TierChoice>,
+) -> Result<(), SchnoseError> {
+	ctx.defer().await?;
 
-pub(crate) async fn execute(state: &InteractionState<'_>) -> InteractionResult {
-	let tier = state.get::<u8>("tier");
+	trace!("[/random] tier: `{:?}`", &tier);
 
-	let map_names = get_mapcycle(tier, state.req_client).await?;
+	let maps = (*GLOBAL_MAPS)
+		.iter()
+		.filter(|map| match tier {
+			Some(tier) => map.difficulty == tier as u8,
+			None => true,
+		})
+		.collect::<Vec<_>>();
 
-	let rand = rand::thread_rng().gen_range(0..map_names.len());
+	let rng = rand::thread_rng().gen_range(0..maps.len());
 
-	return Ok(format!("🎲 {}", map_names[rand]).into());
+	let map = &maps[rng];
+
+	ctx.say(format!("🎲 `{} (T{})`", map.name, map.difficulty)).await?;
+
+	Ok(())
 }

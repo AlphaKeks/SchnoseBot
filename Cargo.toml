@@ -1,4 +1,2 @@
 [workspace]
-members = [
-	"schnose_discord",
-]
+members = ["schnose_discord", "migrations"]

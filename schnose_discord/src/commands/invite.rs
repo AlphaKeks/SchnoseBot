@@ -1,18 +1,8 @@
-use {
-	crate::{prelude::InteractionResult, events::interactions::InteractionState},
-	serenity::builder::{CreateApplicationCommand, CreateEmbed},
-};
+use {super::handle_err, crate::SchnoseError};
 
-pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
-	return cmd.name("invite").description("Invite schnose to your server!");
-}
-
-pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResult {
-	let embed = CreateEmbed::default()
-		.color((116, 128, 194))
-		.description("[click? 😳 👉👈](https://discord.com/oauth2/authorize?client_id=940308056451973120&permissions=327744&scope=bot%20applications.commands)")
-		.to_owned();
-
-	state.ephemeralize();
-	Ok(embed.into())
+/// Invite the bot to your server!
+#[poise::command(prefix_command, slash_command, on_error = "handle_err", ephemeral)]
+pub async fn invite(ctx: crate::Context<'_>) -> Result<(), SchnoseError> {
+	ctx.say("[click me? 😳](<https://bot.schnose.eu/>)").await?;
+	Ok(())
 }

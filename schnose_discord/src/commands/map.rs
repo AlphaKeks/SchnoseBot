@@ -1,99 +1,88 @@
 use {
-	crate::{events::interactions::InteractionState, prelude::InteractionResult},
-	gokz_rs::{
-		prelude::*,
-		global_api::{get_maps, is_global, get_filters},
-		kzgo,
+	super::{MAP_NAMES, autocomplete_map, handle_err},
+	crate::{
+		GlobalStateAccess, formatting,
+		SchnoseError::{self, *},
 	},
-	serenity::{
-		builder::{CreateApplicationCommand, CreateEmbed},
-		model::prelude::command::CommandOptionType,
-	},
+	log::trace,
+	gokz_rs::{prelude::*, GlobalAPI, KZGO},
 };
 
-pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
-	return cmd.name("map").description("Get detailed information on a map.").create_option(
-		|opt| {
-			opt.kind(CommandOptionType::String)
-				.name("map_name")
-				.description("Specify a map.")
-				.required(true)
-		},
-	);
-}
+/// Will fetch detailed information about a given map.
+#[poise::command(slash_command, on_error = "handle_err")]
+pub async fn map(
+	ctx: crate::Context<'_>,
+	#[autocomplete = "autocomplete_map"] map_name: String,
+) -> Result<(), SchnoseError> {
+	ctx.defer().await?;
 
-pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResult {
-	// Defer current interaction since this could take a while
-	state.defer().await?;
+	trace!("[/map] map_name: `{}`", &map_name);
 
-	let map_name = state.get::<String>("map_name").expect("This option is marked as `required`.");
-
-	let (map_api, map_kzgo) = {
-		let global_maps = get_maps(state.req_client).await?;
-		let map_api = is_global(&MapIdentifier::Name(map_name), &global_maps).await?;
-		let map_identifier = MapIdentifier::Name(map_api.name.clone());
-		let map_kzgo = kzgo::maps::get_map(&map_identifier, state.req_client).await?;
-
-		(map_api, map_kzgo)
+	let Some(map_name) = (*MAP_NAMES).iter().find(|name| name.contains(&map_name.to_lowercase())) else {
+		return Err(InvalidMapName(map_name));
 	};
 
-	let mappers = {
-		let mut mappers: Vec<String> = Vec::new();
-		if let Some((names, ids)) = map_kzgo.mapperNames.zip(map_kzgo.mapperIds) {
-			for (i, name) in names.into_iter().enumerate() {
-				mappers.push(format!("[{}](https://steamcommunity.com/profiles/{})", name, ids[i]));
-			}
-		}
+	let map_identifier = MapIdentifier::Name(map_name.to_owned());
 
-		mappers
+	let map_api = GlobalAPI::get_map(&map_identifier, ctx.gokz_client()).await?;
+	let map_kzgo = KZGO::get_map(map_name, ctx.gokz_client()).await?;
+
+	let mappers = if let Some((names, ids)) = map_kzgo.mapperNames.zip(map_kzgo.mapperIds) {
+		names.iter().zip(ids).fold(Vec::new(), |mut names, (name, id)| {
+			names.push(format!("[{}](https://steamcommunity.com/profiles/{})", name, id));
+			names
+		})
+	} else {
+		vec![String::from("unknown")]
 	};
 
-	let filters = match get_filters(map_api.id, state.req_client).await {
-		Ok(filters) => {
-			let filters = filters.into_iter().filter(|f| f.stage == 0).collect::<Vec<_>>();
-			let mut res = ("❌", "❌", "❌");
-			for filter in filters {
-				match filter.mode_id {
-					200 => res.0 = "✅",
-					201 => res.1 = "✅",
-					202 => res.2 = "✅",
-					_ => (),
+	let (kzt_filter, skz_filter, vnl_filter) =
+		GlobalAPI::get_filters(map_api.id, ctx.gokz_client())
+			.await?
+			.into_iter()
+			.filter(|f| f.stage == 0)
+			.fold(("❌", "❌", "❌"), |mut symbols, f| {
+				match f.mode_id {
+					200 => symbols.0 = "✅",
+					201 => symbols.1 = "✅",
+					202 => symbols.2 = "✅",
+					_ => {},
 				}
-			}
-			res
-		},
-		Err(why) => {
-			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			return Err(why.into());
-		},
-	};
+				symbols
+			});
 
-	let embed = CreateEmbed::default()
-		.color(state.colour)
-		.title(&map_api.name)
-		.url(state.map_link(&map_api.name))
-		.thumbnail(&state.map_thumbnail(&map_api.name))
-		.description(format!(
-			r#"
+	ctx.send(|reply| {
+		reply.embed(|e| {
+			e.color((116, 128, 194))
+				.title(map_name)
+				.url(formatting::map_link(map_name))
+				.thumbnail(formatting::map_thumbnail(map_name))
+				.description(format!(
+					"
 🢂 API Tier: {}
 🢂 Mapper(s): {}
 🢂 Bonuses: {}
-🢂 Last Update: {}
+🢂 Last Updated: {}
 
 🢂 Filters:
-			"#,
-			&map_api.difficulty,
-			mappers.join(", "),
-			&map_kzgo.bonuses.unwrap_or(0),
-			match chrono::NaiveDateTime::parse_from_str(&map_api.updated_on, "%Y-%m-%dT%H:%M:%S") {
-				Ok(parsed_time) => parsed_time.format("%d/%m/%Y").to_string(),
-				Err(_) => String::from("unknown"),
-			},
-		))
-		.field("KZT", filters.0, true)
-		.field("SKZ", filters.1, true)
-		.field("VNL", filters.2, true)
-		.to_owned();
+				",
+					&map_api.difficulty,
+					mappers.join(", "),
+					&map_kzgo.bonuses.unwrap_or(0),
+					match chrono::NaiveDateTime::parse_from_str(
+						&map_api.updated_on,
+						"%Y-%m-%dT%H:%M:%S"
+					) {
+						Ok(parsed_time) => parsed_time.format("%d/%m/%Y").to_string(),
+						Err(_) => String::from("unknown"),
+					},
+				))
+				.field("KZT", kzt_filter, true)
+				.field("SKZ", skz_filter, true)
+				.field("VNL", vnl_filter, true)
+		})
+	})
+	.await?;
 
-	Ok(embed.into())
+	Ok(())
 }

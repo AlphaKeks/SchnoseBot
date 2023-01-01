@@ -1,197 +1,239 @@
 use {
+	super::{GLOBAL_MAPS, handle_err, ModeChoice, Target},
 	crate::{
-		prelude::{InteractionResult, Target},
-		events::interactions::InteractionState,
-		database::util as DB,
-		util::get_steam_avatar,
+		GlobalStateAccess,
+		SchnoseError::{self, *},
 	},
-	log::warn,
-	bson::doc,
-	gokz_rs::{
-		prelude::{Mode, SteamID, PlayerIdentifier},
-		global_api::get_player,
-		custom::get_profile,
-		kzgo,
-	},
+	std::collections::HashMap,
+	log::trace,
+	gokz_rs::{prelude::*, GlobalAPI, KZGO},
 	num_format::{ToFormattedString, Locale},
-	serenity::{
-		builder::{CreateApplicationCommand, CreateEmbed},
-		model::prelude::command::CommandOptionType,
-	},
 };
 
-pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
-	return cmd
-		.name("profile")
-		.description("Check a player's stats.")
-		.create_option(|opt| {
-			opt.kind(CommandOptionType::String)
-				.name("mode")
-				.description("Specify a mode.")
-				.add_string_choice("KZT", "kz_timer")
-				.add_string_choice("SKZ", "kz_simple")
-				.add_string_choice("VNL", "kz_vanilla")
-				.required(false)
-		})
-		.create_option(|opt| {
-			opt.kind(CommandOptionType::String)
-				.name("player")
-				.description("Specify a player.")
-				.required(false)
-		});
-}
+/// Check various player stats.
+#[poise::command(slash_command, on_error = "handle_err")]
+pub async fn profile(
+	ctx: crate::Context<'_>,
+	#[description = "The player you want to target."] player: Option<String>,
+	#[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
+) -> Result<(), SchnoseError> {
+	ctx.defer().await?;
 
-pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResult {
-	// Defer current interaction since this could take a while
-	state.defer().await?;
+	trace!("[/profile] player: `{:?}` mode: `{:?}`", &player, &mode);
 
-	let target = Target::from(state.get::<String>("player"));
-
-	let player = target.into_player(state.user, state.db).await?;
-
-	let mode = match state.get::<String>("mode") {
-		Some(mode_name) => mode_name
-			.parse::<Mode>()
-			.expect("The possible values for this are hard-coded and should never be invalid."),
-		None => DB::fetch_mode(state.user, state.db, true).await?,
+	let target = Target::from_input(player, *ctx.author().id.as_u64());
+	let mode = match mode {
+		Some(choice) => choice.into(),
+		None => target.get_mode(ctx.database()).await?,
 	};
+	let player_identifier = target.to_player(ctx.database()).await?;
 
-	let player = get_player(&player, state.req_client).await?;
+	let player = GlobalAPI::get_player(&player_identifier, ctx.gokz_client()).await?;
 
-	let steam_id = SteamID::new(&player.steam_id)?;
+	let mut tier_maps = [HashMap::new(), HashMap::new()];
 
-	let player_profile =
-		get_profile(&PlayerIdentifier::SteamID(steam_id), &mode, state.req_client).await?;
+	for map in (*GLOBAL_MAPS).iter() {
+		tier_maps[0].insert(map.name.clone(), map.difficulty);
+	}
+	tier_maps[1] = tier_maps[0].clone();
 
-	let avatar = get_steam_avatar(&player_profile.steam_id64, state.req_client).await;
+	let (tp, pro) = (
+		GlobalAPI::get_player_records(
+			&player_identifier,
+			mode,
+			true,
+			0,
+			Some(9999),
+			ctx.gokz_client(),
+		)
+		.await
+		.unwrap_or_default(),
+		GlobalAPI::get_player_records(
+			&player_identifier,
+			mode,
+			false,
+			0,
+			Some(9999),
+			ctx.gokz_client(),
+		)
+		.await
+		.unwrap_or_default(),
+	);
 
-	let fav_mode = {
-		let mut mode = String::new();
-		if let Ok(Some(entry)) =
-			state.db.find_one(doc! { "steamID": &player_profile.steam_id }, None).await
-		{
-			if let Some(db_mode) = entry.mode {
-				if db_mode != "none" {
-					mode = db_mode.parse::<Mode>()
-						.expect("This must be valid at this point. `mode_name` can only be valid or \"none\". The latter is already impossible because of the if-statement above.")
-						.to_fancy();
+	if tp.is_empty() && pro.is_empty() {
+		return Err(GOKZ(String::from("This player has no records.")));
+	}
+
+	let x = if tp.len() > pro.len() { tp.len() } else { pro.len() };
+
+	let (mut tp_points, mut pro_points) = (0, 0);
+	let mut completion = [(0, 0); 8];
+	let (mut tp_records, mut pro_records) = (0, 0);
+
+	for i in 0..x {
+		if tp.len() > i {
+			if let Some(tier) = tier_maps[0].remove(&tp[i].map_name) {
+				tp_points += tp[i].points;
+				completion[7].0 += 1;
+				completion[(tier - 1) as usize].0 += 1;
+
+				if tp[i].points == 1000 {
+					tp_records += 1;
 				}
 			}
 		}
 
-		mode
-	};
+		if pro.len() > i {
+			if let Some(tier) = tier_maps[1].remove(&tp[i].map_name) {
+				pro_points += pro[i].points;
+				completion[7].1 += 1;
+				completion[(tier - 1) as usize].1 += 1;
 
-	let mut bars = [[""; 7]; 2].map(|a| a.map(|s| s.to_owned()));
-
-	for i in 0..7 {
-		{
-			let amount = (&player_profile.completion_percentage[i].0 / 10.0) as u32;
-
-			for _ in 0..amount {
-				bars[0][i].push('█');
-			}
-
-			for _ in 0..(10 - amount) {
-				bars[0][i].push('░');
-			}
-		}
-
-		{
-			let amount = (&player_profile.completion_percentage[i].1 / 10.0) as u32;
-
-			for _ in 0..amount {
-				bars[1][i].push('█');
-			}
-
-			for _ in 0..(10 - amount) {
-				bars[1][i].push('░');
+				if pro[i].points == 1000 {
+					pro_records += 1;
+				}
 			}
 		}
 	}
 
-	// how many maps _can_ be finished in a certain mode?
-	let doable = match kzgo::completion::get_completion_count(&mode, state.req_client).await {
-		Ok(data) => (data.tp.total, data.pro.total),
-		Err(why) => {
-			warn!("{}", why);
-			return Err(why.into());
-		},
-	};
+	let total_points = tp_points + pro_points;
 
-	let embed = CreateEmbed::default()
-		.colour(state.colour)
-		.title(format!(
-			"{} - {} Profile",
-			&player_profile.name.unwrap_or_else(|| String::from("unknown")),
-			&mode.to_fancy()
-		))
-		.url(format!(
-			"https://kzgo.eu/players/{}?{}=",
-			match &player_profile.steam_id {
-				Some(steam_id) => steam_id,
-				None => "unknown",
-			},
-			&mode.to_fancy().to_lowercase()
-		))
-		.thumbnail(avatar)
-		// this is so incredibly whacky I'm scared to touch it ever again
-		.description(format!(
-			r#"
+	let rank = Rank::from_points(total_points, mode);
+
+	let possible_maps = KZGO::get_completion_count(mode, ctx.gokz_client()).await?;
+
+	let possible_maps = [
+		[
+			possible_maps.tp.one,
+			possible_maps.tp.two,
+			possible_maps.tp.three,
+			possible_maps.tp.four,
+			possible_maps.tp.five,
+			possible_maps.tp.six,
+			possible_maps.tp.seven,
+			possible_maps.tp.total,
+		],
+		[
+			possible_maps.pro.one,
+			possible_maps.pro.two,
+			possible_maps.pro.three,
+			possible_maps.pro.four,
+			possible_maps.pro.five,
+			possible_maps.pro.six,
+			possible_maps.pro.seven,
+			possible_maps.pro.total,
+		],
+	];
+
+	let mut completion_percentage = [(0., 0.); 8];
+
+	for i in 0..8 {
+		if completion[i].0 > 0 {
+			completion_percentage[i].0 =
+				(completion[i].0 as f32 / possible_maps[0][i] as f32) * 100.;
+		}
+
+		if completion[i].1 > 0 {
+			completion_percentage[i].1 =
+				(completion[i].1 as f32 / possible_maps[1][i] as f32) * 100.;
+		}
+	}
+
+	let fav_mode = target.get_mode(ctx.database()).await?;
+
+	let mut bars = [[""; 7]; 2].map(|a| a.map(ToOwned::to_owned));
+
+	for (i, perc) in completion_percentage.iter().enumerate().take(7) {
+		let amount = (perc.0 / 10.) as u32;
+
+		for _ in 0..amount {
+			bars[0][i].push('█');
+		}
+
+		for _ in 0..(10 - amount) {
+			bars[0][i].push('░');
+		}
+
+		let amount = (perc.1 / 10.) as u32;
+
+		for _ in 0..amount {
+			bars[1][i].push('█');
+		}
+
+		for _ in 0..(10 - amount) {
+			bars[1][i].push('░');
+		}
+	}
+
+	let description = format!(
+		"
 🏆 **World Records: {} (TP) | {} (PRO)**
-────────────────────────
+────────────────────────────
                       TP                                               PRO
-         `{}/{} ({:.2}%)`              `{}/{} ({:.2}%)`
+        `{}/{} ({:.2}%)`             `{}/{} ({:.2}%)`
 T1     ⌠ {} ⌡          ⌠ {} ⌡
 T2   ⌠ {} ⌡          ⌠ {} ⌡
 T3   ⌠ {} ⌡          ⌠ {} ⌡
-T4  ⌠ {} ⌡          ⌠ {} ⌡
+T4   ⌠ {} ⌡          ⌠ {} ⌡
 T5   ⌠ {} ⌡          ⌠ {} ⌡
-T6  ⌠ {} ⌡          ⌠ {} ⌡
+T6   ⌠ {} ⌡          ⌠ {} ⌡
 T7   ⌠ {} ⌡          ⌠ {} ⌡
 
 Points: **{}**
-────────────────────────
+────────────────────────────
 Rank: **{}**
 Preferred Mode: {}
-			"#,
-			&player_profile.records.0,
-			&player_profile.records.1,
-			&player_profile.completion[7].0,
-			&doable.0,
-			&player_profile.completion_percentage[7].0,
-			&player_profile.completion[7].1,
-			&doable.1,
-			&player_profile.completion_percentage[7].1,
-			&bars[0][0],
-			&bars[1][0],
-			&bars[0][1],
-			&bars[1][1],
-			&bars[0][2],
-			&bars[1][2],
-			&bars[0][3],
-			&bars[1][3],
-			&bars[0][4],
-			&bars[1][4],
-			&bars[0][5],
-			&bars[1][5],
-			&bars[0][6],
-			&bars[1][6],
-			(player_profile.points.0 + player_profile.points.1).to_formatted_string(&Locale::en),
-			match &player_profile.rank {
-				Some(rank) => rank.to_string(),
-				None => String::from("unknown"),
-			},
-			fav_mode
-		))
-		.footer(|f| {
-			f.text(format!(
-				"SteamID: {}",
-				&player_profile.steam_id.unwrap_or_else(|| String::from("unknown"))
-			))
-			.icon_url(state.icon)
-		})
-		.to_owned();
+        ",
+		tp_records,
+		pro_records,
+		completion[7].0,
+		possible_maps[0][7],
+		completion_percentage[7].0,
+		completion[7].1,
+		possible_maps[1][7],
+		completion_percentage[7].1,
+		bars[0][0],
+		bars[1][0],
+		bars[0][1],
+		bars[1][1],
+		bars[0][2],
+		bars[1][2],
+		bars[0][3],
+		bars[1][3],
+		bars[0][4],
+		bars[1][4],
+		bars[0][5],
+		bars[1][5],
+		bars[0][6],
+		bars[1][6],
+		total_points.to_formatted_string(&Locale::en),
+		rank,
+		fav_mode
+	);
 
-	Ok(embed.into())
+	let avatar = crate::steam::get_steam_avatar(
+		&player.steamid64,
+		crate::ICON,
+		ctx.framework().user_data().await.config.steam_api_key,
+		ctx.gokz_client(),
+	)
+	.await;
+
+	ctx.send(|reply| {
+		reply.embed(|e| {
+			e.color((116, 128, 194))
+				.title(format!("{} - {} Profile", &player.name, mode))
+				.url(format!(
+					"https://kzgo.eu/players/{}?{}=",
+					&player.steam_id,
+					mode.short().to_lowercase()
+				))
+				.thumbnail(avatar)
+				.description(description)
+				.footer(|f| f.text(format!("SteamID: {}", &player.steam_id)).icon_url(crate::ICON))
+		})
+	})
+	.await?;
+
+	Ok(())
 }

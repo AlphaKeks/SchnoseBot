@@ -1,0 +1,22 @@
+# Log level
+rust_log = "schnose=TRACE"
+# Discord API token to login
+discord_token = ""
+# Steam WebAPI auth key
+steam_api_key = ""
+# `DEV` or `PROD`
+mode = "DEV"
+# GuildID fo the dev server
+dev_guild_id = 0
+# UserID of the bot owner
+owner = 0
+# ChannelID for sending report messages
+report_channel_id = 0
+# full path to the git repo
+git_dir = "/path/to/repo"
+# full path to the bot's directory
+build_dir = "/path/to/bot"
+# number of threads for compilation
+build_job_count = "4" # yes, this must be a string
+# shell command to restart the bot's process
+restart_command = "pm2 restart schnosebot"

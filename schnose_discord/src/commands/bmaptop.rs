@@ -1,132 +1,70 @@
 use {
+	super::{MAP_NAMES, autocomplete_map, handle_err, ModeChoice, RuntypeChoice, Target},
 	crate::{
-		prelude::InteractionResult,
-		events::interactions::InteractionState,
-		database::util as DB,
-		formatting::{get_replay_links, format_time},
+		GlobalStateAccess, formatting,
+		SchnoseError::{self, *},
 	},
-	gokz_rs::{
-		prelude::*,
-		global_api::{get_maps, is_global, get_maptop},
-	},
-	serenity::{
-		builder::{CreateApplicationCommand, CreateEmbed},
-		model::prelude::command::CommandOptionType,
-	},
+	std::time::Duration,
+	log::trace,
+	gokz_rs::{prelude::*, GlobalAPI},
+	poise::serenity_prelude::CreateEmbed,
 };
 
-pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
-	return cmd
-		.name("bmaptop")
-		.description("Check the Top 100 Records on a bonus.")
-		.create_option(|opt| {
-			opt.kind(CommandOptionType::String)
-				.name("map_name")
-				.description("Specify a map.")
-				.required(true)
-		})
-		.create_option(|opt| {
-			opt.kind(CommandOptionType::String)
-				.name("mode")
-				.description("Choose a mode.")
-				.add_string_choice("KZT", "kz_timer")
-				.add_string_choice("SKZ", "kz_simple")
-				.add_string_choice("VNL", "kz_vanilla")
-				.required(false)
-		})
-		.create_option(|opt| {
-			opt.kind(CommandOptionType::String)
-				.name("runtype")
-				.description("TP/PRO")
-				.add_string_choice("TP", "true")
-				.add_string_choice("PRO", "false")
-				.required(false)
-		})
-		.create_option(|opt| {
-			opt.kind(CommandOptionType::Integer)
-				.name("course")
-				.description("Specify a course.")
-				.required(false)
-		});
-}
+/// Check the top 100 records on a bonus.
+#[poise::command(slash_command, on_error = "handle_err")]
+pub async fn bmaptop(
+	ctx: crate::Context<'_>,
+	#[autocomplete = "autocomplete_map"]
+	#[description = "The map of the bonus"]
+	map_name: String,
+	#[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
+	#[description = "TP/PRO"] runtype: Option<RuntypeChoice>,
+	#[description = "Course"] course: Option<u8>,
+) -> Result<(), SchnoseError> {
+	ctx.defer().await?;
 
-pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResult {
-	// Defer current interaction since this could take a while
-	state.defer().await?;
+	trace!(
+		"[/bmaptop] map_name: `{}` mode: `{:?}` runtype: `{:?}` course: `{:?}`",
+		&map_name,
+		&mode,
+		&runtype,
+		&course
+	);
 
-	let map_name = state.get::<String>("map_name").expect("This option is marked as `required`.");
-
-	let mode = match state.get::<String>("mode") {
-		Some(mode_name) => mode_name
-			.parse()
-			.expect("The possible values for this are hard-coded and should never be invalid."),
-		None => DB::fetch_mode(state.user, state.db, true).await?,
+	let Some(map_name) = (*MAP_NAMES).iter().find(|name| name.contains(&map_name.to_lowercase())) else {
+		return Err(InvalidMapName(map_name));
 	};
-
-	let runtype = match state.get::<String>("runtype") {
-		Some(runtype) => runtype == "true",
-		None => false,
+	let map_name = MapIdentifier::Name(map_name.to_owned());
+	let mode = match mode {
+		Some(mode) => mode.into(),
+		None => Target::None(*ctx.author().id.as_u64()).get_mode(ctx.database()).await?,
 	};
+	let runtype = matches!(runtype, Some(RuntypeChoice::TP));
+	let course = course.unwrap_or(1);
 
-	let course = state.get::<u8>("course").unwrap_or(1);
+	let maptop = GlobalAPI::get_maptop(&map_name, mode, runtype, course, ctx.gokz_client()).await?;
 
-	let global_maps = get_maps(state.req_client).await?;
+	let map = GlobalAPI::get_map(&map_name, ctx.gokz_client()).await?;
 
-	let map = is_global(&MapIdentifier::Name(map_name), &global_maps).await?;
-
-	let map_identifier = MapIdentifier::Name(map.name.clone());
-
-	let leaderboard = get_maptop(&map_identifier, &mode, runtype, course, state.req_client).await?;
-	let len = leaderboard.len();
-
-	let link = get_replay_links(&Ok(leaderboard[0].clone())).await;
-
-	let mut embeds: Vec<CreateEmbed> = Vec::new();
-	let get_embed = |i| {
-		let mut embed = CreateEmbed::default()
-			.colour(state.colour)
+	let get_embed = |i: usize, len: usize| {
+		let mut embed = CreateEmbed::default();
+		embed
+			.color((116, 128, 194))
 			.title(format!(
-				"[Top 100 {} {}] {} - Bonus {} (T{})",
-				&mode.to_fancy(),
+				"[Top 100 {} {}] {} B{} (T{})",
+				mode.short(),
 				if runtype { "TP" } else { "PRO" },
 				&map.name,
 				course,
 				&map.difficulty
 			))
-			.url(format!("{}?{}=", state.map_link(&map.name), &mode.to_fancy().to_lowercase()))
-			.thumbnail(state.map_thumbnail(&map.name))
-			.footer(|f| f.text(format!("Page: {} / {}", i, len / 12 + 1)).icon_url(state.icon))
-			.to_owned();
-
-		// only checking one of them is fine
-		if !link.0.is_empty() {
-			embed.description(format!("[Watch WR]({}) | [Download WR]({})", link.0, link.1));
-		}
+			.url(format!("{}?{}=", formatting::map_link(&map.name), mode.short().to_lowercase()))
+			.thumbnail(formatting::map_thumbnail(&map.name))
+			.footer(|f| f.text(format!("Page {} / {}", i, len / 12 + 1)).icon_url(crate::ICON));
 		embed
 	};
 
-	let mut temp = get_embed(1);
+	super::paginate(maptop, get_embed, Duration::from_secs(600), &ctx).await?;
 
-	for (i, record) in leaderboard.into_iter().enumerate() {
-		let first_page = i == 0;
-		let full_page = i % 12 == 0;
-		let last_page = i == len - 1;
-
-		if !first_page && (full_page || last_page) {
-			embeds.push(temp.clone());
-			temp = get_embed(embeds.len() + 1);
-		}
-
-		temp.field(
-			format!(
-				"{} [#{}]",
-				record.player_name.unwrap_or_else(|| String::from("unknown")),
-				i + 1
-			),
-			format_time(record.time),
-			true,
-		);
-	}
-
-	Ok(embeds.into())
+	Ok(())
 }

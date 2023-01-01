@@ -1,136 +1,80 @@
 use {
-	crate::{
-		prelude::{InteractionResult, Target},
-		events::interactions::InteractionState,
-		database::util as DB,
-	},
-	gokz_rs::{prelude::*, global_api::*},
-	serenity::{
-		builder::{CreateApplicationCommand, CreateEmbed},
-		model::prelude::command::CommandOptionType,
-	},
+	super::{handle_err, ModeChoice, Target, RuntypeChoice, TierChoice},
+	crate::{GlobalStateAccess, SchnoseError},
+	gokz_rs::GlobalAPI,
+	log::trace,
 };
 
-pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
-	return cmd
-		.name("unfinished")
-		.description("Check which maps you still need to complete!")
-		.create_option(|opt| {
-			opt.kind(CommandOptionType::String)
-				.name("mode")
-				.description("Choose a mode.")
-				.add_string_choice("KZT", "kz_timer")
-				.add_string_choice("SKZ", "kz_simple")
-				.add_string_choice("VNL", "kz_vanilla")
-				.required(false)
-		})
-		.create_option(|opt| {
-			opt.kind(CommandOptionType::String)
-				.name("runtype")
-				.description("TP/PRO")
-				.add_string_choice("TP", "true")
-				.add_string_choice("PRO", "false")
-				.required(false)
-		})
-		.create_option(|opt| {
-			opt.kind(CommandOptionType::Integer)
-				.name("tier")
-				.description("Filter by tier")
-				.add_int_choice("1 (Very Easy)", 1)
-				.add_int_choice("2 (Easy)", 2)
-				.add_int_choice("3 (Medium)", 3)
-				.add_int_choice("4 (Hard)", 4)
-				.add_int_choice("5 (Very Hard)", 5)
-				.add_int_choice("6 (Extreme)", 6)
-				.add_int_choice("7 (Death)", 7)
-				.required(false)
-		})
-		.create_option(|opt| {
-			opt.kind(CommandOptionType::String)
-				.name("player")
-				.description("Specify a player.")
-				.required(false)
-		});
-}
+/// Check which maps a player still has to complete.
+#[poise::command(slash_command, on_error = "handle_err")]
+pub async fn unfinished(
+	ctx: crate::Context<'_>,
+	#[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
+	#[description = "TP/PRO"] runtype: Option<RuntypeChoice>,
+	#[description = "Filter by map difficulty."] tier: Option<TierChoice>,
+	#[description = "The player you want to target."] player: Option<String>,
+) -> Result<(), SchnoseError> {
+	ctx.defer().await?;
 
-pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResult {
-	// Defer current interaction since this could take a while
-	state.defer().await?;
+	trace!(
+		"[/unfinished] mode: `{:?}` runtype: `{:?}` tier: `{:?}` player: `{:?}`",
+		&mode,
+		&runtype,
+		&tier,
+		&player
+	);
 
-	let target = Target::from(state.get::<String>("player"));
-
-	let player = target.into_player(state.user, state.db).await?;
-
-	let mode = match state.get::<String>("mode") {
-		Some(mode_name) => mode_name
-			.parse::<Mode>()
-			.expect("The possible values for this are hard-coded and should never be invalid."),
-		None => DB::fetch_mode(state.user, state.db, true).await?,
+	let target = Target::from_input(player, *ctx.author().id.as_u64());
+	let mode = match mode {
+		Some(choice) => choice.into(),
+		None => target.get_mode(ctx.database()).await?,
 	};
+	let player = target.to_player(ctx.database()).await?;
+	let runtype = matches!(runtype, Some(RuntypeChoice::TP));
+	let tier = tier.map(|choice| choice as u8);
 
-	let runtype = match state.get::<String>("runtype") {
-		// Discord supports booleans as parameters for slash commands, however you cannot customize
-		// the prompt for the user. It will simply be "True" or "False" which is not ideal. That's
-		// why we use Strings. It's fine though since these values are hard-coded.
-		Some(runtype) => match runtype.as_str() {
-			"true" => true,
-			"false" => false,
-			_ => unreachable!("only `true` and `false` exist as selectable options."),
-		},
-		None => true,
-	};
-
-	let tier = state.get::<u8>("tier");
-
-	let player_name = match get_player(&player, state.req_client).await {
-		Ok(player) => player.name,
-		Err(why) => {
-			log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-			String::from("unknown")
-		},
-	};
-
-	let (description, amount) =
-		match get_unfinished(&player, &mode, runtype, tier, state.req_client).await {
-			Ok(map_list) => {
-				let description = if map_list.len() <= 10 {
-					map_list.join("\n")
-				} else {
-					format!("{}\n...{} more", (map_list[0..10]).join("\n"), map_list.len() - 10)
-				};
-
-				let amount = format!(
-					"{} uncompleted map{}",
-					map_list.len(),
-					if map_list.len() == 1 { "" } else { "s" }
-				);
-				(description, amount)
-			},
-			Err(why) => {
-				log::warn!("[{}]: {} => {:?}", file!(), line!(), why);
-				return Err(why.into());
-			},
+	let (description, amount) = {
+		let unfinished =
+			gokz_rs::extra::get_unfinished(&player, mode, runtype, tier, ctx.gokz_client()).await?;
+		let description = if unfinished.len() <= 10 {
+			unfinished.join("\n")
+		} else {
+			format!("{}\n...{} more", unfinished[0..10].join("\n"), unfinished.len() - 10)
 		};
 
-	let embed = CreateEmbed::default()
-		.colour(state.colour)
-		.title(format!(
-			"{} - {} {} {}",
-			amount,
-			&mode.to_fancy(),
-			if runtype { "TP" } else { "PRO" },
-			match tier {
-				Some(tier) => format!("[T{}]", tier),
-				None => String::new(),
-			}
-		))
-		.description(if !description.is_empty() {
-			description
-		} else {
-			String::from("You have no maps left to complete! Congrats! 🥳")
-		})
-		.footer(|f| f.text(format!("Player: {}", player_name)).icon_url(state.icon))
-		.to_owned();
+		let amount = format!(
+			"{} uncompleted map{}",
+			unfinished.len(),
+			if unfinished.len() == 1 { "" } else { "s" }
+		);
 
-	Ok(embed.into())
+		(description, amount)
+	};
+
+	let player = GlobalAPI::get_player(&player, ctx.gokz_client()).await?;
+
+	ctx.send(|reply| {
+		reply.embed(|e| {
+			e.color((116, 128, 194))
+				.title(format!(
+					"{} - {} {} {}",
+					amount,
+					mode.short(),
+					if runtype { "TP" } else { "PRO" },
+					match tier {
+						Some(tier) => format!("[T{}]", tier),
+						None => String::new(),
+					}
+				))
+				.description(if description.is_empty() {
+					String::from("You have no maps left to complete! Congrats! 🥳")
+				} else {
+					description
+				})
+				.footer(|f| f.text(format!("Player: {}", player.name)).icon_url(crate::ICON))
+		})
+	})
+	.await?;
+
+	Ok(())
 }

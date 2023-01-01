@@ -1,174 +1,185 @@
+#![warn(missing_debug_implementations, rust_2018_idioms)]
+
 mod commands;
 mod database;
+mod discord;
+mod error;
 mod events;
 mod formatting;
-mod prelude;
-mod util;
+mod gokz;
+mod steam;
 
 use {
-	std::{env, time::Duration, sync::Arc},
-	crate::prelude::PaginationData,
-	database::schemas::UserSchema,
-	log::{info, warn, error},
-	mongodb::Collection,
-	serenity::{
-		prelude::{GatewayIntents, EventHandler, Context},
-		async_trait,
-		model::prelude::{Ready, Message, interaction::Interaction, component::ComponentType},
+	std::collections::HashSet,
+	log::info,
+	poise::{
+		serenity_prelude::{GatewayIntents, GuildId, UserId},
+		PrefixFrameworkOptions,
 	},
+	sqlx::{mysql::MySqlPoolOptions, MySql},
 };
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-	// Load a `.env` file storing sensitive information (like API tokens)
-	dotenv::dotenv().expect("Expected `.env` file.");
+/// icon link for footers
+const ICON: &str = "https://cdn.discordapp.com/attachments/981130651094900756/981130719537545286/churchOfSchnose.png";
 
-	// Initialize Logger for debugging
+/// Config holding important / sensitive information.
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
+pub struct Config {
+	/// Log level
+	rust_log: &'static str,
+	/// Discord API token to login
+	discord_token: &'static str,
+	/// Steam WebAPI auth key
+	steam_api_key: &'static str,
+	/// `DEV` or `PROD`
+	pub mode: &'static str,
+	/// GuildID fo the dev server
+	pub dev_guild_id: u64,
+	/// UserID of the bot owner
+	pub owner: u64,
+	/// ChannelID for sending report messages
+	pub report_channel_id: u64,
+	/// full path to the git repo
+	pub git_dir: &'static str,
+	/// full path to the bot's directory
+	pub build_dir: &'static str,
+	/// number of threads for compilation
+	pub build_job_count: &'static str,
+	/// shell command to restart the bot's process
+	pub restart_command: &'static str,
+}
+
+/// the `config.toml` file which will get parsed into [`Config`].
+const CONFIG_FILE: &str = include_str!("../config.toml");
+
+/// Global object holding data I don't want to re-compute.
+#[derive(Debug)]
+pub struct GlobalState {
+	pub config: Config,
+	pub database: sqlx::Pool<MySql>,
+	pub gokz_client: gokz_rs::Client,
+}
+
+pub use error::SchnoseError;
+pub type Context<'ctx> = poise::Context<'ctx, GlobalState, SchnoseError>;
+
+trait GlobalStateAccess {
+	fn config(&self) -> &Config;
+	fn database(&self) -> &sqlx::Pool<MySql>;
+	fn gokz_client(&self) -> &gokz_rs::Client;
+}
+
+impl<'ctx> GlobalStateAccess for Context<'ctx> {
+	fn config(&self) -> &Config {
+		&self.framework().user_data.config
+	}
+
+	fn database(&self) -> &sqlx::Pool<MySql> {
+		&self.framework().user_data.database
+	}
+
+	fn gokz_client(&self) -> &gokz_rs::Client {
+		&self.framework().user_data.gokz_client
+	}
+}
+
+#[tokio::main]
+async fn main() {
+	// setup .env
+	dotenv::dotenv().expect("Failed to load .env");
+
+	// setup config
+	let config: Config = toml::from_str(CONFIG_FILE).expect("Couldn't find `config.toml`.");
+
+	// initialize logging
+	std::env::set_var("RUST_LOG", config.rust_log);
 	env_logger::init();
 
-	let Ok(token) = env::var("DISCORD_TOKEN") else {
-		panic!("Missing `DISCORD_TOKEN` environment variable.");
-	};
+	// connect to database
+	let database_url = std::env::var("DATABASE_URL").expect("Missing `DATABASE_URL`.");
 
-	// Create global state
-	let global_state = GlobalState::new(token, "gokz", "users").await?;
+	let pool = MySqlPoolOptions::new()
+		.max_connections(10)
+		.connect(&database_url)
+		.await
+		.expect("Failed to connect to DB.");
 
-	// Initialize serenity client to connect to Discord
-	let mut client = serenity::Client::builder(&global_state.token, global_state.intents)
-		.event_handler(global_state)
-		.await?;
+	let gokz_client = gokz_rs::Client::new();
 
-	info!("Connecting to Discord...");
-	client.start().await.expect("Failed to connect to Discord: {:?}");
-
-	Ok(())
-}
-
-/// Global State object used for handling Discord events and passing static data around
-#[derive(Debug, Clone)]
-pub(crate) struct GlobalState {
-	// Discord API auth token
-	pub token: String,
-	// https://discord.com/developers/docs/topics/gateway
-	pub intents: GatewayIntents,
-	// database for accessing user information
-	pub db: Collection<UserSchema>,
-	// global HTTPS client for making API calls
-	pub req_client: gokz_rs::Client,
-	// Icon URL for embed footers
-	pub icon: String,
-	// #7480c2
-	pub colour: (u8, u8, u8),
-}
-
-impl GlobalState {
-	async fn new(
-		token: String,
-		database_name: &str,
-		collection_name: &str,
-	) -> anyhow::Result<GlobalState> {
-		let mongo_url = env::var("MONGO_URL")?;
-		let mongo_options = mongodb::options::ClientOptions::parse(mongo_url).await?;
-		let mongo_client = mongodb::Client::with_options(mongo_options)?;
-		let collection =
-			mongo_client.database(database_name).collection::<UserSchema>(collection_name);
-
-		let req_client = gokz_rs::Client::new();
-
-		let icon = env::var("ICON_URL")
-			.unwrap_or_else(|_| "https://cdn.discordapp.com/attachments/981130651094900756/981130719537545286/churchOfSchnose.png".into());
-
-		Ok(GlobalState {
-			token,
-			intents: GatewayIntents::GUILDS
+	// setup framework
+	let framework = poise::Framework::builder()
+		.options(poise::FrameworkOptions {
+			// Some commands also accept these prefixes, instead of _only_ slash commands.
+			prefix_options: PrefixFrameworkOptions {
+				prefix: Some(String::from("~")),
+				ignore_bots: true,
+				..Default::default()
+			},
+			commands: vec![
+				commands::apistatus::apistatus(),
+				commands::bmaptop::bmaptop(),
+				commands::bpb::bpb(),
+				commands::btop::btop(),
+				commands::bwr::bwr(),
+				commands::db::db(),
+				commands::help::help(),
+				commands::invite::invite(),
+				commands::map::map(),
+				commands::maptop::maptop(),
+				commands::mode::mode(),
+				commands::nocrouch::nocrouch(),
+				commands::pb::pb(),
+				commands::ping::ping(),
+				commands::profile::profile(),
+				commands::pull::pull(),
+				commands::random::random(),
+				commands::report::report(),
+				commands::recent::recent(),
+				commands::recompile::recompile(),
+				commands::restart::restart(),
+				commands::setsteam::setsteam(),
+				commands::top::top(),
+				commands::unfinished::unfinished(),
+				commands::update::update(),
+				commands::wr::wr(),
+			],
+			owners: HashSet::from_iter([UserId(config.owner)]),
+			event_handler: |ctx, event, framework, global_state| {
+				Box::pin(events::handler(ctx, event, framework, global_state))
+			},
+			..Default::default()
+		})
+		.token(config.discord_token)
+		.intents(
+			GatewayIntents::GUILDS
 				| GatewayIntents::GUILD_MEMBERS
 				| GatewayIntents::GUILD_MESSAGES
-				| GatewayIntents::GUILD_MESSAGE_REACTIONS
 				| GatewayIntents::MESSAGE_CONTENT,
-			db: collection,
-			req_client,
-			icon,
-			colour: (116, 128, 194),
-		})
-	}
-}
-
-#[async_trait]
-impl EventHandler for GlobalState {
-	/// Gets triggered once on startup
-	async fn ready(&self, ctx: Context, ready: Ready) {
-		if let Err(why) = events::ready::handle(&ctx, &ready).await {
-			error!("Failed to handle `READY` event: {:?}", why);
-		}
-	}
-
-	/// Gets triggered on every message the bot reads
-	async fn message(&self, ctx: Context, msg: Message) {
-		if let Err(why) = events::message::handle(&ctx, &msg).await {
-			error!("Failed to handle `MESSAGE_CREATE` event: {:?}", why);
-		}
-	}
-
-	/// Gets triggered on [interactions] (https://discord.com/developers/docs/interactions/receiving-and-responding).
-	async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
-		use Interaction::*;
-
-		let global_data = Arc::clone(&ctx.data);
-		let http = Arc::clone(&ctx.http);
-
-		match interaction {
-			ApplicationCommand(slash_command) => {
-				match events::interactions::slash_command::handle(self, ctx, &slash_command).await {
-					// failed interaction
-					Err(why) => {
-						error!("Failed to handle `INTERACTION_CREATE` event: {:?}", why);
+		)
+		.setup(move |ctx, _, framework| {
+			Box::pin(async move {
+				let commands = &framework.options().commands;
+				match config.mode {
+					// `DEV` mode -> register commands on 1 guild only (fast)
+					"DEV" => {
+						let guild = GuildId(config.dev_guild_id);
+						poise::builtins::register_in_guild(ctx, commands, guild).await?;
 					},
-					// paginated interaction, clean data after 10 minutes
-					Ok(Some(interaction_id)) => {
-						tokio::spawn(async move {
-							warn!(
-								"Clearing data for interaction `{}` in 10 minutes from now.",
-								interaction_id
-							);
-							tokio::time::sleep(Duration::from_secs(600)).await;
-
-							let mut global_data = global_data.write().await;
-							if let Some(global_data) = global_data.get_mut::<PaginationData>() {
-								global_data.remove(&interaction_id);
-								warn!("Cleared data for interaction `{}`.", interaction_id);
-							};
-
-							// remove buttons
-							if let Err(why) = slash_command
-								.edit_original_interaction_response(&http, |response| {
-									response
-										.components(|components| components.set_action_rows(vec![]))
-								})
-								.await
-							{
-								error!("Failed to remove buttons from message: {:?}", why);
-							}
-						});
+					// `PROD` mode -> register commands on _every_ guild (slow)
+					"PROD" => poise::builtins::register_globally(ctx, commands).await?,
+					invalid_mode => {
+						panic!("`{}` is an invalid mode. Please use `DEV` or `PROD`.", invalid_mode)
 					},
-					// normal interaction, do nothing
-					_ => {},
 				}
-			},
-			MessageComponent(component) => match component.data.component_type {
-				ComponentType::Button => {
-					if let Err(why) =
-						events::interactions::button::handle(self, ctx, &component).await
-					{
-						error!("Failed to handle `BUTTON` event: {:?}", why);
-					}
-				},
-				unknown_component => {
-					warn!("Encountered unknown component `{:?}`.", unknown_component)
-				},
-			},
-			unknown_interaction => {
-				warn!("Encountered unknown interaction `{:?}`.", unknown_interaction)
-			},
-		}
+				for command in commands {
+					info!("[{}] Successfully registered command `{}`.", config.mode, &command.name);
+				}
+
+				Ok(GlobalState { config, database: pool, gokz_client })
+			})
+		});
+
+	if let Err(why) = framework.run().await {
+		panic!("Failed to start framework: {:?}", why);
 	}
 }

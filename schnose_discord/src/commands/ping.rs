@@ -1,9 +1,9 @@
-use {crate::prelude::InteractionResult, serenity::builder::CreateApplicationCommand};
+use {super::handle_err, crate::SchnoseError, log::info};
 
-pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
-	return cmd.name("ping").description("pong!");
-}
-
-pub(crate) async fn execute() -> InteractionResult {
-	Ok("pong!".into())
+/// Pong!
+#[poise::command(prefix_command, slash_command, on_error = "handle_err", ephemeral)]
+pub async fn ping(ctx: crate::Context<'_>) -> Result<(), SchnoseError> {
+	info!("Pong!");
+	ctx.say("Pong!").await?;
+	Ok(())
 }

@@ -1,66 +1,52 @@
 use {
-	crate::{
-		events::interactions::InteractionState,
-		prelude::{InteractionResult, SchnoseError},
-	},
-	bson::doc,
-	serenity::{
-		builder::{CreateApplicationCommand, CreateEmbed},
-		model::prelude::command::CommandOptionType,
-	},
+	super::{handle_err, Target},
+	crate::{GlobalStateAccess, database, SchnoseError},
+	log::trace,
+	gokz_rs::prelude::*,
 };
 
-pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
-	return cmd
-		.name("db")
-		.description("Check a user's current database entries.")
-		.create_option(|opt| {
-			opt.kind(CommandOptionType::User)
-				.name("user")
-				.description("Specify a user.")
-				.required(false)
-		});
-}
+/// Check you current database entries.
+#[poise::command(slash_command, on_error = "handle_err")]
+pub async fn db(
+	ctx: crate::Context<'_>,
+	#[description = "Do you want others to see the bot's response to this command?"] public: Option<
+		bool,
+	>,
+) -> Result<(), SchnoseError> {
+	if let Some(true) = public {
+		ctx.defer().await?;
+	} else {
+		ctx.defer_ephemeral().await?;
+	}
 
-pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResult {
-	// Defer current interaction since this could take a while
-	state.defer().await?;
+	trace!("[/db] user: `{}`", &ctx.author().name);
 
-	let (user_id, blame_user) = match state.get::<u64>("user") {
-		Some(user_id) => (user_id, false),
-		None => (*state.user.id.as_u64(), true),
+	let database::UserSchema { name, discord_id, steam_id, mode } =
+		Target::None(*ctx.author().id.as_u64())
+			.query_db(ctx.database(), &format!("discord_id = \"{}\"", ctx.author().id.as_u64()))
+			.await?;
+
+	let steam_id = steam_id.unwrap_or_else(|| String::from("NULL"));
+	let mode = match mode {
+		Some(mode_id) => Mode::try_from(mode_id)?.to_string(),
+		None => String::from("NULL"),
 	};
 
-	// Search database for the user's Discord User ID
-	match state.db.find_one(doc! { "discordID": user_id.to_string() }, None).await {
-		// Database connection successful
-		Ok(document) => match document {
-			// User has an entry in the database
-			Some(entry) => {
-				let embed = CreateEmbed::default()
-					.colour(state.colour)
-					.title(format!("{}'s database entries", &entry.name))
-					.description(format!(
-						r#"
-> name: {}
-> discordID: {}
-> steamID: {}
-> mode: {}
-						"#,
-						&entry.name,
-						&entry.discordID,
-						&entry.steamID.unwrap_or_else(|| String::from("none")),
-						&entry.mode.unwrap_or_else(|| String::from("none")),
-					))
-					.to_owned();
+	ctx.send(|reply| {
+		reply.embed(|e| {
+			e.color((116, 128, 194))
+				.title(format!("{}'s database entries", name))
+				.description(format!(
+					"
+> player_name: `{name}`
+> discord_id: `{discord_id}`
+> steam_id: `{steam_id}`
+> mode: `{mode}`
+				"
+				))
+		})
+	})
+	.await?;
 
-				Ok(embed.into())
-			},
-			None => Err(SchnoseError::MissingDBEntry(blame_user)),
-		},
-		Err(why) => {
-			log::error!("[{}]: {} => {:?}", file!(), line!(), why);
-			Err(SchnoseError::DBAccess)
-		},
-	}
+	Ok(())
 }

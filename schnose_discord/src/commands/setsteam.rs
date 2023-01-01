@@ -1,104 +1,86 @@
-use crate::database::schemas::UserSchema;
-
 use {
+	super::handle_err,
 	crate::{
-		events::interactions::InteractionState,
-		prelude::{InteractionResult, SchnoseError},
+		GlobalStateAccess, database,
+		SchnoseError::{self, *},
 	},
-	log::{info, warn, error},
-	bson::doc,
+	log::{debug, trace, info, error},
 	gokz_rs::prelude::*,
-	serenity::{builder::CreateApplicationCommand, model::prelude::command::CommandOptionType},
 };
 
-pub(crate) fn register(cmd: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
-	return cmd
-		.name("setsteam")
-		.description("Save your SteamID in schnose's database.")
-		.create_option(|opt| {
-			opt.kind(CommandOptionType::String)
-				.name("steam_id")
-				.description("e.g. `STEAM_1:1:161178172`")
-				.required(true)
-		});
-}
+/// Save your SteamID for later use.
+#[poise::command(slash_command, on_error = "handle_err")]
+pub async fn setsteam(
+	ctx: crate::Context<'_>,
+	#[description = "Your SteamID, e.g. `STEAM_1:1:161178172`"] steam_id: String,
+) -> Result<(), SchnoseError> {
+	ctx.defer().await?;
 
-pub(crate) async fn execute(state: &mut InteractionState<'_>) -> InteractionResult {
-	// Defer current interaction since this could take a while
-	state.defer().await?;
+	trace!("[/setsteam] steam_id: `{}`", &steam_id);
 
-	let steam_id = state.get::<String>("steam_id").expect("This option is marked as `required`.");
-
-	// validate user input
 	if !SteamID::test(&steam_id) {
-		return Err(SchnoseError::UserInput(steam_id));
+		return Err(SchnoseError::Custom(format!("`{}` is not a valid SteamID.", &steam_id)));
 	}
 
-	// TODO: normalize SteamIDs to `STEAM_1:1:XXXXXX`
-	// -> GlobalAPI normalizes it, and if schnose doesn't, there could be inconsistencies.
+	let query =
+		format!("SELECT * FROM discord_users WHERE discord_id = {}", ctx.author().id.as_u64());
 
-	match state.db.find_one(doc! { "discordID": state.user.id.to_string() }, None).await {
-		// user has an entry already => update
-		Ok(document) => match document {
-			Some(_old_entry) => {
-				info!("Modifying database entry...");
-				match state
-					.db
-					.find_one_and_update(
-						doc! { "discordID": state.user.id.to_string() },
-						doc! { "$set": { "steamID": &steam_id } },
-						None,
-					)
-					.await
-				{
-					Ok(_) => {
-						return Ok(format!(
-							"Successfully set SteamID `{}` for <@{}>.",
-							&steam_id,
-							state.user.id.as_u64(),
-						)
-						.into())
-					},
-					Err(why) => {
-						error!("Failed to update database: {:?}", why);
-						Err(SchnoseError::DBUpdate)
-					},
-				}
-			},
-			// user does not yet have an entry => create a new one
-			None => {
-				warn!("{} doesn't have a database entry.", &state.user.name);
-				match state
-					.db
-					.insert_one(
-						UserSchema {
-							name: state.user.name.clone(),
-							discordID: state.user.id.to_string(),
-							steamID: Some(steam_id.clone()),
-							mode: None,
-						},
-						None,
-					)
-					.await
-				{
-					Ok(_) => {
-						return Ok((format!(
+	debug!("query: {}", &query);
+
+	match sqlx::query_as::<_, database::UserSchema>(&query)
+		.fetch_one(ctx.database())
+		.await
+	{
+		Ok(data) => {
+			// user has data => change current `steam_id`
+			info!("Updating DB entry");
+			debug!("Old data: {:?}", data);
+			let query = format!(
+				"UPDATE discord_users SET steam_id = \"{}\" WHERE discord_id = {}",
+				&steam_id,
+				ctx.author().id.as_u64()
+			);
+
+			match sqlx::query(&query).execute(ctx.database()).await {
+				Ok(_result) => {
+					ctx.say(format!("Successfully updated SteamID. New value: `{}`", steam_id))
+						.await?;
+					Ok(())
+				},
+				Err(why) => {
+					error!("Failed to update DB entry: {:?}", why);
+					Err(DatabaseUpdate)
+				},
+			}
+		},
+		Err(why) => match why {
+			// user has no data yet => create new row
+			sqlx::Error::RowNotFound => {
+				let query = format!(
+					"INSERT INTO discord_users (name, discord_id, steam_id) VALUES (\"{}\", {}, \"{}\")",
+					&ctx.author().name,
+					ctx.author().id.as_u64(),
+					&steam_id
+				);
+
+				match sqlx::query(&query).execute(ctx.database()).await {
+					Ok(_result) => {
+						ctx.say(format!(
 							"Successfully set SteamID `{}` for <@{}>.",
 							steam_id,
-							state.user.id.as_u64()
+							ctx.author().id.as_u64()
 						))
-						.into())
+						.await?;
+						Ok(())
 					},
 					Err(why) => {
-						error!("Failed to update database: {:?}", why);
-						Err(SchnoseError::DBUpdate)
+						error!("Failed to create DB entry: {:?}", why);
+						Err(DatabaseUpdate)
 					},
 				}
 			},
-		},
-		Err(why) => {
-			error!("Failed to access database: {:?}", why);
-			Err(SchnoseError::DBAccess)
+			// something has gone very wrong
+			_ => Err(DatabaseAccess),
 		},
 	}
 }
