@@ -139,9 +139,12 @@ pub async fn profile(
 		}
 	}
 
-	let fav_mode = target.get_mode(ctx.database()).await?;
+	let fav_mode = match target.get_mode(ctx.database()).await {
+		Ok(mode) => mode.to_string(),
+		_ => String::from("unknown"),
+	};
 
-	let mut bars = [[""; 7]; 2].map(|a| a.map(ToOwned::to_owned));
+	let mut bars = [[""; 7]; 2].map(|a| a.map(String::from));
 
 	for (i, perc) in completion_percentage.iter().enumerate().take(7) {
 		let amount = (perc.0 / 10.) as u32;
