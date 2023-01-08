@@ -6,7 +6,12 @@ use {
 };
 
 /// recompile the bot binary
-#[poise::command(prefix_command, on_error = "handle_err", owners_only)]
+#[poise::command(
+	prefix_command,
+	on_error = "handle_err",
+	owners_only,
+	global_cooldown = 120
+)]
 pub async fn recompile(ctx: crate::Context<'_>) -> Result<(), SchnoseError> {
 	ctx.defer().await?;
 

@@ -9,7 +9,12 @@ use {
 };
 
 /// Update the bot's code and recompile it
-#[poise::command(prefix_command, on_error = "handle_err", owners_only)]
+#[poise::command(
+	prefix_command,
+	on_error = "handle_err",
+	owners_only,
+	global_cooldown = 12
+)]
 pub async fn update(ctx: crate::Context<'_>) -> Result<(), SchnoseError> {
 	ctx.defer().await?;
 

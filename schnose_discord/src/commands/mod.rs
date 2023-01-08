@@ -46,24 +46,35 @@ async fn handle_err(error: poise::FrameworkError<'_, GlobalState, crate::Schnose
 
 	error!("Failed to handle slash command.");
 
-	let reply = match &error {
-		Command { error, ctx: _ } => error.to_string(),
-		ArgumentParse { error: _, input: _, ctx: _ } => String::from("Failed to parse arguments."),
+	let (content, ephemeral) = match &error {
+		Command { error, ctx: _ } => (error.to_string(), false),
+		ArgumentParse { error: _, input: _, ctx: _ } => {
+			(String::from("Failed to parse arguments."), false)
+		},
 		CommandStructureMismatch { description, ctx: _ } => {
 			error!("{}", description);
-			String::from("Incorrect command structure.")
+			(String::from("Incorrect command structure."), false)
 		},
-		CooldownHit { remaining_cooldown, ctx: _ } => format!(
-			"Please wait another {} seconds before using this command again.",
+		CooldownHit { remaining_cooldown, ctx: _ } => (
+			format!(
+			"This command is currently on cooldown. Please wait another {} seconds before trying again.",
 			remaining_cooldown.as_secs()
+		    ),
+			true,
 		),
 		MissingBotPermissions { missing_permissions, ctx: _ } => {
 			error!("{}", missing_permissions);
-			String::from("The bot doesn't have the required permissions in this channel/server to handle this command.")
+			(
+			    String::from("The bot doesn't have the required permissions in this channel/server to handle this command."),
+			    false,
+			)
 		},
 		MissingUserPermissions { missing_permissions, ctx: _ } => {
 			error!("{:?}", missing_permissions);
-			String::from("You don't have the required permissions to execute this command.")
+			(
+				String::from("You don't have the required permissions to execute this command."),
+				true,
+			)
 		},
 		NotAnOwner { ctx: _ } => return,
 		UnknownCommand {
@@ -78,21 +89,21 @@ async fn handle_err(error: poise::FrameworkError<'_, GlobalState, crate::Schnose
 			error!("Prefix: {}", prefix);
 			error!("Message: {}", msg_content);
 			error!("Trigger: {:?}", trigger);
-			String::from("Unknown / Outdated command.")
+			(String::from("Unknown / Outdated command."), false)
 		},
 		UnknownInteraction { ctx: _, framework: _, interaction } => {
 			error!("Interaction: {:?}", interaction);
-			String::from("Unknown / Outdated Interaction.")
+			(String::from("Unknown / Outdated Interaction."), false)
 		},
 		_ => unreachable!(),
 	};
 
 	if let Some(ctx) = error.ctx() {
-		if let Err(why) = ctx.say(&reply).await {
+		if let Err(why) = ctx.send(|reply| reply.ephemeral(ephemeral).content(&content)).await {
 			error!("Failed to reply after failed slash command: {:?}", why);
 		}
 
-		error!("Handled error with `{}`.", reply);
+		error!("Handled error with `{}`.", content);
 	}
 }
 

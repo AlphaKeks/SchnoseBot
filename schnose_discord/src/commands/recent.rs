@@ -6,7 +6,12 @@ use {
 };
 
 /// Check a player's most recently set personal best.
-#[poise::command(slash_command, on_error = "handle_err")]
+#[poise::command(
+	slash_command,
+	on_error = "handle_err",
+	global_cooldown = 30,
+	user_cooldown = 60
+)]
 pub async fn recent(
 	ctx: crate::Context<'_>,
 	#[description = "The player you want to target."] player: Option<String>,
