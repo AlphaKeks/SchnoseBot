@@ -1,6 +1,6 @@
 [package]
 name = "schnose_discord"
-version = "0.12.2"
+version = "0.12.3"
 authors = ["AlphaKeks <alphakeks@dawn.sh>"]
 edition = "2021"
 readme = "./README.md"
@@ -24,21 +24,13 @@ version = "0.3"
 [dependencies.serenity]
 version = "0.11"
 default-features = false
-features = [
-	"builder",
-	"cache",
-	#"collector",
-	"client",
-	"gateway",
-	"model",
-	"rustls_backend",
-]
+features = ["builder", "cache", "client", "gateway", "model", "rustls_backend"]
 
 [dependencies.poise]
 version = "0.5"
 
 [dependencies.gokz_rs]
-version = "0.11"
+version = "0.12"
 
 [dependencies.serde]
 version = "1"

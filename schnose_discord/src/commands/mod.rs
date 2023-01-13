@@ -99,7 +99,14 @@ async fn handle_err(error: poise::FrameworkError<'_, GlobalState, crate::Schnose
 	};
 
 	if let Some(ctx) = error.ctx() {
-		if let Err(why) = ctx.send(|reply| reply.ephemeral(ephemeral).content(&content)).await {
+		if let Err(why) = ctx
+			.send(|reply| {
+				reply
+					.ephemeral(ephemeral)
+					.content(&content)
+			})
+			.await
+		{
 			error!("Failed to reply after failed slash command: {:?}", why);
 		}
 
@@ -127,15 +134,15 @@ impl Page for gokz_rs::records::Record {
 	}
 }
 
-async fn paginate<F, T>(
-	embed_list: Vec<T>,
+async fn paginate<F, P>(
+	embed_list: Vec<P>,
 	get_embed: F,
 	timeout: Duration,
 	ctx: &crate::Context<'_>,
 ) -> Result<(), crate::SchnoseError>
 where
 	F: Fn(usize, usize) -> CreateEmbed,
-	T: Page,
+	P: Page,
 {
 	let mut embeds = Vec::new();
 	let len = embed_list.len();
@@ -186,7 +193,12 @@ where
 	let mut current_page = 0;
 	while let Some(press) = CollectComponentInteraction::new(ctx)
 		// We only want to handle interactions belonging to the current message
-		.filter(move |press| press.data.custom_id.starts_with(&ctx_id.to_string()))
+		.filter(move |press| {
+			press
+				.data
+				.custom_id
+				.starts_with(&ctx_id.to_string())
+		})
 		// Listen for 10 minutes
 		.timeout(timeout)
 		.await
@@ -307,7 +319,9 @@ impl Target {
 
 		debug!("query: {}", query);
 
-		let query = sqlx::query_as::<_, database::UserSchema>(&query).fetch_one(pool).await?;
+		let query = sqlx::query_as::<_, database::UserSchema>(&query)
+			.fetch_one(pool)
+			.await?;
 
 		info!("Finished querying database.");
 
