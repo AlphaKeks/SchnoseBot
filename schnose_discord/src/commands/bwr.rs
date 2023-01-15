@@ -4,6 +4,7 @@ use {
 		GlobalStateAccess, formatting,
 		SchnoseError::{self, *},
 		gokz::ExtractRecordInfo,
+		commands::Target,
 	},
 	log::trace,
 	gokz_rs::{prelude::*, GlobalAPI},
@@ -25,7 +26,14 @@ pub async fn bwr(
 		return Err(InvalidMapName(map_name));
 	};
 	let map_name = MapIdentifier::Name(map_name.to_owned());
-	let mode = mode.map_or(Mode::KZTimer, Mode::from);
+	let mode = match mode {
+		Some(choice) => Mode::from(choice),
+		None => {
+			Target::None(*ctx.author().id.as_u64())
+				.get_mode(ctx.database())
+				.await?
+		},
+	};
 	let course = course.unwrap_or(1);
 
 	let map = GlobalAPI::get_map(&map_name, ctx.gokz_client()).await?;
@@ -41,7 +49,8 @@ pub async fn bwr(
 		format!(
 			"{} ({})",
 			formatting::format_time(tp.time),
-			tp.player_name.unwrap_or_else(|| String::from("unknown"))
+			tp.player_name
+				.unwrap_or_else(|| String::from("unknown"))
 		)
 	} else {
 		String::from("😔")
@@ -51,7 +60,8 @@ pub async fn bwr(
 		format!(
 			"{} ({})",
 			formatting::format_time(pro.time),
-			pro.player_name.unwrap_or_else(|| String::from("unknown"))
+			pro.player_name
+				.unwrap_or_else(|| String::from("unknown"))
 		)
 	} else {
 		String::from("😔")
@@ -70,7 +80,10 @@ pub async fn bwr(
 				.field("TP", tp, true)
 				.field("PRO", pro, true)
 				.description(format!("{}\n{}", view_link, download_link))
-				.footer(|f| f.text(format!("Mode: {}", mode)).icon_url(crate::ICON))
+				.footer(|f| {
+					f.text(format!("Mode: {}", mode))
+						.icon_url(crate::ICON)
+				})
 		})
 	})
 	.await?;
