@@ -27,11 +27,17 @@ pub async fn map(
 	let map_api = GlobalAPI::get_map(&map_identifier, ctx.gokz_client()).await?;
 	let map_kzgo = KZGO::get_map(map_name, ctx.gokz_client()).await?;
 
-	let mappers = if let Some((names, ids)) = map_kzgo.mapperNames.zip(map_kzgo.mapperIds) {
-		names.iter().zip(ids).fold(Vec::new(), |mut names, (name, id)| {
-			names.push(format!("[{}](https://steamcommunity.com/profiles/{})", name, id));
-			names
-		})
+	let mappers = if let Some((names, ids)) = map_kzgo
+		.mapperNames
+		.zip(map_kzgo.mapperIds)
+	{
+		names
+			.iter()
+			.zip(ids)
+			.fold(Vec::new(), |mut names, (name, id)| {
+				names.push(format!("[{}](https://steamcommunity.com/profiles/{})", name, id));
+				names
+			})
 	} else {
 		vec![String::from("unknown")]
 	};
@@ -73,7 +79,9 @@ pub async fn map(
 						&map_api.updated_on,
 						"%Y-%m-%dT%H:%M:%S"
 					) {
-						Ok(parsed_time) => parsed_time.format("%d/%m/%Y").to_string(),
+						Ok(parsed_time) => parsed_time
+							.format("%d/%m/%Y")
+							.to_string(),
 						Err(_) => String::from("unknown"),
 					},
 				))

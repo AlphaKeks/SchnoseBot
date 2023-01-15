@@ -15,7 +15,10 @@ pub async fn restart(ctx: crate::Context<'_>) -> Result<(), SchnoseError> {
 
 	let content = &msg.message().await?.content;
 
-	let restart_command = config.restart_command.split(' ').collect::<Vec<_>>();
+	let restart_command = config
+		.restart_command
+		.split(' ')
+		.collect::<Vec<_>>();
 
 	match std::process::Command::new(restart_command[0])
 		.current_dir(config.build_dir)

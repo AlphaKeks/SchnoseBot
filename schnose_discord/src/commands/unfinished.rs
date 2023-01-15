@@ -71,7 +71,10 @@ pub async fn unfinished(
 				} else {
 					description
 				})
-				.footer(|f| f.text(format!("Player: {}", player.name)).icon_url(crate::ICON))
+				.footer(|f| {
+					f.text(format!("Player: {}", player.name))
+						.icon_url(crate::ICON)
+				})
 		})
 	})
 	.await?;

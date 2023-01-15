@@ -37,17 +37,25 @@ pub async fn report(
 			Ok(())
 		},
 		Some(ReportModal { title, description }) => {
-			let channel = ChannelId(ctx.framework().user_data().await.config.report_channel_id);
+			let channel = ChannelId(
+				ctx.framework()
+					.user_data()
+					.await
+					.config
+					.report_channel_id,
+			);
 			channel
 				.send_message(&ctx.serenity_context().http, |msg| {
 					msg.embed(|e| {
-						e.title(title).description(description).footer(|f| {
-							f.text(format!(
-								"User: {} | {}",
-								ctx.author().tag(),
-								chrono::Utc::now().format("%d/%m/%Y - %H:%M:%S")
-							))
-						})
+						e.title(title)
+							.description(description)
+							.footer(|f| {
+								f.text(format!(
+									"User: {} | {}",
+									ctx.author().tag(),
+									chrono::Utc::now().format("%d/%m/%Y - %H:%M:%S")
+								))
+							})
 					})
 				})
 				.await?;

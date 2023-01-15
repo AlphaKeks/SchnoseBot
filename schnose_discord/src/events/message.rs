@@ -9,7 +9,11 @@ pub async fn handle(
 	_global_state: &GlobalState,
 	message: &Message,
 ) -> Result<(), crate::SchnoseError> {
-	if message.content.to_lowercase().starts_with("bing?") {
+	if message
+		.content
+		.to_lowercase()
+		.starts_with("bing?")
+	{
 		let response = match message.author.id.as_u64() {
 			// AlphaKeks
 			291585142164815873 => "chilling 🥶",

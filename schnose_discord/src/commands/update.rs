@@ -20,7 +20,9 @@ pub async fn update(ctx: crate::Context<'_>) -> Result<(), SchnoseError> {
 
 	let config = &ctx.config();
 
-	let handle = ctx.say("Pulling from GitHub...").await?;
+	let handle = ctx
+		.say("Pulling from GitHub...")
+		.await?;
 	let mut message = handle.message().await?;
 	let message = message.to_mut();
 

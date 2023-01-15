@@ -146,7 +146,11 @@ pub async fn profile(
 
 	let mut bars = [[""; 7]; 2].map(|a| a.map(String::from));
 
-	for (i, perc) in completion_percentage.iter().enumerate().take(7) {
+	for (i, perc) in completion_percentage
+		.iter()
+		.enumerate()
+		.take(7)
+	{
 		let amount = (perc.0 / 10.) as u32;
 
 		for _ in 0..amount {
@@ -217,7 +221,11 @@ Preferred Mode: {}
 	let avatar = crate::steam::get_steam_avatar(
 		&player.steamid64,
 		crate::ICON,
-		ctx.framework().user_data().await.config.steam_api_key,
+		ctx.framework()
+			.user_data()
+			.await
+			.config
+			.steam_api_key,
 		ctx.gokz_client(),
 	)
 	.await;
@@ -233,7 +241,10 @@ Preferred Mode: {}
 				))
 				.thumbnail(avatar)
 				.description(description)
-				.footer(|f| f.text(format!("SteamID: {}", &player.steam_id)).icon_url(crate::ICON))
+				.footer(|f| {
+					f.text(format!("SteamID: {}", &player.steam_id))
+						.icon_url(crate::ICON)
+				})
 		})
 	})
 	.await?;

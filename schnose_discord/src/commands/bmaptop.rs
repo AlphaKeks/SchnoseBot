@@ -37,7 +37,11 @@ pub async fn bmaptop(
 	let map_name = MapIdentifier::Name(map_name.to_owned());
 	let mode = match mode {
 		Some(mode) => mode.into(),
-		None => Target::None(*ctx.author().id.as_u64()).get_mode(ctx.database()).await?,
+		None => {
+			Target::None(*ctx.author().id.as_u64())
+				.get_mode(ctx.database())
+				.await?
+		},
 	};
 	let runtype = matches!(runtype, Some(RuntypeChoice::TP));
 	let course = course.unwrap_or(1);
@@ -60,7 +64,10 @@ pub async fn bmaptop(
 			))
 			.url(format!("{}?{}=", formatting::map_link(&map.name), mode.short().to_lowercase()))
 			.thumbnail(formatting::map_thumbnail(&map.name))
-			.footer(|f| f.text(format!("Page {} / {}", i, len / 12 + 1)).icon_url(crate::ICON));
+			.footer(|f| {
+				f.text(format!("Page {} / {}", i, len / 12 + 1))
+					.icon_url(crate::ICON)
+			});
 		embed
 	};
 

@@ -36,9 +36,13 @@ pub async fn mode(
 				ctx.author().id.as_u64()
 			);
 
-			match sqlx::query(&query).execute(ctx.database()).await {
+			match sqlx::query(&query)
+				.execute(ctx.database())
+				.await
+			{
 				Ok(_result) => {
-					ctx.say(format!("Successfully updated Mode. New value: `{}`", mode)).await?;
+					ctx.say(format!("Successfully updated Mode. New value: `{}`", mode))
+						.await?;
 					Ok(())
 				},
 				Err(why) => {
@@ -57,7 +61,10 @@ pub async fn mode(
 					mode as u8
 				);
 
-				match sqlx::query(&query).execute(ctx.database()).await {
+				match sqlx::query(&query)
+					.execute(ctx.database())
+					.await
+				{
 					Ok(_result) => {
 						ctx.say(format!(
 							"Successfully set Mode `{}` for <@{}>.",

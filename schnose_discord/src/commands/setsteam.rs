@@ -41,7 +41,10 @@ pub async fn setsteam(
 				ctx.author().id.as_u64()
 			);
 
-			match sqlx::query(&query).execute(ctx.database()).await {
+			match sqlx::query(&query)
+				.execute(ctx.database())
+				.await
+			{
 				Ok(_result) => {
 					ctx.say(format!("Successfully updated SteamID. New value: `{}`", steam_id))
 						.await?;
@@ -63,7 +66,10 @@ pub async fn setsteam(
 					&steam_id
 				);
 
-				match sqlx::query(&query).execute(ctx.database()).await {
+				match sqlx::query(&query)
+					.execute(ctx.database())
+					.await
+				{
 					Ok(_result) => {
 						ctx.say(format!(
 							"Successfully set SteamID `{}` for <@{}>.",

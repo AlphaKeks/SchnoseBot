@@ -25,7 +25,9 @@ impl std::str::FromStr for Mention {
 
 		let user_id = s.replace("<@", "");
 		let user_id = user_id.replace('>', "");
-		let user_id = user_id.parse::<u64>().expect("This should be a valid u64.");
+		let user_id = user_id
+			.parse::<u64>()
+			.expect("This should be a valid u64.");
 
 		Ok(Self(user_id))
 	}

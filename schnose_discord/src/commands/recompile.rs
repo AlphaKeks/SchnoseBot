@@ -17,7 +17,9 @@ pub async fn recompile(ctx: crate::Context<'_>) -> Result<(), SchnoseError> {
 
 	let config = &ctx.config();
 
-	let handle = ctx.say("Cleaning build directory...").await?;
+	let handle = ctx
+		.say("Cleaning build directory...")
+		.await?;
 	let mut message = handle.message().await?;
 	let message = message.to_mut();
 
@@ -41,7 +43,11 @@ pub async fn recompile(ctx: crate::Context<'_>) -> Result<(), SchnoseError> {
 }
 
 pub(super) fn clean(build_dir: &str) -> String {
-	match std::process::Command::new("cargo").current_dir(build_dir).arg("clean").output() {
+	match std::process::Command::new("cargo")
+		.current_dir(build_dir)
+		.arg("clean")
+		.output()
+	{
 		Err(why) => {
 			let msg = String::from("Failed to clean build directory.");
 			error!("{}: {:?}", &msg, why);

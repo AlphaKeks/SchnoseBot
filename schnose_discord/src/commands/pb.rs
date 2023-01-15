@@ -83,7 +83,10 @@ pub async fn pb(
 				.field("TP", tp, true)
 				.field("PRO", pro, true)
 				.description(format!("{}\n{}", view_link, download_link))
-				.footer(|f| f.text(format!("Mode: {}", mode)).icon_url(crate::ICON))
+				.footer(|f| {
+					f.text(format!("Mode: {}", mode))
+						.icon_url(crate::ICON)
+				})
 		})
 	})
 	.await?;

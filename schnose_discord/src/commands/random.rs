@@ -27,7 +27,8 @@ pub async fn random(
 
 	let map = &maps[rng];
 
-	ctx.say(format!("🎲 `{} (T{})`", map.name, map.difficulty)).await?;
+	ctx.say(format!("🎲 `{} (T{})`", map.name, map.difficulty))
+		.await?;
 
 	Ok(())
 }

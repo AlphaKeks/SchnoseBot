@@ -337,19 +337,22 @@ To get started, set your SteamID with `/setsteam` and your favorite game mode wi
 		let choice = &selection.data.values[0];
 		selection
 			.create_interaction_response(ctx, |response| {
-				response.kind(InteractionResponseType::UpdateMessage).interaction_response_data(
-					|data| {
+				response
+					.kind(InteractionResponseType::UpdateMessage)
+					.interaction_response_data(|data| {
 						data.embed(|e| {
-							let (_, long_description) =
-								pages2.get(choice.as_str()).expect("Missing help page.");
+							let (_, long_description) = pages2
+								.get(choice.as_str())
+								.expect("Missing help page.");
 							e.title(format!(
 								"/{}",
-								choice.strip_prefix("h_").expect("This should have a prefix.")
+								choice
+									.strip_prefix("h_")
+									.expect("This should have a prefix.")
 							))
 							.description(long_description)
 						})
-					},
-				)
+					})
 			})
 			.await?;
 	}

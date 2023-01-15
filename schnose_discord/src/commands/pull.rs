@@ -12,7 +12,9 @@ pub async fn pull(ctx: crate::Context<'_>) -> Result<(), SchnoseError> {
 
 	let config = &ctx.config();
 
-	let handle = ctx.say("Pulling from GitHub...").await?;
+	let handle = ctx
+		.say("Pulling from GitHub...")
+		.await?;
 	let mut message = handle.message().await?;
 	let message = message.to_mut();
 
@@ -27,7 +29,11 @@ pub async fn pull(ctx: crate::Context<'_>) -> Result<(), SchnoseError> {
 }
 
 pub(super) fn git_pull(git_dir: &str) -> String {
-	match std::process::Command::new("git").current_dir(git_dir).arg("pull").output() {
+	match std::process::Command::new("git")
+		.current_dir(git_dir)
+		.arg("pull")
+		.output()
+	{
 		Err(why) => {
 			let msg = String::from("Failed to pull from GitHub.");
 			error!("{}: {:?}", &msg, why);

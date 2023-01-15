@@ -45,7 +45,11 @@ pub async fn btop(
 
 	let mode = match mode {
 		Some(mode) => mode.into(),
-		None => Target::None(*ctx.author().id.as_u64()).get_mode(ctx.database()).await?,
+		None => {
+			Target::None(*ctx.author().id.as_u64())
+				.get_mode(ctx.database())
+				.await?
+		},
 	};
 	let runtype = matches!(runtype, Some(RuntypeChoice::TP));
 
@@ -78,7 +82,10 @@ pub async fn btop(
 				mode,
 				if runtype { "TP" } else { "PRO" }
 			))
-			.footer(|f| f.text(format!("Page {} / {}", i, len / 12 + 1)).icon_url(crate::ICON));
+			.footer(|f| {
+				f.text(format!("Page {} / {}", i, len / 12 + 1))
+					.icon_url(crate::ICON)
+			});
 		embed
 	};
 
