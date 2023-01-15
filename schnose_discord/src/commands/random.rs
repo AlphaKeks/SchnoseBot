@@ -18,7 +18,7 @@ pub async fn random(
 	let maps = (*GLOBAL_MAPS)
 		.iter()
 		.filter(|map| match tier {
-			Some(tier) => map.difficulty == tier as u8,
+			Some(tier) => map.difficulty == tier as i32,
 			None => true,
 		})
 		.collect::<Vec<_>>();

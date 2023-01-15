@@ -29,7 +29,7 @@ pub async fn recent(
 
 	let filter = records
 		.iter()
-		.map(|rec| &rec.map_name)
+		.filter_map(|rec| rec.map_name.as_ref())
 		.collect::<Vec<_>>();
 
 	let maps = (*GLOBAL_MAPS)
@@ -66,7 +66,12 @@ pub async fn recent(
 		};
 
 		embeds.push({
-			let map = &maps.iter().find(|map| map.name == recent.map_name).expect("Map should be in the cache.");
+			let map = &maps.iter().find(|map| {
+				let Some(ref map_name) = recent.map_name else {
+					return false;
+				};
+				&map.name == map_name
+			}).expect("Map should be in the cache.");
 
 			let mut embed = CreateEmbed::default();
 

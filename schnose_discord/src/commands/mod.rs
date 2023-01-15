@@ -307,6 +307,20 @@ pub enum TierChoice {
 	Death = 7,
 }
 
+impl From<TierChoice> for Tier {
+	fn from(value: TierChoice) -> Self {
+		match value {
+			TierChoice::VeryEasy => Tier::VeryEasy,
+			TierChoice::Easy => Tier::Easy,
+			TierChoice::Medium => Tier::Medium,
+			TierChoice::Hard => Tier::Hard,
+			TierChoice::VeryHard => Tier::VeryHard,
+			TierChoice::Extreme => Tier::Extreme,
+			TierChoice::Death => Tier::Death,
+		}
+	}
+}
+
 #[derive(Debug, Clone)]
 pub enum Target {
 	None(u64),

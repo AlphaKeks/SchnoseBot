@@ -72,25 +72,29 @@ pub async fn profile(
 
 	for i in 0..x {
 		if tp.len() > i {
-			if let Some(tier) = tier_maps[0].remove(&tp[i].map_name) {
-				tp_points += tp[i].points;
-				completion[7].0 += 1;
-				completion[(tier - 1) as usize].0 += 1;
+			if let Some(ref map_name) = tp[i].map_name {
+				if let Some(tier) = tier_maps[0].remove(map_name) {
+					tp_points += tp[i].points;
+					completion[7].0 += 1;
+					completion[(tier - 1) as usize].0 += 1;
 
-				if tp[i].points == 1000 {
-					tp_records += 1;
+					if tp[i].points == 1000 {
+						tp_records += 1;
+					}
 				}
 			}
 		}
 
 		if pro.len() > i {
-			if let Some(tier) = tier_maps[1].remove(&tp[i].map_name) {
-				pro_points += pro[i].points;
-				completion[7].1 += 1;
-				completion[(tier - 1) as usize].1 += 1;
+			if let Some(ref map_name) = pro[i].map_name {
+				if let Some(tier) = tier_maps[1].remove(map_name) {
+					pro_points += pro[i].points;
+					completion[7].1 += 1;
+					completion[(tier - 1) as usize].1 += 1;
 
-				if pro[i].points == 1000 {
-					pro_records += 1;
+					if pro[i].points == 1000 {
+						pro_records += 1;
+					}
 				}
 			}
 		}
@@ -98,7 +102,7 @@ pub async fn profile(
 
 	let total_points = tp_points + pro_points;
 
-	let rank = Rank::from_points(total_points, mode);
+	let rank = Rank::from_points(total_points as u32, mode);
 
 	let possible_maps = KZGO::get_completion_count(mode, ctx.gokz_client()).await?;
 

@@ -1,7 +1,7 @@
 use {
 	super::{handle_err, ModeChoice, Target, RuntypeChoice, TierChoice},
 	crate::{GlobalStateAccess, SchnoseError},
-	gokz_rs::GlobalAPI,
+	gokz_rs::{prelude::*, GlobalAPI},
 	log::trace,
 };
 
@@ -31,7 +31,7 @@ pub async fn unfinished(
 	};
 	let player = target.to_player(ctx.database()).await?;
 	let runtype = matches!(runtype, Some(RuntypeChoice::TP));
-	let tier = tier.map(|choice| choice as u8);
+	let tier = tier.map(Tier::from);
 
 	let (description, amount) = {
 		let unfinished =
@@ -62,7 +62,7 @@ pub async fn unfinished(
 					mode.short(),
 					if runtype { "TP" } else { "PRO" },
 					match tier {
-						Some(tier) => format!("[T{}]", tier),
+						Some(tier) => format!("[T{}]", tier as u8),
 						None => String::new(),
 					}
 				))
