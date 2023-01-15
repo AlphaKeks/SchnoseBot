@@ -47,7 +47,7 @@ pub async fn bpb(
 			"{}{}",
 			formatting::format_time(tp.time),
 			match GlobalAPI::get_place(tp.id, ctx.gokz_client()).await {
-				Ok(place) => format!(" [#{}]", place),
+				Ok(place) => format!(" [#{}] ({} TPs)", place, tp.teleports),
 				_ => String::new(),
 			}
 		)

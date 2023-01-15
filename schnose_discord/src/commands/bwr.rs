@@ -47,8 +47,9 @@ pub async fn bwr(
 
 	let tp = if let Ok(tp) = tp_req {
 		format!(
-			"{} ({})",
+			"{} ({} TPs)\nby {}",
 			formatting::format_time(tp.time),
+			tp.teleports,
 			tp.player_name
 				.unwrap_or_else(|| String::from("unknown"))
 		)
@@ -58,7 +59,7 @@ pub async fn bwr(
 
 	let pro = if let Ok(pro) = pro_req {
 		format!(
-			"{} ({})",
+			"{}\nby {}",
 			formatting::format_time(pro.time),
 			pro.player_name
 				.unwrap_or_else(|| String::from("unknown"))

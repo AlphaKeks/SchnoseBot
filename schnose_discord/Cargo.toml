@@ -1,6 +1,6 @@
 [package]
 name = "schnose_discord"
-version = "0.12.5"
+version = "0.12.6"
 authors = ["AlphaKeks <alphakeks@dawn.sh>"]
 edition = "2021"
 readme = "./README.md"

@@ -122,13 +122,21 @@ impl Page for gokz_rs::records::Record {
 	fn to_field(&self, i: usize) -> (String, String, bool) {
 		(
 			format!(
-				"{} #[{}]",
+				"{} [#{}]",
 				self.player_name
 					.as_ref()
 					.map_or(String::from("unknown"), |name| name.to_owned()),
 				i
 			),
-			formatting::format_time(self.time),
+			format!(
+				"{}{}",
+				formatting::format_time(self.time),
+				if self.teleports > 0 {
+					format!(" ({} TPs)", self.teleports)
+				} else {
+					String::new()
+				}
+			),
 			true,
 		)
 	}

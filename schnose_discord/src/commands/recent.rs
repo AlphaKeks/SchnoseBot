@@ -59,6 +59,12 @@ pub async fn recent(
 
 		let mode: Mode = recent.mode.parse()?;
 
+		let teleports = if recent.teleports > 0 {
+			format!(" ({} TPs)", recent.teleports)
+		} else {
+			String::new()
+		};
+
 		embeds.push({
 			let map = &maps.iter().find(|map| map.name == recent.map_name).expect("Map should be in the cache.");
 
@@ -79,7 +85,7 @@ pub async fn recent(
 				.thumbnail(formatting::map_thumbnail(&map.name))
 				.field(
 					format!("{} {}", mode.short(), if recent.teleports > 0 { "TP" } else { "PRO" }),
-					format!("> {} {}\n> {}{}", formatting::format_time(recent.time), place, discord_timestamp, {
+					format!("> {} {}{}\n> {}{}", formatting::format_time(recent.time), place, teleports, discord_timestamp, {
 						if recent.replay_id == 0 {
 							String::new()
 						} else {
