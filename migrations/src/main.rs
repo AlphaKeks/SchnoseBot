@@ -12,8 +12,10 @@ async fn main() {
 		.await
 		.expect("Failed to connect to the database.");
 
-	let users = include_str!("../users.json");
-	let users: Vec<OldSchema> = serde_json::from_str(users).expect("Failed to parse users.");
+	let users =
+		std::fs::read_to_string("migrations/users.json").expect("Missing `users.json` file.");
+
+	let users: Vec<OldSchema> = serde_json::from_str(&users).expect("Failed to parse users.");
 
 	let users: Vec<UserSchema> = users
 		.into_iter()
