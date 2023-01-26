@@ -179,7 +179,6 @@ async fn main() {
 			})
 		});
 
-	if let Err(why) = framework.run().await {
-		panic!("Failed to start framework: {:?}", why);
-	}
+	info!("Finished setting up. Connecting to Discord...");
+	framework.run().await.unwrap();
 }

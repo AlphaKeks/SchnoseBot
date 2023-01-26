@@ -156,25 +156,34 @@ where
 	let len = embed_list.len();
 
 	let mut temp_embed = get_embed(1, len);
-	for (i, element) in embed_list.into_iter().enumerate() {
-		// `i != 0` => ignore first iteration
-		// `i % 12 == 0` => 12 records per embed
-		// `i == len - 1` => last iteration
-		if i != 0 && (i % 12 == 0 || i == len - 1) {
-			if i == len - 1 {
-				// push final element
+	match len {
+		12.. => {
+			for (i, element) in embed_list.into_iter().enumerate() {
+				// `i != 0` => ignore first iteration
+				// `i % 12 == 0` => 12 records per embed
+				// `i == len - 1` => last iteration
+				if i != 0 && (i % 12 == 0 || i == len - 1) {
+					if i == len - 1 {
+						// push final element
+						let (name, value, inline) = element.to_field(i + 1);
+						temp_embed.field(name, value, inline);
+					}
+					// push full embed
+					embeds.push(temp_embed);
+					// reset temp embed
+					temp_embed = get_embed(embeds.len() + 1, len);
+				}
+
+				// add fields to temp embed
 				let (name, value, inline) = element.to_field(i + 1);
 				temp_embed.field(name, value, inline);
 			}
-			// push full embed
+		},
+		_ => {
+			let (name, value, inline) = embed_list[0].to_field(1);
+			temp_embed.field(name, value, inline);
 			embeds.push(temp_embed);
-			// reset temp embed
-			temp_embed = get_embed(embeds.len() + 1, len);
-		}
-
-		// add fields to temp embed
-		let (name, value, inline) = element.to_field(i + 1);
-		temp_embed.field(name, value, inline);
+		},
 	}
 
 	let ctx_id = ctx.id();
