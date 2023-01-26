@@ -1,5 +1,5 @@
 use {
-	super::{handle_err, ModeChoice, RuntypeChoice, Target},
+	super::{handle_err, ModeChoice, RuntypeChoice, Target, mode_from_choice},
 	crate::{GlobalStateAccess, SchnoseError},
 	std::time::Duration,
 	log::trace,
@@ -43,14 +43,8 @@ pub async fn btop(
 
 	trace!("[/btop] mode: `{:?}` runtype: `{:?}`", &mode, &runtype,);
 
-	let mode = match mode {
-		Some(mode) => mode.into(),
-		None => {
-			Target::None(*ctx.author().id.as_u64())
-				.get_mode(ctx.database())
-				.await?
-		},
-	};
+	let mode =
+		mode_from_choice(&mode, &Target::None(*ctx.author().id.as_u64()), ctx.database()).await?;
 	let runtype = matches!(runtype, Some(RuntypeChoice::TP));
 
 	let url = (2..=100).fold(String::from("/records/top/world_records?stages=1"), |mut link, n| {

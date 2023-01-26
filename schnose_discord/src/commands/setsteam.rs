@@ -22,6 +22,8 @@ pub async fn setsteam(
 		return Err(SchnoseError::Custom(format!("`{}` is not a valid SteamID.", &steam_id)));
 	}
 
+	let steam_id = steam_id.replace("STEAM_0", "STEAM_1");
+
 	let query =
 		format!("SELECT * FROM discord_users WHERE discord_id = {}", ctx.author().id.as_u64());
 

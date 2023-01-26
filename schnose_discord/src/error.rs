@@ -11,6 +11,8 @@ pub enum SchnoseError {
 	DatabaseAccess,
 	NoDatabaseEntries,
 	DatabaseUpdate,
+	NoSteamID { blame_user: bool },
+	NoMode 
 }
 
 impl std::fmt::Display for SchnoseError {
@@ -31,6 +33,13 @@ impl std::fmt::Display for SchnoseError {
 			SchnoseError::DatabaseAccess => "Failed to access database.",
 			SchnoseError::NoDatabaseEntries => "No database entries found.",
 			SchnoseError::DatabaseUpdate => "Failed to update database.",
+			SchnoseError::NoSteamID { blame_user } => if *blame_user {
+				"I couldn't find your SteamID in my database and you didn't specify a player. Please use the `player` parameter of save your SteamID via `/setsteam`."
+			} else {
+				"The user you tagged didn't save their SteamID in my database. Please use their SteamID or tell them to use `/setsteam`."
+			},
+			SchnoseError::NoMode => "I couldn't find your preferred Mode in my database and you didn't specify one. Please use the `mode` parameter of save your preferred mode via `/mode`."
+			
 		};
 		write!(f, "{}", msg)
 	}

@@ -1,5 +1,5 @@
 use {
-	super::{MAP_NAMES, autocomplete_map, handle_err, ModeChoice, Target},
+	super::{MAP_NAMES, autocomplete_map, handle_err, ModeChoice, Target, mode_from_choice},
 	crate::{
 		GlobalStateAccess, formatting,
 		SchnoseError::{self, *},
@@ -26,10 +26,7 @@ pub async fn pb(
 	};
 	let map_name = MapIdentifier::Name(map_name.to_owned());
 	let target = Target::from_input(player, *ctx.author().id.as_u64());
-	let mode = match mode {
-		Some(choice) => choice.into(),
-		None => target.get_mode(ctx.database()).await?,
-	};
+	let mode = mode_from_choice(&mode, &target, ctx.database()).await?;
 
 	let map = GlobalAPI::get_map(&map_name, ctx.gokz_client()).await?;
 

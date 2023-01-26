@@ -1,5 +1,8 @@
 use {
-	super::{MAP_NAMES, autocomplete_map, handle_err, ModeChoice, RuntypeChoice, Target},
+	super::{
+		MAP_NAMES, autocomplete_map, handle_err, ModeChoice, RuntypeChoice, Target,
+		mode_from_choice,
+	},
 	crate::{
 		GlobalStateAccess, formatting,
 		SchnoseError::{self, *},
@@ -31,14 +34,8 @@ pub async fn maptop(
 		return Err(InvalidMapName(map_name));
 	};
 	let map_name = MapIdentifier::Name(map_name.to_owned());
-	let mode = match mode {
-		Some(mode) => mode.into(),
-		None => {
-			Target::None(*ctx.author().id.as_u64())
-				.get_mode(ctx.database())
-				.await?
-		},
-	};
+	let mode =
+		mode_from_choice(&mode, &Target::None(*ctx.author().id.as_u64()), ctx.database()).await?;
 	let runtype = matches!(runtype, Some(RuntypeChoice::TP));
 
 	let maptop = GlobalAPI::get_maptop(&map_name, mode, runtype, 0, ctx.gokz_client()).await?;

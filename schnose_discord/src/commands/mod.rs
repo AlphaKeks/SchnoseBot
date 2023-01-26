@@ -277,15 +277,20 @@ pub enum ModeChoice {
 	SimpleKZ = 201,
 	#[name = "Vanilla"]
 	Vanilla = 202,
+	#[name = "None"]
+	None = 0,
 }
 
-impl From<ModeChoice> for Mode {
-	fn from(value: ModeChoice) -> Self {
-		match value {
-			ModeChoice::KZTimer => Mode::KZTimer,
-			ModeChoice::SimpleKZ => Mode::SimpleKZ,
-			ModeChoice::Vanilla => Mode::Vanilla,
-		}
+async fn mode_from_choice(
+	choice: &Option<ModeChoice>,
+	target: &Target,
+	pool: &sqlx::Pool<MySql>,
+) -> Result<Mode, SchnoseError> {
+	match choice {
+		Some(ModeChoice::KZTimer) => Ok(Mode::KZTimer),
+		Some(ModeChoice::SimpleKZ) => Ok(Mode::SimpleKZ),
+		Some(ModeChoice::Vanilla) => Ok(Mode::Vanilla),
+		_ => target.get_mode(pool).await,
 	}
 }
 
@@ -370,7 +375,7 @@ impl Target {
 
 		match query.steam_id {
 			Some(steam_id) => Ok(steam_id.parse()?),
-			None => Err(NoDatabaseEntries),
+			None => Err(NoSteamID { blame_user: matches!(self, Target::None(_)) }),
 		}
 	}
 
@@ -385,7 +390,7 @@ impl Target {
 
 		match query.mode {
 			Some(mode_id) => Ok(Mode::try_from(mode_id)?),
-			None => Err(NoDatabaseEntries),
+			None => Err(NoMode),
 		}
 	}
 

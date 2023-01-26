@@ -1,5 +1,5 @@
 use {
-	super::{handle_err, ModeChoice, Target, RuntypeChoice, TierChoice},
+	super::{handle_err, ModeChoice, Target, RuntypeChoice, TierChoice, mode_from_choice},
 	crate::{GlobalStateAccess, SchnoseError},
 	gokz_rs::{prelude::*, GlobalAPI},
 	log::trace,
@@ -25,10 +25,7 @@ pub async fn unfinished(
 	);
 
 	let target = Target::from_input(player, *ctx.author().id.as_u64());
-	let mode = match mode {
-		Some(choice) => choice.into(),
-		None => target.get_mode(ctx.database()).await?,
-	};
+	let mode = mode_from_choice(&mode, &target, ctx.database()).await?;
 	let player = target.to_player(ctx.database()).await?;
 	let runtype = matches!(runtype, Some(RuntypeChoice::TP));
 	let tier = tier.map(Tier::from);

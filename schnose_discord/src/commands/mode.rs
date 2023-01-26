@@ -32,7 +32,7 @@ pub async fn mode(
 			debug!("Old data: {:?}", data);
 			let query = format!(
 				"UPDATE discord_users SET mode = {} WHERE discord_id = {}",
-				mode as u8,
+				if mode as u8 == 0 { String::from("NULL") } else { (mode as u8).to_string() },
 				ctx.author().id.as_u64()
 			);
 
@@ -58,7 +58,7 @@ pub async fn mode(
 					"INSERT INTO discord_users (name, discord_id, mode) VALUES (\"{}\", {}, {})",
 					&ctx.author().name,
 					ctx.author().id.as_u64(),
-					mode as u8
+					if mode as u8 == 0 { String::from("NULL") } else { (mode as u8).to_string() },
 				);
 
 				match sqlx::query(&query)

@@ -1,5 +1,5 @@
 use {
-	super::{GLOBAL_MAPS, handle_err, ModeChoice, Target},
+	super::{GLOBAL_MAPS, handle_err, ModeChoice, Target, mode_from_choice},
 	crate::{
 		GlobalStateAccess,
 		SchnoseError::{self, *},
@@ -22,10 +22,7 @@ pub async fn profile(
 	trace!("[/profile] player: `{:?}` mode: `{:?}`", &player, &mode);
 
 	let target = Target::from_input(player, *ctx.author().id.as_u64());
-	let mode = match mode {
-		Some(choice) => choice.into(),
-		None => target.get_mode(ctx.database()).await?,
-	};
+	let mode = mode_from_choice(&mode, &target, ctx.database()).await?;
 	let player_identifier = target.to_player(ctx.database()).await?;
 
 	let player = GlobalAPI::get_player(&player_identifier, ctx.gokz_client()).await?;

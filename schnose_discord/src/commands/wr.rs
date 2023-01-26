@@ -1,5 +1,5 @@
 use {
-	super::{MAP_NAMES, autocomplete_map, handle_err, ModeChoice},
+	super::{MAP_NAMES, autocomplete_map, handle_err, ModeChoice, mode_from_choice},
 	crate::{
 		GlobalStateAccess, formatting,
 		SchnoseError::{self, *},
@@ -25,14 +25,8 @@ pub async fn wr(
 		return Err(InvalidMapName(map_name));
 	};
 	let map_name = MapIdentifier::Name(map_name.to_owned());
-	let mode = match mode {
-		Some(choice) => Mode::from(choice),
-		None => {
-			Target::None(*ctx.author().id.as_u64())
-				.get_mode(ctx.database())
-				.await?
-		},
-	};
+	let mode =
+		mode_from_choice(&mode, &Target::None(*ctx.author().id.as_u64()), ctx.database()).await?;
 
 	let map = GlobalAPI::get_map(&map_name, ctx.gokz_client()).await?;
 
