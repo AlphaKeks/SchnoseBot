@@ -1,5 +1,5 @@
 use {
-	super::{handle_err, ModeChoice},
+	super::{handle_err, DBModeChoice},
 	crate::{
 		GlobalStateAccess, database,
 		SchnoseError::{self, *},
@@ -11,7 +11,7 @@ use {
 #[poise::command(slash_command, on_error = "handle_err")]
 pub async fn mode(
 	ctx: crate::Context<'_>,
-	#[description = "KZT/SKZ/VNL"] mode: ModeChoice,
+	#[description = "KZT/SKZ/VNL"] mode: DBModeChoice,
 ) -> Result<(), SchnoseError> {
 	ctx.defer().await?;
 

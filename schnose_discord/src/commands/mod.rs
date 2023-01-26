@@ -277,8 +277,6 @@ pub enum ModeChoice {
 	SimpleKZ = 201,
 	#[name = "Vanilla"]
 	Vanilla = 202,
-	#[name = "None"]
-	None = 0,
 }
 
 async fn mode_from_choice(
@@ -292,6 +290,18 @@ async fn mode_from_choice(
 		Some(ModeChoice::Vanilla) => Ok(Mode::Vanilla),
 		_ => target.get_mode(pool).await,
 	}
+}
+
+#[derive(Debug, Clone, Copy, poise::ChoiceParameter)]
+pub enum DBModeChoice {
+	#[name = "KZTimer"]
+	KZTimer = 200,
+	#[name = "SimpleKZ"]
+	SimpleKZ = 201,
+	#[name = "Vanilla"]
+	Vanilla = 202,
+	#[name = "None"]
+	None = 0,
 }
 
 #[allow(clippy::upper_case_acronyms)]
