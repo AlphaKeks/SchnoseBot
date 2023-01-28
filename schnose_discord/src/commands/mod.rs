@@ -143,7 +143,7 @@ impl Page for gokz_rs::records::Record {
 }
 
 async fn paginate<F, P>(
-	embed_list: Vec<P>,
+	elements: Vec<P>,
 	get_embed: F,
 	timeout: Duration,
 	ctx: &crate::Context<'_>,
@@ -153,37 +153,24 @@ where
 	P: Page,
 {
 	let mut embeds = Vec::new();
-	let len = embed_list.len();
+	let len = elements.len();
 
 	let mut temp_embed = get_embed(1, len);
-	match len {
-		12.. => {
-			for (i, element) in embed_list.into_iter().enumerate() {
-				// `i != 0` => ignore first iteration
-				// `i % 12 == 0` => 12 records per embed
-				// `i == len - 1` => last iteration
-				if i != 0 && (i % 12 == 0 || i == len - 1) {
-					if i == len - 1 {
-						// push final element
-						let (name, value, inline) = element.to_field(i + 1);
-						temp_embed.field(name, value, inline);
-					}
-					// push full embed
-					embeds.push(temp_embed);
-					// reset temp embed
-					temp_embed = get_embed(embeds.len() + 1, len);
-				}
-
-				// add fields to temp embed
-				let (name, value, inline) = element.to_field(i + 1);
-				temp_embed.field(name, value, inline);
-			}
-		},
-		_ => {
-			let (name, value, inline) = embed_list[0].to_field(1);
-			temp_embed.field(name, value, inline);
+	for (i, element) in elements.into_iter().enumerate() {
+		// We have reached 12 fields on `temp_embed`. Push it to the embed list and reset it.
+		if i >= 12 && i % 12 == 0 {
 			embeds.push(temp_embed);
-		},
+			temp_embed = get_embed(embeds.len() + 1, len);
+		}
+
+		let (name, value, inline) = element.to_field(i + 1);
+		temp_embed.field(name, value, inline);
+
+		// We only have 1 page -> push final element and break
+		if len < 12 && i + 1 == len {
+			embeds.push(temp_embed);
+			break;
+		}
 	}
 
 	let ctx_id = ctx.id();
@@ -376,9 +363,9 @@ impl Target {
 
 	pub async fn get_steam_id(&self, pool: &sqlx::Pool<MySql>) -> Result<SteamID, SchnoseError> {
 		let filter = match self {
-			Target::None(user_id) | Target::Mention(user_id) => format!("discord_id = {}", user_id),
-			Target::SteamID(steam_id) => format!("steam_id = \"{}\"", steam_id),
-			Target::PlayerName(name) => format!("name = \"{}\"", name),
+			Target::None(user_id) | Target::Mention(user_id) => format!("discord_id = {user_id}"),
+			Target::SteamID(steam_id) => format!(r#"steam_id = "{steam_id}""#),
+			Target::PlayerName(name) => format!(r#"name = "{name}""#),
 		};
 
 		let query = self.query_db(pool, &filter).await?;
@@ -391,9 +378,9 @@ impl Target {
 
 	pub async fn get_mode(&self, pool: &sqlx::Pool<MySql>) -> Result<Mode, SchnoseError> {
 		let filter = match self {
-			Target::None(user_id) | Target::Mention(user_id) => format!("discord_id = {}", user_id),
-			Target::SteamID(steam_id) => format!("steam_id = \"{}\"", steam_id),
-			Target::PlayerName(name) => format!("name = \"{}\"", name),
+			Target::None(user_id) | Target::Mention(user_id) => format!("discord_id = {user_id}"),
+			Target::SteamID(steam_id) => format!(r#"steam_id = "{steam_id}""#),
+			Target::PlayerName(name) => format!(r#"name = "{name}""#),
 		};
 
 		let query = self.query_db(pool, &filter).await?;
