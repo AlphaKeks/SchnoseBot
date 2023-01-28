@@ -51,7 +51,7 @@ pub async fn top(
 				if runtype { "TP" } else { "PRO" }
 			))
 			.footer(|f| {
-				f.text(format!("Page {} / {}", i, len / 12 + 1))
+				f.text(format!("Page {} / {}", i, (len as f64 / 12f64).ceil() as u8))
 					.icon_url(crate::ICON)
 			});
 		embed
