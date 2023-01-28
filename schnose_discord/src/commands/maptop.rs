@@ -56,7 +56,7 @@ pub async fn maptop(
 			.url(format!("{}?{}=", formatting::map_link(&map.name), mode.short().to_lowercase()))
 			.thumbnail(formatting::map_thumbnail(&map.name))
 			.footer(|f| {
-				f.text(format!("Page {} / {}", i, (len as f64 / 12.0).floor() as u8))
+				f.text(format!("Page {} / {}", i, (len as f64 / 12f64).ceil() as u8))
 					.icon_url(crate::ICON)
 			});
 		embed

@@ -167,7 +167,7 @@ where
 		temp_embed.field(name, value, inline);
 
 		// We only have 1 page -> push final element and break
-		if len < 12 && i + 1 == len {
+		if i + 1 == len {
 			embeds.push(temp_embed);
 			break;
 		}
