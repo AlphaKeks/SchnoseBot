@@ -35,7 +35,7 @@ async fn main() {
 		users[0].name,
 		users[0].discord_id,
 		match &users[0].steam_id {
-			Some(steam_id) => format!(r#""{}""#, steam_id),
+			Some(steam_id) => format!(r#""{steam_id}""#),
 			None => String::from("NULL"),
 		},
 		match &users[0].mode {
@@ -58,7 +58,7 @@ async fn main() {
 			name,
 			discord_id,
 			match steam_id {
-				Some(steam_id) => format!(r#""{}""#, steam_id),
+				Some(steam_id) => format!(r#""{steam_id}""#),
 				None => String::from("NULL"),
 			},
 			match mode {
@@ -77,7 +77,7 @@ async fn main() {
 	}
 
 	if let Err(why) = sqlx::query(&query).execute(&pool).await {
-		panic!("FUCK {}", why);
+		panic!("FUCK {why:?}");
 	}
 }
 
