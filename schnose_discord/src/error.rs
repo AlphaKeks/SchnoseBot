@@ -12,36 +12,35 @@ pub enum SchnoseError {
 	NoDatabaseEntries,
 	DatabaseUpdate,
 	NoSteamID { blame_user: bool },
-	NoMode 
+	NoMode,
 }
 
 impl std::fmt::Display for SchnoseError {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let msg = match self {
-			SchnoseError::Custom(msg) => msg,
-			SchnoseError::Serenity(msg) => msg,
-			SchnoseError::GOKZ(msg) => msg,
-			SchnoseError::InvalidMapName(map_name) => {
-				return write!(f, "`{}` is not a valid map name.", map_name);
+			Self::Custom(msg) => msg,
+			Self::Serenity(msg) => msg,
+			Self::GOKZ(msg) => msg,
+			Self::InvalidMapName(map_name) => {
+				return write!(f, "`{map_name}` is not a valid map name.");
 			},
-			SchnoseError::InvalidMention(mention) => {
-				return write!(f, "`{}` is not a valid mention.", mention);
+			Self::InvalidMention(mention) => {
+				return write!(f, "`{mention}` is not a valid mention.");
 			},
-			SchnoseError::Parsing(thing) => {
+			Self::Parsing(thing) => {
 				return write!(f, "Failed to parse {thing}.");
 			},
-			SchnoseError::DatabaseAccess => "Failed to access database.",
-			SchnoseError::NoDatabaseEntries => "No database entries found.",
-			SchnoseError::DatabaseUpdate => "Failed to update database.",
-			SchnoseError::NoSteamID { blame_user } => if *blame_user {
+			Self::DatabaseAccess => "Failed to access database.",
+			Self::NoDatabaseEntries => "No database entries found.",
+			Self::DatabaseUpdate => "Failed to update database.",
+			Self::NoSteamID { blame_user } => if *blame_user {
 				"I couldn't find your SteamID in my database and you didn't specify a player. Please use the `player` parameter of save your SteamID via `/setsteam`."
 			} else {
 				"The user you tagged didn't save their SteamID in my database. Please use their SteamID or tell them to use `/setsteam`."
 			},
-			SchnoseError::NoMode => "I couldn't find your preferred Mode in my database and you didn't specify one. Please use the `mode` parameter of save your preferred mode via `/mode`."
-			
+			Self::NoMode => "I couldn't find your preferred Mode in my database and you didn't specify one. Please use the `mode` parameter of save your preferred mode via `/mode`."
 		};
-		write!(f, "{}", msg)
+		write!(f, "{msg}")
 	}
 }
 
@@ -70,7 +69,7 @@ impl From<sqlx::Error> for SchnoseError {
 			sqlx::Error::Database(why) => {
 				warn!("{}", why);
 				Self::DatabaseAccess
-			},
+			}
 			sqlx::Error::RowNotFound => Self::NoDatabaseEntries,
 			_ => Self::DatabaseAccess,
 		}

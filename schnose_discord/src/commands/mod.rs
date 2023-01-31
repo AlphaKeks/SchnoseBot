@@ -1,17 +1,17 @@
 use {
 	crate::{
-		GlobalState, formatting,
-		discord::Mention,
 		database,
+		discord::Mention,
+		formatting, GlobalState,
 		SchnoseError::{self, *},
 	},
-	std::time::Duration,
-	log::{debug, info, error},
-	gokz_rs::prelude::*,
 	futures::StreamExt,
+	gokz_rs::prelude::*,
 	lazy_static::lazy_static,
-	poise::serenity_prelude::{CreateEmbed, CollectComponentInteraction},
+	log::{debug, error, info},
+	poise::serenity_prelude::{CollectComponentInteraction, CreateEmbed},
 	sqlx::MySql,
+	std::time::Duration,
 };
 
 pub mod apistatus;
@@ -50,11 +50,11 @@ async fn handle_err(error: poise::FrameworkError<'_, GlobalState, crate::Schnose
 		Command { error, ctx: _ } => (error.to_string(), false),
 		ArgumentParse { error: _, input: _, ctx: _ } => {
 			(String::from("Failed to parse arguments."), false)
-		},
+		}
 		CommandStructureMismatch { description, ctx: _ } => {
 			error!("{}", description);
 			(String::from("Incorrect command structure."), false)
-		},
+		}
 		CooldownHit { remaining_cooldown, ctx: _ } => (
 			format!(
 			"This command is currently on cooldown. Please wait another {} seconds before trying again.",
@@ -68,14 +68,11 @@ async fn handle_err(error: poise::FrameworkError<'_, GlobalState, crate::Schnose
 			    String::from("The bot doesn't have the required permissions in this channel/server to handle this command."),
 			    false,
 			)
-		},
+		}
 		MissingUserPermissions { missing_permissions, ctx: _ } => {
 			error!("{:?}", missing_permissions);
-			(
-				String::from("You don't have the required permissions to execute this command."),
-				true,
-			)
-		},
+			(String::from("You don't have the required permissions to execute this command."), true)
+		}
 		NotAnOwner { ctx: _ } => return,
 		UnknownCommand {
 			ctx: _,
@@ -90,11 +87,11 @@ async fn handle_err(error: poise::FrameworkError<'_, GlobalState, crate::Schnose
 			error!("Message: {}", msg_content);
 			error!("Trigger: {:?}", trigger);
 			(String::from("Unknown / Outdated command."), false)
-		},
+		}
 		UnknownInteraction { ctx: _, framework: _, interaction } => {
 			error!("Interaction: {:?}", interaction);
 			(String::from("Unknown / Outdated Interaction."), false)
-		},
+		}
 		_ => unreachable!(),
 	};
 
@@ -125,7 +122,7 @@ impl Page for gokz_rs::records::Record {
 				"{} [#{}]",
 				self.player_name
 					.as_ref()
-					.map_or(String::from("unknown"), |name| name.to_owned()),
+					.map_or_else(|| String::from("unknown"), |name| name.to_owned()),
 				i
 			),
 			format!(
@@ -143,14 +140,11 @@ impl Page for gokz_rs::records::Record {
 }
 
 async fn paginate<F, P>(
-	elements: Vec<P>,
-	get_embed: F,
-	timeout: Duration,
-	ctx: &crate::Context<'_>,
+	elements: Vec<P>, get_embed: F, timeout: Duration, ctx: &crate::Context<'_>,
 ) -> Result<(), crate::SchnoseError>
 where
-	F: Fn(usize, usize) -> CreateEmbed,
-	P: Page,
+	F: Fn(usize, usize) -> CreateEmbed + Send,
+	P: Page + Send,
 {
 	let mut embeds = Vec::new();
 	let len = elements.len();
@@ -241,16 +235,19 @@ where
 lazy_static! {
 	/// Cached version of the global map pool
 	static ref GLOBAL_MAPS: Vec<gokz_rs::maps::Map> =
-		serde_json::from_str(include_str!(concat!(env!("OUT_DIR"), "/global_maps.json")))
-			.expect("Failed to parse cached global maps.");
+		reqwest::blocking::Client::new()
+			.get("https://kztimerglobal.com/api/v2/maps?is_validated=true&limit=9999")
+			.send()
+			.expect("Failed to get global maps.")
+			.json::<Vec<gokz_rs::maps::Map>>()
+			.expect("Failed to parse global maps.");
 
 	static ref MAP_NAMES: Vec<String> = (*GLOBAL_MAPS).iter().map(|h| h.name.clone()).collect();
 }
 
 #[allow(dead_code)]
 async fn autocomplete_map<'a>(
-	_ctx: crate::Context<'_>,
-	partial: &'a str,
+	_ctx: crate::Context<'_>, partial: &'a str,
 ) -> impl futures::Stream<Item = &'a String> + 'a {
 	futures::stream::iter(&*MAP_NAMES)
 		.filter(|name| futures::future::ready(name.contains(&partial.to_lowercase())))
@@ -267,9 +264,7 @@ pub enum ModeChoice {
 }
 
 async fn mode_from_choice(
-	choice: &Option<ModeChoice>,
-	target: &Target,
-	pool: &sqlx::Pool<MySql>,
+	choice: &Option<ModeChoice>, target: &Target, pool: &sqlx::Pool<MySql>,
 ) -> Result<Mode, SchnoseError> {
 	match choice {
 		Some(ModeChoice::KZTimer) => Ok(Mode::KZTimer),
@@ -321,13 +316,13 @@ pub enum TierChoice {
 impl From<TierChoice> for Tier {
 	fn from(value: TierChoice) -> Self {
 		match value {
-			TierChoice::VeryEasy => Tier::VeryEasy,
-			TierChoice::Easy => Tier::Easy,
-			TierChoice::Medium => Tier::Medium,
-			TierChoice::Hard => Tier::Hard,
-			TierChoice::VeryHard => Tier::VeryHard,
-			TierChoice::Extreme => Tier::Extreme,
-			TierChoice::Death => Tier::Death,
+			TierChoice::VeryEasy => Self::VeryEasy,
+			TierChoice::Easy => Self::Easy,
+			TierChoice::Medium => Self::Medium,
+			TierChoice::Hard => Self::Hard,
+			TierChoice::VeryHard => Self::VeryHard,
+			TierChoice::Extreme => Self::Extreme,
+			TierChoice::Death => Self::Death,
 		}
 	}
 }
@@ -342,9 +337,7 @@ pub enum Target {
 
 impl Target {
 	pub async fn query_db(
-		&self,
-		pool: &sqlx::Pool<MySql>,
-		filter: &str,
+		&self, pool: &sqlx::Pool<MySql>, filter: &str,
 	) -> Result<database::UserSchema, SchnoseError> {
 		info!("Querying database...");
 
@@ -363,24 +356,26 @@ impl Target {
 
 	pub async fn get_steam_id(&self, pool: &sqlx::Pool<MySql>) -> Result<SteamID, SchnoseError> {
 		let filter = match self {
-			Target::None(user_id) | Target::Mention(user_id) => format!("discord_id = {user_id}"),
-			Target::SteamID(steam_id) => format!(r#"steam_id = "{steam_id}""#),
-			Target::PlayerName(name) => format!(r#"name = "{name}""#),
+			Self::None(user_id) | Self::Mention(user_id) => format!("discord_id = {user_id}"),
+			Self::SteamID(steam_id) => format!(r#"steam_id = "{steam_id}""#),
+			Self::PlayerName(name) => format!(r#"name = "{name}""#),
 		};
 
 		let query = self.query_db(pool, &filter).await?;
 
 		match query.steam_id {
 			Some(steam_id) => Ok(steam_id.parse()?),
-			None => Err(NoSteamID { blame_user: matches!(self, Target::None(_)) }),
+			None => Err(NoSteamID {
+				blame_user: matches!(self, Self::None(_)),
+			}),
 		}
 	}
 
 	pub async fn get_mode(&self, pool: &sqlx::Pool<MySql>) -> Result<Mode, SchnoseError> {
 		let filter = match self {
-			Target::None(user_id) | Target::Mention(user_id) => format!("discord_id = {user_id}"),
-			Target::SteamID(steam_id) => format!(r#"steam_id = "{steam_id}""#),
-			Target::PlayerName(name) => format!(r#"name = "{name}""#),
+			Self::None(user_id) | Self::Mention(user_id) => format!("discord_id = {user_id}"),
+			Self::SteamID(steam_id) => format!(r#"steam_id = "{steam_id}""#),
+			Self::PlayerName(name) => format!(r#"name = "{name}""#),
 		};
 
 		let query = self.query_db(pool, &filter).await?;
@@ -409,12 +404,12 @@ impl Target {
 
 	async fn to_player(&self, pool: &sqlx::Pool<MySql>) -> Result<PlayerIdentifier, SchnoseError> {
 		match self {
-			Target::None(_) | Target::Mention(_) => {
+			Self::None(_) | Self::Mention(_) => {
 				let steam_id = self.get_steam_id(pool).await?;
 				Ok(PlayerIdentifier::SteamID(steam_id))
-			},
-			Target::SteamID(steam_id) => Ok(PlayerIdentifier::SteamID(steam_id.to_owned())),
-			Target::PlayerName(player_name) => Ok(PlayerIdentifier::Name(player_name.to_owned())),
+			}
+			Self::SteamID(steam_id) => Ok(PlayerIdentifier::SteamID(steam_id.to_owned())),
+			Self::PlayerName(player_name) => Ok(PlayerIdentifier::Name(player_name.to_owned())),
 		}
 	}
 }

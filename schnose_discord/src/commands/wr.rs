@@ -1,20 +1,20 @@
 use {
-	super::{MAP_NAMES, autocomplete_map, handle_err, ModeChoice, mode_from_choice},
+	super::{autocomplete_map, handle_err, mode_from_choice, ModeChoice, MAP_NAMES},
 	crate::{
-		GlobalStateAccess, formatting,
-		SchnoseError::{self, *},
-		gokz::ExtractRecordInfo,
 		commands::Target,
+		formatting,
+		gokz::ExtractRecordInfo,
+		GlobalStateAccess,
+		SchnoseError::{self, *},
 	},
-	log::trace,
 	gokz_rs::{prelude::*, GlobalAPI},
+	log::trace,
 };
 
 /// Check the world record on a map.
 #[poise::command(slash_command, on_error = "handle_err")]
 pub async fn wr(
-	ctx: crate::Context<'_>,
-	#[autocomplete = "autocomplete_map"] map_name: String,
+	ctx: crate::Context<'_>, #[autocomplete = "autocomplete_map"] map_name: String,
 	#[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
 ) -> Result<(), SchnoseError> {
 	ctx.defer().await?;
@@ -72,9 +72,9 @@ pub async fn wr(
 				.thumbnail(formatting::map_thumbnail(&map.name))
 				.field("TP", tp, true)
 				.field("PRO", pro, true)
-				.description(format!("{}\n{}", view_link, download_link))
+				.description(format!("{view_link}\n{download_link}"))
 				.footer(|f| {
-					f.text(format!("Mode: {}", mode))
+					f.text(format!("Mode: {mode}"))
 						.icon_url(crate::ICON)
 				})
 		})

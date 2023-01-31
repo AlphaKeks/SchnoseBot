@@ -1,8 +1,8 @@
 use {
 	super::handle_err,
 	crate::{GlobalStateAccess, SchnoseError},
-	log::trace,
 	gokz_rs::GlobalAPI,
+	log::trace,
 };
 
 /// Check the GlobalAPI's current health status.
@@ -15,24 +15,15 @@ pub async fn apistatus(ctx: crate::Context<'_>) -> Result<(), SchnoseError> {
 
 	let health = GlobalAPI::checkhealth(ctx.gokz_client()).await?;
 
-	let success = f32::from(health.successful_responses + health.fast_responses) / 2f32;
-	let mut status = "Healthy";
-	let mut color = (116, 227, 161);
+	let success =
+		((f32::from(health.successful_responses + health.fast_responses) / 2f32) * 10.0) as u8;
 
-	if success < 9.0 {
-		status = "<:schnosesus:947467755727241287>";
-		color = (249, 226, 175);
-	}
-
-	if success < 6.7 {
-		status = "everything is on fire";
-		color = (250, 179, 135);
-	}
-
-	if success < 3.3 {
-		status = "zer0.k wanted to be funny and pulled the usb stick again 😂";
-		color = (243, 139, 168);
-	}
+	let (status, color) = match success {
+		90.. => ("Healthy", (116, 227, 161)),
+		67.. => ("<:schnosesus:947467755727241287>", (249, 226, 175)),
+		33.. => ("everything is on fire", (250, 179, 135)),
+		_ => ("zer0.k wanted to be funny and pulled the usb stick again 😂", (243, 139, 168)),
+	};
 
 	ctx.send(|reply| {
 		reply.embed(|e| {

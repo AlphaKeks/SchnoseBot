@@ -30,7 +30,7 @@ impl ExtractRecordInfo for (&PotentialRecord, &PotentialRecord) {
 		let watch_link = "http://gokzmaptest.site.nfoservers.com/GlobalReplays/?replay=";
 
 		match self {
-			(&Ok(ref tp), &Ok(ref pro)) if tp.replay_id != 0 && pro.replay_id != 0 => {
+			(Ok(tp), Ok(pro)) if tp.replay_id != 0 && pro.replay_id != 0 => {
 				view_link = format!(
 					"Watch Replays: [TP]({}{}) | [PRO]({}{})",
 					watch_link, tp.replay_id, watch_link, pro.replay_id
@@ -41,22 +41,22 @@ impl ExtractRecordInfo for (&PotentialRecord, &PotentialRecord) {
 					GlobalAPI::get_replay_by_id(tp.replay_id),
 					GlobalAPI::get_replay_by_id(pro.replay_id),
 				);
-			},
-			(&Ok(ref tp), _) if tp.replay_id != 0 => {
+			}
+			(Ok(tp), _) if tp.replay_id != 0 => {
 				view_link = format!("Watch Replay: [TP]({}{})", watch_link, tp.replay_id);
 
 				download_link =
 					format!("Download Replay: [TP]({})", GlobalAPI::get_replay_by_id(tp.replay_id));
-			},
-			(_, &Ok(ref pro)) if pro.replay_id != 0 => {
+			}
+			(_, Ok(pro)) if pro.replay_id != 0 => {
 				view_link = format!("Watch Replay: [PRO]({}{})", watch_link, pro.replay_id);
 
 				download_link = format!(
 					"Download Replay: [PRO]({})",
 					GlobalAPI::get_replay_by_id(pro.replay_id)
 				);
-			},
-			_ => {},
+			}
+			_ => {}
 		}
 
 		(view_link, download_link)

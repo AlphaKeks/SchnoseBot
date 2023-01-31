@@ -1,19 +1,14 @@
 use {
-	super::{GLOBAL_MAPS, handle_err, Target},
-	crate::{GlobalStateAccess, formatting, SchnoseError},
-	std::time::Duration,
-	log::trace,
+	super::{handle_err, Target, GLOBAL_MAPS},
+	crate::{formatting, GlobalStateAccess, SchnoseError},
 	gokz_rs::{prelude::*, GlobalAPI},
-	poise::serenity_prelude::{CreateEmbed, CollectComponentInteraction},
+	log::trace,
+	poise::serenity_prelude::{CollectComponentInteraction, CreateEmbed},
+	std::time::Duration,
 };
 
 /// Check a player's most recently set personal best.
-#[poise::command(
-	slash_command,
-	on_error = "handle_err",
-	global_cooldown = 30,
-	user_cooldown = 60
-)]
+#[poise::command(slash_command, on_error = "handle_err", global_cooldown = 30, user_cooldown = 60)]
 pub async fn recent(
 	ctx: crate::Context<'_>,
 	#[description = "The player you want to target."] player: Option<String>,
@@ -44,18 +39,21 @@ pub async fn recent(
 		let place = format!("[#{}]", GlobalAPI::get_place(recent.id, ctx.gokz_client()).await?);
 
 		let (discord_timestamp, footer_msg) =
-			match chrono::NaiveDateTime::parse_from_str(&recent.created_on, "%Y-%m-%dT%H:%M:%S") {
-				Err(_) => (String::new(), String::new()),
-				Ok(parsed_time) => (
-					format!("<t:{}:R>", parsed_time.timestamp()),
-					format!(
-						"Page {} / {} | {} GMT",
-						i + 1,
-						n_pages,
-						parsed_time.format("%d/%m/%Y - %H:%M:%S")
-					),
-				),
-			};
+			chrono::NaiveDateTime::parse_from_str(&recent.created_on, "%Y-%m-%dT%H:%M:%S")
+				.map_or_else(
+					|_| (String::new(), String::new()),
+					|parsed_time| {
+						(
+							format!("<t:{}:R>", parsed_time.timestamp()),
+							format!(
+								"Page {} / {} | {} GMT",
+								i + 1,
+								n_pages,
+								parsed_time.format("%d/%m/%Y - %H:%M:%S")
+							),
+						)
+					},
+				);
 
 		let mode: Mode = recent.mode.parse()?;
 

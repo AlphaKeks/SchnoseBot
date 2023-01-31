@@ -1,9 +1,9 @@
 use {
 	super::handle_err,
 	crate::SchnoseError,
+	log::{error, info},
+	poise::{execute_modal, serenity_prelude::ChannelId, ApplicationContext, Modal},
 	std::time::Duration,
-	log::{info, error},
-	poise::{execute_modal, serenity_prelude::ChannelId, Modal, ApplicationContext},
 };
 
 #[derive(Debug, Modal)]
@@ -23,8 +23,10 @@ struct ReportModal {
 pub async fn report(
 	ctx: ApplicationContext<'_, crate::GlobalState, SchnoseError>,
 ) -> Result<(), SchnoseError> {
-	let modal =
-		ReportModal { title: String::from("<title>"), description: String::from("<description>") };
+	let modal = ReportModal {
+		title: String::from("<title>"),
+		description: String::from("<description>"),
+	};
 
 	let modal = execute_modal(ctx, Some(modal), Some(Duration::from_secs(600))).await?;
 
@@ -35,7 +37,7 @@ pub async fn report(
 			error!("Failed to submit report.");
 
 			Ok(())
-		},
+		}
 		Some(ReportModal { title, description }) => {
 			let channel = ChannelId(
 				ctx.framework()
@@ -69,6 +71,6 @@ pub async fn report(
 			info!("Got a report.");
 
 			Ok(())
-		},
+		}
 	}
 }

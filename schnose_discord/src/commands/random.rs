@@ -8,8 +8,7 @@ use {
 /// Generate a random KZ map.
 #[poise::command(slash_command, on_error = "handle_err")]
 pub async fn random(
-	ctx: crate::Context<'_>,
-	#[description = "Filter by map difficulty."] tier: Option<TierChoice>,
+	ctx: crate::Context<'_>, #[description = "Filter by map difficulty."] tier: Option<TierChoice>,
 ) -> Result<(), SchnoseError> {
 	ctx.defer().await?;
 
@@ -17,10 +16,7 @@ pub async fn random(
 
 	let maps = (*GLOBAL_MAPS)
 		.iter()
-		.filter(|map| match tier {
-			Some(tier) => map.difficulty == tier as i32,
-			None => true,
-		})
+		.filter(|map| tier.map_or(true, |tier| map.difficulty == tier as i32))
 		.collect::<Vec<_>>();
 
 	let rng = rand::thread_rng().gen_range(0..maps.len());

@@ -5,9 +5,7 @@ use {
 };
 
 pub async fn handle(
-	ctx: &Context,
-	_global_state: &GlobalState,
-	message: &Message,
+	ctx: &Context, _global_state: &GlobalState, message: &Message,
 ) -> Result<(), crate::SchnoseError> {
 	if message
 		.content
@@ -26,7 +24,7 @@ pub async fn handle(
 				} else {
 					"no <:joePensive:975446358796410890>"
 				}
-			},
+			}
 		};
 
 		message.reply(ctx, response).await?;

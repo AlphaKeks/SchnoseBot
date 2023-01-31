@@ -1,18 +1,17 @@
 use {
-	super::{MAP_NAMES, autocomplete_map, handle_err},
+	super::{autocomplete_map, handle_err, MAP_NAMES},
 	crate::{
-		GlobalStateAccess, formatting,
+		formatting, GlobalStateAccess,
 		SchnoseError::{self, *},
 	},
-	log::trace,
 	gokz_rs::{prelude::*, GlobalAPI, KZGO},
+	log::trace,
 };
 
 /// Will fetch detailed information about a given map.
 #[poise::command(slash_command, on_error = "handle_err")]
 pub async fn map(
-	ctx: crate::Context<'_>,
-	#[autocomplete = "autocomplete_map"] map_name: String,
+	ctx: crate::Context<'_>, #[autocomplete = "autocomplete_map"] map_name: String,
 ) -> Result<(), SchnoseError> {
 	ctx.defer().await?;
 
@@ -35,7 +34,7 @@ pub async fn map(
 			.iter()
 			.zip(ids)
 			.fold(Vec::new(), |mut names, (name, id)| {
-				names.push(format!("[{}](https://steamcommunity.com/profiles/{})", name, id));
+				names.push(format!("[{name}](https://steamcommunity.com/profiles/{id})"));
 				names
 			})
 	} else {
@@ -52,7 +51,7 @@ pub async fn map(
 					200 => symbols.0 = "✅",
 					201 => symbols.1 = "✅",
 					202 => symbols.2 = "✅",
-					_ => {},
+					_ => {}
 				}
 				symbols
 			});
@@ -75,15 +74,13 @@ pub async fn map(
 					&map_api.difficulty,
 					mappers.join(", "),
 					&map_kzgo.bonuses.unwrap_or(0),
-					match chrono::NaiveDateTime::parse_from_str(
-						&map_api.updated_on,
-						"%Y-%m-%dT%H:%M:%S"
-					) {
-						Ok(parsed_time) => parsed_time
-							.format("%d/%m/%Y")
-							.to_string(),
-						Err(_) => String::from("unknown"),
-					},
+					chrono::NaiveDateTime::parse_from_str(&map_api.updated_on, "%Y-%m-%dT%H:%M:%S")
+						.map_or_else(
+							|_| String::from("unknown"),
+							|parsed_time| parsed_time
+								.format("%d/%m/%Y")
+								.to_string()
+						)
 				))
 				.field("KZT", kzt_filter, true)
 				.field("SKZ", skz_filter, true)

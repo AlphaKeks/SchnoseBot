@@ -1,13 +1,13 @@
 use {
-	super::{GLOBAL_MAPS, handle_err, ModeChoice, Target, mode_from_choice},
+	super::{handle_err, mode_from_choice, ModeChoice, Target, GLOBAL_MAPS},
 	crate::{
 		GlobalStateAccess,
 		SchnoseError::{self, *},
 	},
-	std::collections::HashMap,
-	log::trace,
 	gokz_rs::{prelude::*, GlobalAPI, KZGO},
-	num_format::{ToFormattedString, Locale},
+	log::trace,
+	num_format::{Locale, ToFormattedString},
+	std::collections::HashMap,
 };
 
 /// Check various player stats.
@@ -105,24 +105,14 @@ pub async fn profile(
 
 	let possible_maps = [
 		[
-			possible_maps.tp.one,
-			possible_maps.tp.two,
-			possible_maps.tp.three,
-			possible_maps.tp.four,
-			possible_maps.tp.five,
-			possible_maps.tp.six,
-			possible_maps.tp.seven,
-			possible_maps.tp.total,
+			possible_maps.tp.one, possible_maps.tp.two, possible_maps.tp.three,
+			possible_maps.tp.four, possible_maps.tp.five, possible_maps.tp.six,
+			possible_maps.tp.seven, possible_maps.tp.total,
 		],
 		[
-			possible_maps.pro.one,
-			possible_maps.pro.two,
-			possible_maps.pro.three,
-			possible_maps.pro.four,
-			possible_maps.pro.five,
-			possible_maps.pro.six,
-			possible_maps.pro.seven,
-			possible_maps.pro.total,
+			possible_maps.pro.one, possible_maps.pro.two, possible_maps.pro.three,
+			possible_maps.pro.four, possible_maps.pro.five, possible_maps.pro.six,
+			possible_maps.pro.seven, possible_maps.pro.total,
 		],
 	];
 
@@ -140,10 +130,10 @@ pub async fn profile(
 		}
 	}
 
-	let fav_mode = match target.get_mode(ctx.database()).await {
-		Ok(mode) => mode.to_string(),
-		_ => String::from("unknown"),
-	};
+	let fav_mode = target
+		.get_mode(ctx.database())
+		.await
+		.map_or_else(|_| String::from("unknown"), |mode| mode.to_string());
 
 	let mut bars = [[""; 7]; 2].map(|a| a.map(String::from));
 

@@ -1,17 +1,12 @@
 use {
-	crate::GlobalStateAccess,
 	super::handle_err,
+	crate::GlobalStateAccess,
 	crate::SchnoseError,
-	log::{info, error},
+	log::{error, info},
 };
 
 /// recompile the bot binary
-#[poise::command(
-	prefix_command,
-	on_error = "handle_err",
-	owners_only,
-	global_cooldown = 120
-)]
+#[poise::command(prefix_command, on_error = "handle_err", owners_only, global_cooldown = 120)]
 pub async fn recompile(ctx: crate::Context<'_>) -> Result<(), SchnoseError> {
 	ctx.defer().await?;
 
@@ -28,7 +23,7 @@ pub async fn recompile(ctx: crate::Context<'_>) -> Result<(), SchnoseError> {
 
 	message
 		.edit(ctx, |reply| {
-			reply.content(format!("{}\n{}\nStarting compilation...", old_msg, clean_msg))
+			reply.content(format!("{old_msg}\n{clean_msg}\nStarting compilation..."))
 		})
 		.await?;
 
@@ -36,7 +31,7 @@ pub async fn recompile(ctx: crate::Context<'_>) -> Result<(), SchnoseError> {
 	let build_msg = build(config.build_dir, config.build_job_count);
 
 	message
-		.edit(ctx, |reply| reply.content(format!("{}\n{}", old_msg, build_msg)))
+		.edit(ctx, |reply| reply.content(format!("{old_msg}\n{build_msg}")))
 		.await?;
 
 	Ok(())
@@ -52,11 +47,11 @@ pub(super) fn clean(build_dir: &str) -> String {
 			let msg = String::from("Failed to clean build directory.");
 			error!("{}: {:?}", &msg, why);
 			msg
-		},
+		}
 		Ok(output) => {
 			info!("stdout: {:?}", &output);
 			String::from("Finished cleaning build directory.")
-		},
+		}
 	}
 }
 
@@ -70,10 +65,10 @@ pub(super) fn build(build_dir: &str, jobs: &str) -> String {
 			let msg = String::from("Compilation failed.");
 			error!("{}: {:?}", &msg, why);
 			msg
-		},
+		}
 		Ok(output) => {
 			info!("stdout: {:?}", &output);
 			String::from("Compilation finished.")
-		},
+		}
 	}
 }

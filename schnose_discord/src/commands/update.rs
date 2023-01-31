@@ -1,20 +1,15 @@
 use {
-	crate::GlobalStateAccess,
 	super::{
 		handle_err,
-		recompile::{clean, build},
 		pull::git_pull,
+		recompile::{build, clean},
 	},
+	crate::GlobalStateAccess,
 	crate::SchnoseError,
 };
 
 /// Update the bot's code and recompile it
-#[poise::command(
-	prefix_command,
-	on_error = "handle_err",
-	owners_only,
-	global_cooldown = 12
-)]
+#[poise::command(prefix_command, on_error = "handle_err", owners_only, global_cooldown = 12)]
 pub async fn update(ctx: crate::Context<'_>) -> Result<(), SchnoseError> {
 	ctx.defer().await?;
 
@@ -31,7 +26,7 @@ pub async fn update(ctx: crate::Context<'_>) -> Result<(), SchnoseError> {
 
 	message
 		.edit(ctx, |reply| {
-			reply.content(format!("{}\n{}\nCleaning build directory...", old_msg, git_msg))
+			reply.content(format!("{old_msg}\n{git_msg}\nCleaning build directory..."))
 		})
 		.await?;
 
@@ -39,16 +34,14 @@ pub async fn update(ctx: crate::Context<'_>) -> Result<(), SchnoseError> {
 	let clean_msg = clean(config.build_dir);
 
 	message
-		.edit(ctx, |reply| {
-			reply.content(format!("{}\n{}\nStarting to compile...", old_msg, clean_msg))
-		})
+		.edit(ctx, |reply| reply.content(format!("{old_msg}\n{clean_msg}\nStarting to compile...")))
 		.await?;
 
 	let old_msg = message.content.clone();
 	let build_msg = build(config.build_dir, config.build_job_count);
 
 	message
-		.edit(ctx, |reply| reply.content(format!("{}\n{}", old_msg, build_msg)))
+		.edit(ctx, |reply| reply.content(format!("{old_msg}\n{build_msg}")))
 		.await?;
 
 	Ok(())

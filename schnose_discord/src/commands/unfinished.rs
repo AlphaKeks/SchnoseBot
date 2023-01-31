@@ -1,5 +1,5 @@
 use {
-	super::{handle_err, ModeChoice, Target, RuntypeChoice, TierChoice, mode_from_choice},
+	super::{handle_err, mode_from_choice, ModeChoice, RuntypeChoice, Target, TierChoice},
 	crate::{GlobalStateAccess, SchnoseError},
 	gokz_rs::{prelude::*, GlobalAPI},
 	log::trace,
@@ -8,8 +8,7 @@ use {
 /// Check which maps a player still has to complete.
 #[poise::command(slash_command, on_error = "handle_err")]
 pub async fn unfinished(
-	ctx: crate::Context<'_>,
-	#[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
+	ctx: crate::Context<'_>, #[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
 	#[description = "TP/PRO"] runtype: Option<RuntypeChoice>,
 	#[description = "Filter by map difficulty."] tier: Option<TierChoice>,
 	#[description = "The player you want to target."] player: Option<String>,
@@ -58,10 +57,7 @@ pub async fn unfinished(
 					amount,
 					mode.short(),
 					if runtype { "TP" } else { "PRO" },
-					match tier {
-						Some(tier) => format!("[T{}]", tier as u8),
-						None => String::new(),
-					}
+					tier.map_or_else(String::new, |tier| format!("[T{}]", tier as u8))
 				))
 				.description(if description.is_empty() {
 					String::from("You have no maps left to complete! Congrats! 🥳")

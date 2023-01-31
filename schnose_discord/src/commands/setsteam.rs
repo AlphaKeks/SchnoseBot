@@ -1,11 +1,11 @@
 use {
 	super::handle_err,
 	crate::{
-		GlobalStateAccess, database,
+		database, GlobalStateAccess,
 		SchnoseError::{self, *},
 	},
-	log::{debug, trace, info, error},
 	gokz_rs::prelude::*,
+	log::{debug, error, info, trace},
 };
 
 /// Save your SteamID for later use.
@@ -48,16 +48,16 @@ pub async fn setsteam(
 				.await
 			{
 				Ok(_result) => {
-					ctx.say(format!("Successfully updated SteamID. New value: `{}`", steam_id))
+					ctx.say(format!("Successfully updated SteamID. New value: `{steam_id}`"))
 						.await?;
 					Ok(())
-				},
+				}
 				Err(why) => {
 					error!("Failed to update DB entry: {:?}", why);
 					Err(DatabaseUpdate)
-				},
+				}
 			}
-		},
+		}
 		Err(why) => match why {
 			// user has no data yet => create new row
 			sqlx::Error::RowNotFound => {
@@ -80,13 +80,13 @@ pub async fn setsteam(
 						))
 						.await?;
 						Ok(())
-					},
+					}
 					Err(why) => {
 						error!("Failed to create DB entry: {:?}", why);
 						Err(DatabaseUpdate)
-					},
+					}
 				}
-			},
+			}
 			// something has gone very wrong
 			_ => Err(DatabaseAccess),
 		},

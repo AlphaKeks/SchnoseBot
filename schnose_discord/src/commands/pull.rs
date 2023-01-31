@@ -1,8 +1,8 @@
 use {
-	crate::GlobalStateAccess,
 	super::handle_err,
+	crate::GlobalStateAccess,
 	crate::SchnoseError,
-	log::{info, error},
+	log::{error, info},
 };
 
 /// Update the bot's code
@@ -22,7 +22,7 @@ pub async fn pull(ctx: crate::Context<'_>) -> Result<(), SchnoseError> {
 	let pull_msg = git_pull(config.git_dir);
 
 	message
-		.edit(ctx, |reply| reply.content(format!("{}\n{}", old_msg, pull_msg)))
+		.edit(ctx, |reply| reply.content(format!("{old_msg}\n{pull_msg}")))
 		.await?;
 
 	Ok(())
@@ -38,7 +38,7 @@ pub(super) fn git_pull(git_dir: &str) -> String {
 			let msg = String::from("Failed to pull from GitHub.");
 			error!("{}: {:?}", &msg, why);
 			msg
-		},
+		}
 		Ok(output) => {
 			info!("stdout: {:?}", &output);
 
@@ -46,11 +46,11 @@ pub(super) fn git_pull(git_dir: &str) -> String {
 				(false, false) => String::from("Pulled new updates."),
 				(false, true) => {
 					String::from_utf8(output.stdout).expect("stdout should be valid utf-8.")
-				},
+				}
 				_ => String::from_utf8(output.stderr).expect("stderr should be valid utf-8."),
 			};
 
 			String::from(msg.trim())
-		},
+		}
 	}
 }

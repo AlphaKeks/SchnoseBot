@@ -1,17 +1,16 @@
 use {
 	super::{handle_err, DBModeChoice},
 	crate::{
-		GlobalStateAccess, database,
+		database, GlobalStateAccess,
 		SchnoseError::{self, *},
 	},
-	log::{debug, trace, info, error},
+	log::{debug, error, info, trace},
 };
 
 /// Save your favorite mode for later use.
 #[poise::command(slash_command, on_error = "handle_err")]
 pub async fn mode(
-	ctx: crate::Context<'_>,
-	#[description = "KZT/SKZ/VNL"] mode: DBModeChoice,
+	ctx: crate::Context<'_>, #[description = "KZT/SKZ/VNL"] mode: DBModeChoice,
 ) -> Result<(), SchnoseError> {
 	ctx.defer().await?;
 
@@ -41,16 +40,16 @@ pub async fn mode(
 				.await
 			{
 				Ok(_result) => {
-					ctx.say(format!("Successfully updated Mode. New value: `{}`", mode))
+					ctx.say(format!("Successfully updated Mode. New value: `{mode}`"))
 						.await?;
 					Ok(())
-				},
+				}
 				Err(why) => {
 					error!("Failed to update DB entry: {:?}", why);
 					Err(DatabaseUpdate)
-				},
+				}
 			}
-		},
+		}
 		Err(why) => match why {
 			// user has no data yet => create new row
 			sqlx::Error::RowNotFound => {
@@ -73,13 +72,13 @@ pub async fn mode(
 						))
 						.await?;
 						Ok(())
-					},
+					}
 					Err(why) => {
 						error!("Failed to create DB entry: {:?}", why);
 						Err(DatabaseUpdate)
-					},
+					}
 				}
-			},
+			}
 			// something has gone very wrong
 			_ => Err(DatabaseAccess),
 		},

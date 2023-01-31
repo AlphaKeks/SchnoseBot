@@ -1,19 +1,19 @@
 use {
-	super::{MAP_NAMES, autocomplete_map, handle_err, ModeChoice, Target, mode_from_choice},
+	super::{autocomplete_map, handle_err, mode_from_choice, ModeChoice, Target, MAP_NAMES},
 	crate::{
-		GlobalStateAccess, formatting,
-		SchnoseError::{self, *},
+		formatting,
 		gokz::ExtractRecordInfo,
+		GlobalStateAccess,
+		SchnoseError::{self, *},
 	},
-	log::trace,
 	gokz_rs::{prelude::*, GlobalAPI},
+	log::trace,
 };
 
 /// Check a player's personal best on a bonus.
 #[poise::command(slash_command, on_error = "handle_err")]
 pub async fn bpb(
-	ctx: crate::Context<'_>,
-	#[autocomplete = "autocomplete_map"] map_name: String,
+	ctx: crate::Context<'_>, #[autocomplete = "autocomplete_map"] map_name: String,
 	#[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
 	#[description = "Course"] course: Option<u8>,
 	#[description = "The player you want to target."] player: Option<String>,
@@ -43,10 +43,10 @@ pub async fn bpb(
 		format!(
 			"{}{}",
 			formatting::format_time(tp.time),
-			match GlobalAPI::get_place(tp.id, ctx.gokz_client()).await {
-				Ok(place) => format!(" [#{}] ({} TPs)", place, tp.teleports),
-				_ => String::new(),
-			}
+			GlobalAPI::get_place(tp.id, ctx.gokz_client())
+				.await
+				.map(|place| format!(" [#{}] ({} TPs)", place, tp.teleports))
+				.unwrap_or_else(|_| String::new())
 		)
 	} else {
 		String::from("😔")
@@ -56,10 +56,10 @@ pub async fn bpb(
 		format!(
 			"{}{}",
 			formatting::format_time(pro.time),
-			match GlobalAPI::get_place(pro.id, ctx.gokz_client()).await {
-				Ok(place) => format!(" [#{}]", place),
-				_ => String::new(),
-			}
+			GlobalAPI::get_place(pro.id, ctx.gokz_client())
+				.await
+				.map(|place| format!(" [#{place}]"))
+				.unwrap_or_else(|_| String::new())
 		)
 	} else {
 		String::from("😔")
@@ -84,9 +84,9 @@ pub async fn bpb(
 				.thumbnail(formatting::map_thumbnail(&map.name))
 				.field("TP", tp, true)
 				.field("PRO", pro, true)
-				.description(format!("{}\n{}", view_link, download_link))
+				.description(format!("{view_link}\n{download_link}"))
 				.footer(|f| {
-					f.text(format!("Mode: {}", mode))
+					f.text(format!("Mode: {mode}"))
 						.icon_url(crate::ICON)
 				})
 		})

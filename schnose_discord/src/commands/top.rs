@@ -1,21 +1,19 @@
 use {
 	super::{
-		handle_err, ModeChoice, RuntypeChoice, Target,
 		btop::{WorldRecordParams, WorldRecordResponses},
-		mode_from_choice,
+		handle_err, mode_from_choice, ModeChoice, RuntypeChoice, Target,
 	},
 	crate::{GlobalStateAccess, SchnoseError},
-	std::time::Duration,
-	log::trace,
 	gokz_rs::GlobalAPI,
+	log::trace,
 	poise::serenity_prelude::CreateEmbed,
+	std::time::Duration,
 };
 
 /// Check the top 100 bonus world record holders.
 #[poise::command(slash_command, on_error = "handle_err")]
 pub async fn top(
-	ctx: crate::Context<'_>,
-	#[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
+	ctx: crate::Context<'_>, #[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
 	#[description = "TP/PRO"] runtype: Option<RuntypeChoice>,
 ) -> Result<(), SchnoseError> {
 	ctx.defer().await?;

@@ -1,8 +1,8 @@
 use {
 	super::{handle_err, Target},
-	crate::{GlobalStateAccess, database, SchnoseError},
-	log::trace,
+	crate::{database, GlobalStateAccess, SchnoseError},
 	gokz_rs::prelude::*,
+	log::trace,
 };
 
 /// Check you current database entries.
@@ -13,7 +13,7 @@ pub async fn db(
 		bool,
 	>,
 ) -> Result<(), SchnoseError> {
-	if let Some(true) = public {
+	if public == Some(true) {
 		ctx.defer().await?;
 	} else {
 		ctx.defer_ephemeral().await?;
@@ -35,7 +35,7 @@ pub async fn db(
 	ctx.send(|reply| {
 		reply.embed(|e| {
 			e.color((116, 128, 194))
-				.title(format!("{}'s database entries", name))
+				.title(format!("{name}'s database entries"))
 				.description(format!(
 					"
 > player_name: `{name}`

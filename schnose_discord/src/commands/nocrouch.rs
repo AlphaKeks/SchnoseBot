@@ -7,8 +7,8 @@ pub async fn nocrouch(
 	#[description = "Specify the distance of your nocrouch jump."] distance: f32,
 	#[description = "Specify the max speed of your nocrouch jump."] max: f32,
 ) -> Result<(), SchnoseError> {
-	let approx = distance + (max / 128.) * 4.;
-	ctx.say(format!("Approximated distance: `{0:.4}`", approx))
+	let approx = (max / 128.0).mul_add(4.0, distance);
+	ctx.say(format!("Approximated distance: `{approx:.4}`"))
 		.await?;
 	Ok(())
 }

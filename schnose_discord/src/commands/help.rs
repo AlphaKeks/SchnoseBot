@@ -1,8 +1,8 @@
 use {
 	super::handle_err,
-	std::collections::BTreeMap,
 	log::trace,
 	poise::serenity_prelude::{CollectComponentInteraction, InteractionResponseType},
+	std::collections::BTreeMap,
 };
 
 /// Help Menu
@@ -313,7 +313,7 @@ To get started, set your SteamID with `/setsteam` and your favorite game mode wi
 										.strip_prefix("h_")
 										.expect("Every value should have this prefix.");
 
-									o.label(format!("/{}", label))
+									o.label(format!("/{label}"))
 										.value(value)
 										.description(short_description)
 								});

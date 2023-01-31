@@ -1,7 +1,7 @@
 use {
 	super::handle_err,
 	crate::SchnoseError,
-	log::{info, error},
+	log::{error, info},
 };
 
 /// Restart the bot.
@@ -27,12 +27,12 @@ pub async fn restart(ctx: crate::Context<'_>) -> Result<(), SchnoseError> {
 	{
 		Err(why) => {
 			error!("Failed to restart: {:?}", why);
-			msg.edit(ctx, |reply| reply.content(format!("{}\nFailed to restart.", content)))
+			msg.edit(ctx, |reply| reply.content(format!("{content}\nFailed to restart.")))
 				.await?;
-		},
+		}
 		Ok(output) => {
 			info!("stdout: {:?}", &output);
-		},
+		}
 	};
 
 	Ok(())

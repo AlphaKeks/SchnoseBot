@@ -1,16 +1,16 @@
 use {
 	super::{
-		MAP_NAMES, autocomplete_map, handle_err, ModeChoice, RuntypeChoice, Target,
-		mode_from_choice,
+		autocomplete_map, handle_err, mode_from_choice, ModeChoice, RuntypeChoice, Target,
+		MAP_NAMES,
 	},
 	crate::{
-		GlobalStateAccess, formatting,
+		formatting, GlobalStateAccess,
 		SchnoseError::{self, *},
 	},
-	std::time::Duration,
-	log::trace,
 	gokz_rs::{prelude::*, GlobalAPI},
+	log::trace,
 	poise::serenity_prelude::CreateEmbed,
+	std::time::Duration,
 };
 
 /// Check the top 100 records on a bonus.

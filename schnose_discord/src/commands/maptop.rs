@@ -1,34 +1,28 @@
 use {
 	super::{
-		MAP_NAMES, autocomplete_map, handle_err, ModeChoice, RuntypeChoice, Target,
-		mode_from_choice,
+		autocomplete_map, handle_err, mode_from_choice, ModeChoice, RuntypeChoice, Target,
+		MAP_NAMES,
 	},
 	crate::{
-		GlobalStateAccess, formatting,
+		formatting, GlobalStateAccess,
 		SchnoseError::{self, *},
 	},
-	std::time::Duration,
-	log::trace,
 	gokz_rs::{prelude::*, GlobalAPI},
+	log::trace,
 	poise::serenity_prelude::CreateEmbed,
+	std::time::Duration,
 };
 
 /// Check the top 100 records on a map.
 #[poise::command(slash_command, on_error = "handle_err")]
 pub async fn maptop(
-	ctx: crate::Context<'_>,
-	#[autocomplete = "autocomplete_map"] map_name: String,
+	ctx: crate::Context<'_>, #[autocomplete = "autocomplete_map"] map_name: String,
 	#[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
 	#[description = "TP/PRO"] runtype: Option<RuntypeChoice>,
 ) -> Result<(), SchnoseError> {
 	ctx.defer().await?;
 
-	trace!(
-		"[/maptop] map_name: `{}` mode: `{:?}` runtype: `{:?}`",
-		&map_name,
-		&mode,
-		&runtype,
-	);
+	trace!("[/maptop] map_name: `{}` mode: `{:?}` runtype: `{:?}`", &map_name, &mode, &runtype,);
 
 	let Some(map_name) = (*MAP_NAMES).iter().find(|name| name.contains(&map_name.to_lowercase())) else {
 		return Err(InvalidMapName(map_name));

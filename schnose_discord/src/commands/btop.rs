@@ -1,10 +1,10 @@
 use {
-	super::{handle_err, ModeChoice, RuntypeChoice, Target, mode_from_choice},
+	super::{handle_err, mode_from_choice, ModeChoice, RuntypeChoice, Target},
 	crate::{GlobalStateAccess, SchnoseError},
-	std::time::Duration,
-	log::trace,
 	gokz_rs::GlobalAPI,
+	log::trace,
 	poise::serenity_prelude::CreateEmbed,
+	std::time::Duration,
 };
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -35,8 +35,7 @@ impl gokz_rs::GlobalAPIParams for WorldRecordParams {}
 /// Check the top 100 bonus world record holders.
 #[poise::command(slash_command, on_error = "handle_err")]
 pub async fn btop(
-	ctx: crate::Context<'_>,
-	#[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
+	ctx: crate::Context<'_>, #[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
 	#[description = "TP/PRO"] runtype: Option<RuntypeChoice>,
 ) -> Result<(), SchnoseError> {
 	ctx.defer().await?;
@@ -48,7 +47,7 @@ pub async fn btop(
 	let runtype = matches!(runtype, Some(RuntypeChoice::TP));
 
 	let url = (2..=100).fold(String::from("/records/top/world_records?stages=1"), |mut link, n| {
-		link.push_str(&format!("&stages={}", n));
+		link.push_str(&format!("&stages={n}"));
 		link
 	});
 

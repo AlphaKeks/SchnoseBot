@@ -1,13 +1,11 @@
 use {
 	crate::GlobalState,
 	log::info,
-	poise::serenity_prelude::{Activity, Context, Ready, OnlineStatus::Online},
+	poise::serenity_prelude::{Activity, Context, OnlineStatus::Online, Ready},
 };
 
 pub async fn handle(
-	ctx: &Context,
-	_global_state: &GlobalState,
-	ready: &Ready,
+	ctx: &Context, _global_state: &GlobalState, ready: &Ready,
 ) -> Result<(), crate::SchnoseError> {
 	info!("Connected to Discord as `{}`.", ready.user.tag());
 

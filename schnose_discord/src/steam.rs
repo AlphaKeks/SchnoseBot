@@ -2,10 +2,7 @@ use log::error;
 
 /// Uses the Steam API to retreive a user's profile picture
 pub async fn get_steam_avatar(
-	steam_id64: &str,
-	default_url: &str,
-	steam_api_key: &str,
-	client: &gokz_rs::Client,
+	steam_id64: &str, default_url: &str, steam_api_key: &str, client: &gokz_rs::Client,
 ) -> String {
 	#[derive(Debug, serde::Serialize, serde::Deserialize)]
 	struct Player {
@@ -39,8 +36,7 @@ pub async fn get_steam_avatar(
 	}
 
 	let url = format!(
-		"https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key={}&steamids={}",
-		steam_api_key, steam_id64
+		"https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key={steam_api_key}&steamids={steam_id64}"
 	);
 
 	match client.get(url).send().await {
@@ -51,15 +47,15 @@ pub async fn get_steam_avatar(
 					return url.clone();
 				}
 				String::from(default_url)
-			},
+			}
 			Err(why) => {
 				error!("Failed to get Steam Avatar: {:?}", why);
 				String::from(default_url)
-			},
+			}
 		},
 		Err(why) => {
 			error!("Failed to get Steam Avatar: {:?}", why);
 			String::from(default_url)
-		},
+		}
 	}
 }

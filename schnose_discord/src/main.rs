@@ -1,4 +1,5 @@
 #![warn(missing_debug_implementations, rust_2018_idioms)]
+#![warn(clippy::nursery)]
 
 mod commands;
 mod database;
@@ -10,13 +11,13 @@ mod gokz;
 mod steam;
 
 use {
-	std::collections::HashSet,
 	log::info,
 	poise::{
 		serenity_prelude::{GatewayIntents, GuildId, UserId},
 		PrefixFrameworkOptions,
 	},
 	sqlx::{mysql::MySqlPoolOptions, MySql},
+	std::collections::HashSet,
 };
 
 /// icon link for footers
@@ -164,12 +165,12 @@ async fn main() {
 					"DEV" => {
 						let guild = GuildId(config.dev_guild_id);
 						poise::builtins::register_in_guild(ctx, commands, guild).await?;
-					},
+					}
 					// `PROD` mode -> register commands on _every_ guild (slow)
 					"PROD" => poise::builtins::register_globally(ctx, commands).await?,
 					invalid_mode => {
-						panic!("`{}` is an invalid mode. Please use `DEV` or `PROD`.", invalid_mode)
-					},
+						panic!("`{invalid_mode}` is an invalid mode. Please use `DEV` or `PROD`.")
+					}
 				}
 				for command in commands {
 					info!("[{}] Successfully registered command `{}`.", config.mode, &command.name);
