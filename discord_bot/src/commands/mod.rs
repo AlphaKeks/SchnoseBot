@@ -3,11 +3,14 @@ use {
 	futures::StreamExt,
 };
 
-mod ping;
-pub use ping::ping;
+mod apistatus;
+pub use apistatus::apistatus;
 
 mod map;
 pub use map::map;
+
+mod ping;
+pub use ping::ping;
 
 async fn autocomplete_map<'a>(
 	_ctx: Context<'_>, partial: &'a str,

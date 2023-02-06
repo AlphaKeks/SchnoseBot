@@ -117,7 +117,11 @@ async fn main() -> Eyre<()> {
 				ignore_bots: true,
 				..Default::default()
 			},
-			commands: vec![commands::ping(), commands::map()],
+			commands: vec![
+				commands::apistatus(),
+				commands::map(),
+				commands::ping(),
+			],
 			event_handler: |_ctx, event, _framework, _global_state| {
 				Box::pin(async {
 					debug!("Received event `{}`", event.name());
