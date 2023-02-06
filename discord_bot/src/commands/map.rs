@@ -40,7 +40,7 @@ pub async fn map(
 
 	ctx.send(|reply| {
 		reply.embed(|e| {
-			e.color((116, 128, 194))
+			e.color(ctx.color())
 				.title(&map.name)
 				.url(&map.url)
 				.thumbnail(&map.thumbnail)
@@ -63,6 +63,10 @@ pub async fn map(
 				.field("KZT", kzt_filter, true)
 				.field("SKZ", skz_filter, true)
 				.field("VNL", vnl_filter, true)
+				.footer(|f| {
+					f.text("<3 to kzgo.eu")
+						.icon_url(ctx.icon())
+				})
 		})
 	})
 	.await?;
