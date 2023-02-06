@@ -10,6 +10,7 @@ mod commands;
 mod error;
 mod global_maps;
 use global_maps::GlobalMap;
+mod db;
 
 use {
 	clap::{Parser, ValueEnum},
@@ -18,6 +19,7 @@ use {
 	log::{debug, info},
 	once_cell::sync::OnceCell,
 	poise::{
+		async_trait,
 		serenity_prelude::{GatewayIntents, GuildId, UserId},
 		Framework, FrameworkOptions, PrefixFrameworkOptions,
 	},
@@ -136,11 +138,11 @@ async fn main() -> Eyre<()> {
 			Box::pin(async move {
 				let commands = &framework.options().commands;
 				match &state.config.mode {
-					Mode::Dev => {
+					RegisterMode::Dev => {
 						let dev_guild = GuildId(state.config.dev_guild);
 						poise::builtins::register_in_guild(ctx, commands, dev_guild).await?;
 					}
-					Mode::Prod => {
+					RegisterMode::Prod => {
 						poise::builtins::register_globally(ctx, commands).await?;
 					}
 				}
@@ -182,7 +184,7 @@ struct Args {
 	///           when running in production.
 	#[arg(long)]
 	#[clap(default_value = "dev")]
-	pub mode: Mode,
+	pub mode: RegisterMode,
 
 	/// Run in debug mode.
 	#[arg(long)]
@@ -217,7 +219,7 @@ pub struct Config {
 	/// - `Prod`: commands will be registered on every guild the bot is on and allowed to register
 	///           commands on. This might take a while to reload and therefore should only be used
 	///           when running in production.
-	pub mode: Mode,
+	pub mode: RegisterMode,
 
 	/// The GuildID of the development server. This will be used for registering commands when
 	/// running in `Dev` mode.
@@ -240,7 +242,7 @@ pub struct Config {
 
 /// Which level to register commands on.
 #[derive(Debug, Clone, Deserialize, ValueEnum)]
-pub enum Mode {
+pub enum RegisterMode {
 	/// Commands will be registered on a single guild only. This is fast and useful for development.
 	Dev,
 
@@ -250,7 +252,7 @@ pub enum Mode {
 	Prod,
 }
 
-impl std::fmt::Display for Mode {
+impl std::fmt::Display for RegisterMode {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		write!(
 			f,
@@ -299,12 +301,18 @@ pub type Context<'ctx> = poise::Context<'ctx, GlobalState, crate::error::Error>;
 
 /// Convenience trait to access the Global State more easily. Should be self explanatory.
 #[allow(missing_docs)]
+#[async_trait]
 pub trait State {
 	fn config(&self) -> &Config;
 	fn database(&self) -> &Pool<MySql>;
 	fn gokz_client(&self) -> &gokz_rs::Client;
+	async fn find_by_id(&self, user_id: u64) -> Result<db::User, error::Error>;
+	async fn find_by_name(&self, user_name: &str) -> Result<db::User, error::Error>;
+	async fn find_by_steam_id(&self, steam_id: &SteamID) -> Result<db::User, error::Error>;
+	async fn find_by_mode(&self, mode: Mode) -> Result<db::User, error::Error>;
 }
 
+#[async_trait]
 impl State for Context<'_> {
 	fn config(&self) -> &Config {
 		&self.data().config
@@ -316,5 +324,49 @@ impl State for Context<'_> {
 
 	fn gokz_client(&self) -> &gokz_rs::Client {
 		&self.data().gokz_client
+	}
+
+	async fn find_by_id(&self, user_id: u64) -> Result<db::User, error::Error> {
+		Ok(sqlx::query_as::<_, db::UserSchema>(&format!(
+			"SELECT * FROM {} WHERE discord_id = {}",
+			&self.config().mysql_table,
+			user_id,
+		))
+		.fetch_one(self.database())
+		.await?
+		.into())
+	}
+
+	async fn find_by_name(&self, user_name: &str) -> Result<db::User, error::Error> {
+		Ok(sqlx::query_as::<_, db::UserSchema>(&format!(
+			r#"SELECT * FROM {} WHERE user_name = "{}""#,
+			&self.config().mysql_table,
+			user_name
+		))
+		.fetch_one(self.database())
+		.await?
+		.into())
+	}
+
+	async fn find_by_steam_id(&self, steam_id: &SteamID) -> Result<db::User, error::Error> {
+		Ok(sqlx::query_as::<_, db::UserSchema>(&format!(
+			r#"SELECT * FROM {} WHERE steam_id = "{}""#,
+			&self.config().mysql_table,
+			steam_id
+		))
+		.fetch_one(self.database())
+		.await?
+		.into())
+	}
+
+	async fn find_by_mode(&self, mode: Mode) -> Result<db::User, error::Error> {
+		Ok(sqlx::query_as::<_, db::UserSchema>(&format!(
+			r#"SELECT * FROM {} WHERE mode = "{}""#,
+			&self.config().mysql_table,
+			mode as u8
+		))
+		.fetch_one(self.database())
+		.await?
+		.into())
 	}
 }
