@@ -1,0 +1,9 @@
+log_level = "discord_bot=TRACE,gokz_rs=WARN"
+discord_token = "OTQ3NzkxMjY0MzMyNTIxNDcy.Gq34j3.3nubuk--kj7tNVr_dg_OV11HE6ctsCtiReo-2s"
+steam_token = "5CB3B36A517737DCBF69166E57688EA0"
+mode = "Dev"
+dev_guild = 999655451329298432
+owner_id = 291585142164815873
+report_channel = 1060824624180514876
+mysql_url = "mysql://schnose:PGepSatCL4o4if5HvZXd5nMtZcqGoHmLnBqH69XMgojpA7VW4dboj5Uw6Smsu4mT23fHbLGVaYv7gGNDRLVEsiifXvch5j5et9bcqxc5k8LdKDGBpiJRKLTQfmxS7vxW@192.168.178.160/schnose"
+mysql_table = "discord_users"
