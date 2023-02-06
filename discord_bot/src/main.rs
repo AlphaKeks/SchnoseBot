@@ -15,7 +15,7 @@ mod db;
 use {
 	clap::{Parser, ValueEnum},
 	color_eyre::Result as Eyre,
-	gokz_rs::prelude::*,
+	gokz_rs::{prelude::*, GlobalAPI},
 	log::{debug, info},
 	once_cell::sync::OnceCell,
 	poise::{
@@ -23,6 +23,7 @@ use {
 		serenity_prelude::{GatewayIntents, GuildId, UserId},
 		Framework, FrameworkOptions, PrefixFrameworkOptions,
 	},
+	regex::Regex,
 	serde::Deserialize,
 	sqlx::{mysql::MySqlPoolOptions, MySql, Pool},
 	std::{collections::HashSet, path::PathBuf},
@@ -81,6 +82,9 @@ impl GlobalMapsContainer for OnceCell<Vec<GlobalMap>> {
 	}
 }
 
+/// Regex for testing for Discord mentions
+static MENTION_REGEX: OnceCell<Regex> = OnceCell::new();
+
 #[tokio::main]
 async fn main() -> Eyre<()> {
 	color_eyre::install()?;
@@ -107,7 +111,12 @@ async fn main() -> Eyre<()> {
 
 	GLOBAL_MAPS
 		.set(global_maps)
-		.expect("This is the first use of the Cell.");
+		.expect("This is the first use of this Cell.");
+
+	let mention_regex = Regex::new(r#""#).expect("Failed to construct Mention Regex.");
+	MENTION_REGEX
+		.set(mention_regex)
+		.expect("This is the first use of this Cell.");
 
 	let framework = Framework::builder()
 		.options(FrameworkOptions {
@@ -372,5 +381,77 @@ impl State for Context<'_> {
 		.fetch_one(self.database())
 		.await?
 		.into())
+	}
+}
+
+/// Enum for `player` parameters on commands.
+#[derive(Debug, Clone)]
+pub enum Target {
+	/// The user didn't specify a target -> we take their UserID.
+	None(u64),
+
+	/// The user @mention'd somebody -> we take that UserID.
+	Mention(u64),
+
+	/// The user put in a valid `SteamID` -> we take that.
+	SteamID(SteamID),
+
+	/// The user specified none of the above. We interpret that as a name.
+	Name(String),
+}
+
+impl std::str::FromStr for Target {
+	type Err = error::Error;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		if let Ok(steam_id) = SteamID::new(s) {
+			return Ok(Self::SteamID(steam_id));
+		}
+
+		if MENTION_REGEX
+			.get()
+			.expect("The Cell has definitely been constructed already.")
+			.is_match(s)
+		{
+			if let Ok(user_id) = s
+				.replace("<@", "")
+				.replace('>', "")
+				.parse::<u64>()
+			{
+				return Ok(Self::Mention(user_id));
+			}
+		}
+
+		Ok(Self::Name(s.to_owned()))
+	}
+}
+
+impl Target {
+	async fn into_steam_id(self, ctx: &Context<'_>) -> Result<SteamID, error::Error> {
+		let missing_steam_id = || error::Error::MissingSteamID {
+			blame_user: matches!(self, Self::None(_)),
+		};
+
+		match self {
+			Self::None(user_id) | Self::Mention(user_id) => Ok(ctx
+				.find_by_id(user_id)
+				.await?
+				.steam_id
+				.ok_or_else(missing_steam_id)?),
+			Self::SteamID(steam_id) => Ok(steam_id),
+			Self::Name(ref name) => {
+				if let Ok(user) = ctx.find_by_name(name).await {
+					user.steam_id
+						.ok_or_else(missing_steam_id)
+				} else {
+					let player = GlobalAPI::get_player(
+						&PlayerIdentifier::Name(name.to_owned()),
+						ctx.gokz_client(),
+					)
+					.await?;
+					Ok(SteamID::new(&player.steam_id)?)
+				}
+			}
+		}
 	}
 }
