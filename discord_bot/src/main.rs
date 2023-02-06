@@ -11,6 +11,7 @@ mod error;
 mod global_maps;
 use global_maps::GlobalMap;
 mod db;
+mod gokz_ext;
 
 use {
 	clap::{Parser, ValueEnum},
@@ -129,6 +130,7 @@ async fn main() -> Eyre<()> {
 			commands: vec![
 				commands::apistatus(),
 				commands::map(),
+				commands::pb(),
 				commands::ping(),
 			],
 			event_handler: |_ctx, event, _framework, _global_state| {
@@ -290,6 +292,12 @@ pub struct GlobalState {
 
 	/// HTTP Client for making requests with `gokz_rs`.
 	pub gokz_client: gokz_rs::Client,
+
+	/// #7480c2
+	pub color: (u8, u8, u8),
+
+	/// (͡ ͡° ͜ つ ͡͡°)
+	pub icon: String,
 }
 
 impl GlobalState {
@@ -305,6 +313,8 @@ impl GlobalState {
 			config,
 			database,
 			gokz_client: gokz_rs::Client::new(),
+            color: (116, 128, 194),
+            icon: String::from("https://media.discordapp.net/attachments/981130651094900756/1068608508645347408/schnose.png")
 		}
 	}
 }
@@ -319,6 +329,8 @@ pub trait State {
 	fn config(&self) -> &Config;
 	fn database(&self) -> &Pool<MySql>;
 	fn gokz_client(&self) -> &gokz_rs::Client;
+	fn color(&self) -> (u8, u8, u8);
+	fn icon(&self) -> &str;
 	async fn find_by_id(&self, user_id: u64) -> Result<db::User, error::Error>;
 	async fn find_by_name(&self, user_name: &str) -> Result<db::User, error::Error>;
 	async fn find_by_steam_id(&self, steam_id: &SteamID) -> Result<db::User, error::Error>;
@@ -337,6 +349,14 @@ impl State for Context<'_> {
 
 	fn gokz_client(&self) -> &gokz_rs::Client {
 		&self.data().gokz_client
+	}
+
+	fn color(&self) -> (u8, u8, u8) {
+		self.data().color
+	}
+
+	fn icon(&self) -> &str {
+		&self.data().icon
 	}
 
 	async fn find_by_id(&self, user_id: u64) -> Result<db::User, error::Error> {
