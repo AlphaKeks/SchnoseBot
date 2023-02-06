@@ -1,0 +1,9 @@
+log_level = "discord_bot=TRACE,gokz_rs=WARN"
+discord_token = ""
+steam_token = ""
+mode = "Dev"
+dev_guild = 0
+owner_id = 0
+report_channel = 0
+mysql_url = ""
+mysql_table = ""

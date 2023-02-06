@@ -1,0 +1,51 @@
+[package]
+name = "discord_bot"
+version = "0.13.0"
+edition = "2021"
+
+authors = ["AlphaKeks <alphakeks@dawn.sh>"]
+repository = "https://github.com/AlphaKeks/SchnoseBot"
+readme = "./README.md"
+license-file = "../LICENSE"
+publish = false
+
+[dependencies]
+# error handling
+color-eyre = { workspace = true }
+
+# logging
+log = { workspace = true }
+env_logger = { workspace = true }
+
+# CLI
+clap = { workspace = true }
+
+# parsing
+serde = { workspace = true }
+serde_json = { workspace = true }
+toml = { workspace = true }
+
+# time
+chrono = { workspace = true }
+
+# GOKZ
+gokz_rs = { workspace = true }
+
+# async
+tokio = { workspace = true }
+futures = { workspace = true }
+once_cell = { workspace = true }
+
+# SQL
+sqlx = { workspace = true }
+
+# Discord
+serenity = { version = "0.11", default_features = false, features = [
+	"builder",
+	"cache",
+	"client",
+	"gateway",
+	"model",
+	"rustls_backend",
+] }
+poise = "0.5"
