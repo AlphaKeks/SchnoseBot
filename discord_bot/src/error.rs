@@ -91,6 +91,23 @@ impl From<gokz_rs::prelude::Error> for Error {
 	}
 }
 
+impl From<sqlx::Error> for Error {
+	fn from(value: sqlx::Error) -> Self {
+		warn!("DB ERROR `{}`", value);
+		match value {
+			sqlx::Error::Database(why) => {
+				warn!("{}", why);
+				Self::DatabaseAccess
+			}
+			sqlx::Error::RowNotFound => {
+				dbg!(value.to_string());
+				Self::MissingMode
+			}
+			_ => Self::DatabaseAccess,
+		}
+	}
+}
+
 impl Error {
 	pub async fn handle_command(error: poise::FrameworkError<'_, crate::GlobalState, Error>) {
 		error!("Slash Command failed. {error:?}");
