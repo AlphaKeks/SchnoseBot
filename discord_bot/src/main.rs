@@ -129,6 +129,7 @@ async fn main() -> Eyre<()> {
 			},
 			commands: vec![
 				commands::apistatus(),
+				commands::db(),
 				commands::map(),
 				commands::pb(),
 				commands::ping(),
@@ -300,6 +301,9 @@ pub struct GlobalState {
 
 	/// (͡ ͡° ͜ つ ͡͡°)
 	pub icon: String,
+
+	/// (͡ ͡° ͜ つ ͡͡°)
+	pub schnose: String,
 }
 
 impl GlobalState {
@@ -316,7 +320,8 @@ impl GlobalState {
 			database,
 			gokz_client: gokz_rs::Client::new(),
             color: (116, 128, 194),
-            icon: String::from("https://media.discordapp.net/attachments/981130651094900756/1068608508645347408/schnose.png")
+            icon: String::from("https://media.discordapp.net/attachments/981130651094900756/1068608508645347408/schnose.png"),
+            schnose: String::from("(͡ ͡° ͜ つ ͡͡°)")
 		}
 	}
 }
@@ -333,6 +338,7 @@ pub trait State {
 	fn gokz_client(&self) -> &gokz_rs::Client;
 	fn color(&self) -> (u8, u8, u8);
 	fn icon(&self) -> &str;
+	fn schnose(&self) -> &str;
 	async fn find_by_id(&self, user_id: u64) -> Result<db::User, error::Error>;
 	async fn find_by_name(&self, user_name: &str) -> Result<db::User, error::Error>;
 	async fn find_by_steam_id(&self, steam_id: &SteamID) -> Result<db::User, error::Error>;
@@ -359,6 +365,10 @@ impl State for Context<'_> {
 
 	fn icon(&self) -> &str {
 		&self.data().icon
+	}
+
+	fn schnose(&self) -> &str {
+		&self.data().schnose
 	}
 
 	async fn find_by_id(&self, user_id: u64) -> Result<db::User, error::Error> {

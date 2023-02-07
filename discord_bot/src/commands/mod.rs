@@ -8,6 +8,9 @@ use {
 mod apistatus;
 pub use apistatus::apistatus;
 
+mod db;
+pub use db::db;
+
 mod map;
 pub use map::map;
 
@@ -74,5 +77,20 @@ pub enum RuntypeChoice {
 impl From<RuntypeChoice> for bool {
 	fn from(value: RuntypeChoice) -> Self {
 		matches!(value, RuntypeChoice::TP)
+	}
+}
+
+#[derive(Debug, Clone, Copy, ChoiceParameter)]
+#[allow(clippy::upper_case_acronyms)]
+pub enum BoolChoice {
+	#[name = "Yes"]
+	Yes = 1,
+	#[name = "No"]
+	No = 0,
+}
+
+impl From<BoolChoice> for bool {
+	fn from(value: BoolChoice) -> Self {
+		matches!(value, BoolChoice::Yes)
 	}
 }
