@@ -137,6 +137,7 @@ async fn main() -> Eyre<()> {
 				commands::pb(),
 				commands::ping(),
 				commands::recent(),
+				commands::report(),
 				commands::setsteam(),
 				commands::wr(),
 			],
@@ -333,6 +334,10 @@ impl GlobalState {
 /// Global `Context` type which gets passed to events, commands, etc.
 pub type Context<'ctx> = poise::Context<'ctx, GlobalState, crate::error::Error>;
 
+/// Global `ApplicationContext` type which gets passed to events, commands, etc.
+pub type ApplicationContext<'ctx> =
+	poise::ApplicationContext<'ctx, GlobalState, crate::error::Error>;
+
 /// Convenience trait to access the Global State more easily. Should be self explanatory.
 #[allow(missing_docs)]
 #[async_trait]
@@ -351,6 +356,77 @@ pub trait State {
 
 #[async_trait]
 impl State for Context<'_> {
+	fn config(&self) -> &Config {
+		&self.data().config
+	}
+
+	fn database(&self) -> &Pool<MySql> {
+		&self.data().database
+	}
+
+	fn gokz_client(&self) -> &gokz_rs::Client {
+		&self.data().gokz_client
+	}
+
+	fn color(&self) -> (u8, u8, u8) {
+		self.data().color
+	}
+
+	fn icon(&self) -> &str {
+		&self.data().icon
+	}
+
+	fn schnose(&self) -> &str {
+		&self.data().schnose
+	}
+
+	async fn find_by_id(&self, user_id: u64) -> Result<db::User, error::Error> {
+		Ok(sqlx::query_as::<_, db::UserSchema>(&format!(
+			"SELECT * FROM {} WHERE discord_id = {}",
+			&self.config().mysql_table,
+			user_id,
+		))
+		.fetch_one(self.database())
+		.await?
+		.into())
+	}
+
+	async fn find_by_name(&self, user_name: &str) -> Result<db::User, error::Error> {
+		Ok(sqlx::query_as::<_, db::UserSchema>(&format!(
+			r#"SELECT * FROM {} WHERE user_name = "{}""#,
+			&self.config().mysql_table,
+			user_name
+		))
+		.fetch_one(self.database())
+		.await?
+		.into())
+	}
+
+	async fn find_by_steam_id(&self, steam_id: &SteamID) -> Result<db::User, error::Error> {
+		Ok(sqlx::query_as::<_, db::UserSchema>(&format!(
+			r#"SELECT * FROM {} WHERE steam_id = "{}""#,
+			&self.config().mysql_table,
+			steam_id
+		))
+		.fetch_one(self.database())
+		.await?
+		.into())
+	}
+
+	async fn find_by_mode(&self, mode: Mode) -> Result<db::User, error::Error> {
+		Ok(sqlx::query_as::<_, db::UserSchema>(&format!(
+			r#"SELECT * FROM {} WHERE mode = "{}""#,
+			&self.config().mysql_table,
+			mode as u8
+		))
+		.fetch_one(self.database())
+		.await?
+		.into())
+	}
+}
+
+#[async_trait]
+impl State for ApplicationContext<'_> {
 	fn config(&self) -> &Config {
 		&self.data().config
 	}

@@ -1,0 +1,64 @@
+use {
+	crate::{error::Error, ApplicationContext, State},
+	chrono::Utc,
+	log::trace,
+	poise::{
+		execute_modal,
+		serenity_prelude::{CacheHttp, ChannelId},
+		Modal,
+	},
+	std::time::Duration,
+};
+
+#[derive(Debug, Default, Modal)]
+#[name = "Report Issue / Suggest change"]
+struct Report {
+	#[name = "Title"]
+	#[placeholder = "<title>"]
+	title: String,
+
+	#[name = "Description"]
+	#[placeholder = "Describe your issue here. Please provide Screenshots if you can."]
+	#[paragraph]
+	description: String,
+}
+
+#[poise::command(slash_command, on_error = "Error::handle_command")]
+pub async fn report(ctx: ApplicationContext<'_>) -> Result<(), Error> {
+	trace!("[/report] User: {}", ctx.author().tag());
+
+	let Some(modal) = execute_modal(ctx, Some(Report::default()), Some(Duration::from_secs(300))).await? else {
+		// User didn't submit modal in time.
+		return Ok(());
+	};
+
+	ChannelId(ctx.config().report_channel)
+		.send_message(ctx.serenity_context().http(), |msg| {
+			msg.embed(|e| {
+				e.title(modal.title)
+					.color(ctx.color())
+					.description(modal.description)
+					.thumbnail(
+						ctx.author()
+							.avatar_url()
+							.unwrap_or_else(|| ctx.author().default_avatar_url()),
+					)
+					.footer(|f| {
+						f.text(format!(
+							"User: {} | {}",
+							ctx.author().tag(),
+							Utc::now().format("%d/%m/%Y - %H:%M:%S")
+						))
+					})
+			})
+		})
+		.await?;
+
+	ctx.send(|reply| {
+		reply.ephemeral(true);
+		reply.content("Thanks for your submission!")
+	})
+	.await?;
+
+	Ok(())
+}
