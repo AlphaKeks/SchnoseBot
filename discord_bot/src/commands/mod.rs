@@ -11,6 +11,9 @@ pub use apistatus::apistatus;
 mod db;
 pub use db::db;
 
+mod invite;
+pub use invite::invite;
+
 mod map;
 pub use map::map;
 
