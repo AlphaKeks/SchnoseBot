@@ -17,6 +17,9 @@ pub use pb::pb;
 mod ping;
 pub use ping::ping;
 
+mod wr;
+pub use wr::wr;
+
 /// Provides autocompletion for map names on certain commands using the
 async fn autocomplete_map<'a>(
 	_: Context<'a>, input: &'a str,

@@ -49,7 +49,7 @@ pub async fn pb(
 	let replay_links = Record::formatted_replay_links(tp.as_ref().ok(), pro.as_ref().ok());
 	let view_links = Record::formatted_view_links(tp.as_ref().ok(), pro.as_ref().ok());
 
-	let player_name = (|| {
+	let player_name = || {
 		if let Ok(tp) = &tp {
 			if let Some(name) = &tp.player_name {
 				return name.to_owned();
@@ -63,7 +63,7 @@ pub async fn pb(
 		}
 
 		String::from("unknown")
-	})();
+	};
 
 	let tp_time = if let Ok(tp) = &tp {
 		let place = GlobalAPI::get_place(tp.id, ctx.gokz_client())
@@ -71,7 +71,7 @@ pub async fn pb(
 			.map(|place| format!("[#{place}]"))
 			.unwrap_or_default();
 
-		format!("{} {}\nby {}", fmt_time(tp.time), place, &player_name)
+		format!("{} {}\nby {}", fmt_time(tp.time), place, player_name())
 	} else {
 		String::from("😔")
 	};
@@ -82,7 +82,7 @@ pub async fn pb(
 			.map(|place| format!("[#{place}]"))
 			.unwrap_or_default();
 
-		format!("{} {}\nby {}", fmt_time(pro.time), place, &player_name)
+		format!("{} {}\nby {}", fmt_time(pro.time), place, player_name())
 	} else {
 		String::from("😔")
 	};
@@ -92,7 +92,7 @@ pub async fn pb(
 			e.color(ctx.color())
 				.title(format!(
 					"[PB] {} on {} (T{})",
-					&player_name,
+					player_name(),
 					&map_identifier.to_string(),
 					&map.tier
 				))
