@@ -1,5 +1,5 @@
 use {
-	super::{autocomplete_map, ModeChoice},
+	super::{autocompletion::autocomplete_map, choices::ModeChoice},
 	crate::{
 		error::Error,
 		gokz_ext::{fmt_time, GokzRecord},

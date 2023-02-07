@@ -1,5 +1,5 @@
 use {
-	super::autocomplete_map,
+	super::autocompletion::autocomplete_map,
 	crate::{error::Error, Context, GlobalMapsContainer, State, GLOBAL_MAPS},
 	gokz_rs::{prelude::*, GlobalAPI},
 	log::trace,

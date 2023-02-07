@@ -1,5 +1,5 @@
 use {
-	super::DBModeChoice,
+	super::choices::DBModeChoice,
 	crate::{error::Error, Context, State},
 	gokz_rs::prelude::*,
 	log::trace,

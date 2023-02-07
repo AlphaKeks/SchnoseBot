@@ -1,5 +1,5 @@
 use {
-	super::BoolChoice,
+	super::choices::BoolChoice,
 	crate::{db::User, error::Error, Context, State},
 	log::trace,
 };
