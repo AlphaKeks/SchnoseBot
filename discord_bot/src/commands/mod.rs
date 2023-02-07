@@ -139,4 +139,76 @@ mod choices {
 	}
 }
 
-mod pagination {}
+mod pagination {
+	use {
+		crate::{error::Error, Context},
+		poise::serenity_prelude::{
+			CollectComponentInteraction, CreateEmbed, InteractionResponseType,
+		},
+		std::time::Duration,
+	};
+
+	pub async fn paginate(ctx: &Context<'_>, embeds: Vec<CreateEmbed>) -> Result<(), Error> {
+		let ctx_id = ctx.id();
+		let prev_id = format!("{ctx_id}_prev");
+		let next_id = format!("{ctx_id}_next");
+
+		// Send initial reply
+		ctx.send(|reply| {
+			reply
+				.embed(|e| {
+					*e = embeds[0].clone();
+					e
+				})
+				.components(|c| {
+					c.create_action_row(|row| {
+						row.create_button(|b| b.custom_id(&prev_id).label('◀'))
+							.create_button(|b| b.custom_id(&next_id).label('▶'))
+					})
+				})
+		})
+		.await?;
+
+		// Listen for button presses
+		let mut current_page = 0;
+		while let Some(interaction) = CollectComponentInteraction::new(ctx)
+			.filter(move |press| {
+				press
+					.data
+					.custom_id
+					.starts_with(&ctx_id.to_string())
+			})
+			.timeout(Duration::from_secs(600))
+			.await
+		{
+			if interaction.data.custom_id != prev_id && interaction.data.custom_id != next_id {
+				continue;
+			}
+
+			if interaction.data.custom_id == prev_id {
+				if current_page == 0 {
+					current_page = embeds.len() - 1;
+				} else {
+					current_page -= 1;
+				}
+			} else {
+				current_page += 1;
+				if current_page >= embeds.len() {
+					current_page = 0;
+				}
+			}
+
+			interaction
+				.create_interaction_response(ctx, |response| {
+					response
+						.kind(InteractionResponseType::UpdateMessage)
+						.interaction_response_data(|data| {
+							data.set_embed(embeds[current_page].clone())
+						})
+				})
+				.await?;
+		}
+
+		Ok(())
+	}
+}

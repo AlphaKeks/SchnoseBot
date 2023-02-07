@@ -1,6 +1,5 @@
-use poise::serenity_prelude::CreateEmbed;
-
 use {
+	super::pagination::paginate,
 	crate::{
 		error::Error,
 		gokz_ext::{fmt_time, GokzRecord},
@@ -9,6 +8,7 @@ use {
 	chrono::NaiveDateTime,
 	gokz_rs::{prelude::*, GlobalAPI},
 	log::trace,
+	poise::serenity_prelude::CreateEmbed,
 };
 
 #[poise::command(slash_command, on_error = "Error::handle_command")]
@@ -38,11 +38,12 @@ pub async fn recent(
 	};
 	let player = PlayerIdentifier::SteamID(steam_id);
 
-	let recent_records = GlobalAPI::get_recent(&player, Some(1), ctx.gokz_client()).await?;
+	let recent_records = GlobalAPI::get_recent(&player, Some(10), ctx.gokz_client()).await?;
 
 	let mut embeds = Vec::new();
+	let max_records = recent_records.len();
 
-	for record in recent_records {
+	for (i, record) in recent_records.into_iter().enumerate() {
 		let replay_link = record.replay_link();
 		let view_link = record.view_link();
 
@@ -98,20 +99,14 @@ pub async fn recent(
 				true,
 			)
 			.footer(|f| {
-				f.text(format!("Mode: {mode}"))
+				f.text(format!("Mode: {} | Page: {} / {}", mode, i + 1, max_records))
 					.icon_url(ctx.icon())
 			});
 
 		embeds.push(embed)
 	}
 
-	ctx.send(|replay| {
-		replay.embed(|e| {
-			*e = embeds[0].clone();
-			e
-		})
-	})
-	.await?;
+	paginate(&ctx, embeds).await?;
 
 	Ok(())
 }
