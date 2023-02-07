@@ -1,5 +1,5 @@
 use {
-	crate::{Context, GlobalMapsContainer, GLOBAL_MAPS},
+	crate::{error, Context, GlobalMapsContainer, GLOBAL_MAPS},
 	futures::StreamExt,
 	gokz_rs::prelude::*,
 	poise::ChoiceParameter,
@@ -16,6 +16,9 @@ pub use invite::invite;
 
 mod map;
 pub use map::map;
+
+mod mode;
+pub use mode::mode;
 
 mod pb;
 pub use pb::pb;
@@ -64,6 +67,31 @@ impl From<ModeChoice> for Mode {
 			ModeChoice::KZTimer => Self::KZTimer,
 			ModeChoice::SimpleKZ => Self::SimpleKZ,
 			ModeChoice::Vanilla => Self::Vanilla,
+		}
+	}
+}
+
+#[derive(Debug, Clone, Copy, ChoiceParameter)]
+pub enum DBModeChoice {
+	#[name = "None"]
+	None = 0,
+	#[name = "KZTimer"]
+	KZTimer = 200,
+	#[name = "SimpleKZ"]
+	SimpleKZ = 201,
+	#[name = "Vanilla"]
+	Vanilla = 202,
+}
+
+impl TryFrom<DBModeChoice> for Mode {
+	type Error = error::Error;
+
+	fn try_from(value: DBModeChoice) -> Result<Self, Self::Error> {
+		match value {
+			DBModeChoice::None => Err(error::Error::MissingMode),
+			DBModeChoice::KZTimer => Ok(Self::KZTimer),
+			DBModeChoice::SimpleKZ => Ok(Self::SimpleKZ),
+			DBModeChoice::Vanilla => Ok(Self::Vanilla),
 		}
 	}
 }

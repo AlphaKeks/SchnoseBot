@@ -19,6 +19,9 @@ pub enum Error {
 	/// Failed to update an entry in the database.
 	DatabaseUpdate,
 
+	/// Failed to find any database entries for a given user.
+	NoDatabaseEntries,
+
 	/// The user didn't specify a `SteamID` and also has no database entries for it.
 	MissingSteamID {
 		/// If the user @mention'd somebody, the blame is not on them. If they didn't specify any
@@ -53,6 +56,7 @@ impl std::fmt::Display for Error {
 				Error::MapNotGlobal => "The map you specified is not global.",
 				Error::DatabaseAccess => "Failed to access the database.",
 				Error::DatabaseUpdate => "Failed to update an entry in the database.",
+                Error::NoDatabaseEntries => "No database entries found.",
 				Error::MissingSteamID { blame_user } => if *blame_user {
                     "You didn't specify a SteamID and also didn't set it with `/setsteam`. Please specify a SteamID or save yours with `/setsteam`."
                 } else {
@@ -97,15 +101,15 @@ impl From<gokz_rs::prelude::Error> for Error {
 
 impl From<sqlx::Error> for Error {
 	fn from(value: sqlx::Error) -> Self {
-		warn!("DB ERROR `{}`", value);
+		warn!("DB ERROR `{value:?}`");
 		match value {
 			sqlx::Error::Database(why) => {
-				warn!("{}", why);
+				warn!("{why:?}");
 				Self::DatabaseAccess
 			}
 			sqlx::Error::RowNotFound => {
-				dbg!(value.to_string());
-				Self::MissingMode
+				warn!("{}", value.to_string());
+				Self::NoDatabaseEntries
 			}
 			_ => Self::DatabaseAccess,
 		}
