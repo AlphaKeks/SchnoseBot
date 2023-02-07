@@ -29,6 +29,9 @@ pub use ping::ping;
 mod recent;
 pub use recent::recent;
 
+mod setsteam;
+pub use setsteam::setsteam;
+
 mod wr;
 pub use wr::wr;
 

@@ -136,6 +136,7 @@ async fn main() -> Eyre<()> {
 				commands::pb(),
 				commands::ping(),
 				commands::recent(),
+				commands::setsteam(),
 				commands::wr(),
 			],
 			event_handler: |_ctx, event, _framework, _global_state| {
