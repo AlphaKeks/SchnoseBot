@@ -20,6 +20,9 @@ pub use map::map;
 mod mode;
 pub use mode::mode;
 
+mod nocrouch;
+pub use nocrouch::nocrouch;
+
 mod pb;
 pub use pb::pb;
 

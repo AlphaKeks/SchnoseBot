@@ -133,6 +133,7 @@ async fn main() -> Eyre<()> {
 				commands::invite(),
 				commands::map(),
 				commands::mode(),
+				commands::nocrouch(),
 				commands::pb(),
 				commands::ping(),
 				commands::recent(),
