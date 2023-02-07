@@ -17,6 +17,9 @@ pub use pb::pb;
 mod ping;
 pub use ping::ping;
 
+mod recent;
+pub use recent::recent;
+
 mod wr;
 pub use wr::wr;
 

@@ -37,6 +37,9 @@ pub enum Error {
 
 	/// An error from the `gokz_rs` crate.
 	GOKZ(String),
+
+	/// No records were found for a given query.
+	NoRecords,
 }
 
 impl std::fmt::Display for Error {
@@ -58,7 +61,8 @@ impl std::fmt::Display for Error {
 				Error::MissingMode => "You didn't specify a mode and also didn't set your preference with `/mode`. Please specify one or use `/mode` to set a preference.",
 				Error::ParseJSON => "Failed to parse JSON.",
 				Error::InputOutOfRange => "Your input was out of range. Please provide some realistic values.",
-				Error::GOKZ(msg) => msg
+				Error::GOKZ(msg) => msg,
+                Error::NoRecords => "No records found."
 			}
 		)
 	}
