@@ -55,6 +55,9 @@ pub use setsteam::setsteam;
 mod top;
 pub use top::top;
 
+mod unfinished;
+pub use unfinished::unfinished;
+
 mod wr;
 pub use wr::wr;
 
@@ -185,6 +188,20 @@ mod choices {
 
 		#[name = "Death"]
 		Death = 7,
+	}
+
+	impl From<TierChoice> for Tier {
+		fn from(value: TierChoice) -> Self {
+			match value {
+				TierChoice::VeryEasy => Self::VeryEasy,
+				TierChoice::Easy => Self::Easy,
+				TierChoice::Medium => Self::Medium,
+				TierChoice::Hard => Self::Hard,
+				TierChoice::VeryHard => Self::VeryHard,
+				TierChoice::Extreme => Self::Extreme,
+				TierChoice::Death => Self::Death,
+			}
+		}
 	}
 }
 
