@@ -7,3 +7,7 @@ owner_id = 0
 report_channel = 0
 mysql_url = ""
 mysql_table = ""
+restart_command = ""
+workspace_directory = ""
+bot_directory = ""
+jobs = 1

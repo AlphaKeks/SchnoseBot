@@ -51,6 +51,18 @@ pub enum Error {
 	/// gets populated right at the start (and should panic if something goes wrong) but you never
 	/// know ¯\_(ツ)_/¯
 	EmptyMapCache,
+
+	/// Failed to restart the bot's process
+	BotRestart,
+
+	/// Failed to git pull
+	GitPull,
+
+	/// Failed to clean target dir
+	CleanTargetDir,
+
+	/// Failed to compile
+	Build,
 }
 
 impl std::fmt::Display for Error {
@@ -64,19 +76,23 @@ impl std::fmt::Display for Error {
 				Error::MapNotGlobal => "The map you specified is not global.",
 				Error::DatabaseAccess => "Failed to access the database.",
 				Error::DatabaseUpdate => "Failed to update an entry in the database.",
-                Error::NoDatabaseEntries => "No database entries found.",
+				Error::NoDatabaseEntries => "No database entries found.",
 				Error::MissingSteamID { blame_user } => if *blame_user {
-                    "You didn't specify a SteamID and also didn't set it with `/setsteam`. Please specify a SteamID or save yours with `/setsteam`."
-                } else {
-                    "The user you @mention'd didn't save their SteamID in my database."
-                }
+					"You didn't specify a SteamID and also didn't set it with `/setsteam`. Please specify a SteamID or save yours with `/setsteam`."
+				} else {
+					"The user you @mention'd didn't save their SteamID in my database."
+				}
 				Error::MissingMode => "You didn't specify a mode and also didn't set your preference with `/mode`. Please specify one or use `/mode` to set a preference.",
-                Error::NoPlayerInfo => "You didn't specify a `player` parameter and don't have any database entries. Please specify a `player` or set your SteamID via `/setsteam`.",
+				Error::NoPlayerInfo => "You didn't specify a `player` parameter and don't have any database entries. Please specify a `player` or set your SteamID via `/setsteam`.",
 				Error::ParseJSON => "Failed to parse JSON.",
 				Error::InputOutOfRange => "Your input was out of range. Please provide some realistic values.",
 				Error::GOKZ(msg) => msg,
-                Error::NoRecords => "No records found.",
-                Error::EmptyMapCache => unreachable!("How did we get here?")
+				Error::NoRecords => "No records found.",
+				Error::EmptyMapCache => unreachable!("How did we get here?"),
+				Error::BotRestart => "Failed to restart.",
+                Error::GitPull => "Failed to pull from GitHub.",
+                Error::CleanTargetDir => "Failed to clean build directory.",
+                Error::Build => "Failed to compile."
 			}
 		)
 	}

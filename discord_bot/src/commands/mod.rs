@@ -40,14 +40,23 @@ pub use ping::ping;
 mod profile;
 pub use profile::profile;
 
+mod pull;
+pub use pull::pull;
+
 mod random;
 pub use random::random;
 
 mod recent;
 pub use recent::recent;
 
+mod recompile;
+pub use recompile::recompile;
+
 mod report;
 pub use report::report;
+
+mod restart;
+pub use restart::restart;
 
 mod setsteam;
 pub use setsteam::setsteam;

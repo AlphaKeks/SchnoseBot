@@ -12,6 +12,7 @@ mod global_maps;
 use global_maps::GlobalMap;
 mod db;
 mod gokz_ext;
+mod process;
 mod steam_ext;
 
 use {
@@ -143,9 +144,12 @@ async fn main() -> Eyre<()> {
 				commands::pb(),
 				commands::ping(),
 				commands::profile(),
+				commands::pull(),
 				commands::random(),
 				commands::recent(),
+				commands::recompile(),
 				commands::report(),
+				commands::restart(),
 				commands::setsteam(),
 				commands::top(),
 				commands::unfinished(),
@@ -271,6 +275,18 @@ pub struct Config {
 
 	/// MySQL table name for storing user data.
 	pub mysql_table: String,
+
+	/// Shell command to restart the bot's process.
+	pub restart_command: String,
+
+	/// Directory in which the bot repository is located.
+	pub workspace_directory: String,
+
+	/// Directory for the bot's crate.
+	pub bot_directory: String,
+
+	/// How many threads to use for compilation
+	pub jobs: u8,
 }
 
 /// Which level to register commands on.
