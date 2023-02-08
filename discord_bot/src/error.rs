@@ -32,6 +32,9 @@ pub enum Error {
 	/// The user didn't specify a `Mode` and also has no database entries for it.
 	MissingMode,
 
+	/// No SteamID or Name was found and `player` param wasn't specified
+	NoPlayerInfo,
+
 	/// Failed to parse JSON.
 	ParseJSON,
 
@@ -63,6 +66,7 @@ impl std::fmt::Display for Error {
                     "The user you @mention'd didn't save their SteamID in my database."
                 }
 				Error::MissingMode => "You didn't specify a mode and also didn't set your preference with `/mode`. Please specify one or use `/mode` to set a preference.",
+                Error::NoPlayerInfo => "You didn't specify a `player` parameter and don't have any database entries. Please specify a `player` or set your SteamID via `/setsteam`.",
 				Error::ParseJSON => "Failed to parse JSON.",
 				Error::InputOutOfRange => "Your input was out of range. Please provide some realistic values.",
 				Error::GOKZ(msg) => msg,

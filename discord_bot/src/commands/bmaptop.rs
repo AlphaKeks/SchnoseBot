@@ -22,13 +22,14 @@ pub async fn bmaptop(
 
 	let db_entry = ctx
 		.find_by_id(*ctx.author().id.as_u64())
-		.await?;
+		.await;
 
 	let map = GLOBAL_MAPS.find(&MapIdentifier::Name(map_name))?;
 	let map_identifier = MapIdentifier::Name(map.name);
 	let mode = match mode {
 		Some(choice) => Mode::from(choice),
 		None => db_entry
+			.map_err(|_| Error::MissingMode)?
 			.mode
 			.ok_or(Error::MissingMode)?,
 	};

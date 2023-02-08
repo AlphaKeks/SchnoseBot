@@ -12,6 +12,7 @@ mod global_maps;
 use global_maps::GlobalMap;
 mod db;
 mod gokz_ext;
+mod steam_ext;
 
 use {
 	clap::{Parser, ValueEnum},
@@ -131,6 +132,7 @@ async fn main() -> Eyre<()> {
 				commands::apistatus(),
 				commands::bmaptop(),
 				commands::bpb(),
+				commands::btop(),
 				commands::bwr(),
 				commands::db(),
 				commands::invite(),
@@ -140,9 +142,11 @@ async fn main() -> Eyre<()> {
 				commands::nocrouch(),
 				commands::pb(),
 				commands::ping(),
+				commands::profile(),
 				commands::recent(),
 				commands::report(),
 				commands::setsteam(),
+				commands::top(),
 				commands::wr(),
 			],
 			event_handler: |_ctx, event, _framework, _global_state| {
@@ -543,29 +547,45 @@ impl std::str::FromStr for Target {
 }
 
 impl Target {
-	async fn into_steam_id(self, ctx: &Context<'_>) -> Result<SteamID, error::Error> {
-		let missing_steam_id = || error::Error::MissingSteamID {
-			blame_user: matches!(self, Self::None(_)),
-		};
-
+	async fn into_player(self, ctx: &Context<'_>) -> Result<PlayerIdentifier, error::Error> {
 		match self {
-			Self::None(user_id) | Self::Mention(user_id) => Ok(ctx
+			Self::None(user_id) => {
+				if let Ok(user) = ctx.find_by_id(user_id).await {
+					if let Some(steam_id) = user.steam_id {
+						Ok(PlayerIdentifier::SteamID(steam_id))
+					} else {
+						Ok(PlayerIdentifier::Name(user.name))
+					}
+				} else {
+					Ok(PlayerIdentifier::Name(ctx.author().name.clone()))
+				}
+			}
+			Self::Mention(user_id) => ctx
 				.find_by_id(user_id)
-				.await?
-				.steam_id
-				.ok_or_else(missing_steam_id)?),
-			Self::SteamID(steam_id) => Ok(steam_id),
+				.await
+				.map(|user| {
+					if let Some(steam_id) = user.steam_id {
+						Ok(PlayerIdentifier::SteamID(steam_id))
+					} else {
+						Ok(PlayerIdentifier::Name(user.name))
+					}
+				})?,
+			Self::SteamID(steam_id) => Ok(PlayerIdentifier::SteamID(steam_id)),
 			Self::Name(ref name) => {
 				if let Ok(user) = ctx.find_by_name(name).await {
-					user.steam_id
-						.ok_or_else(missing_steam_id)
+					if let Some(steam_id) = user.steam_id {
+						Ok(PlayerIdentifier::SteamID(steam_id))
+					} else {
+						Ok(PlayerIdentifier::Name(user.name))
+					}
 				} else {
 					let player = GlobalAPI::get_player(
 						&PlayerIdentifier::Name(name.to_owned()),
 						ctx.gokz_client(),
 					)
 					.await?;
-					Ok(SteamID::new(&player.steam_id)?)
+
+					Ok(PlayerIdentifier::SteamID(SteamID::new(&player.steam_id)?))
 				}
 			}
 		}

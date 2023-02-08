@@ -21,28 +21,35 @@ pub async fn bpb(
 
 	let db_entry = ctx
 		.find_by_id(*ctx.author().id.as_u64())
-		.await?;
+		.await;
 
 	let map = GLOBAL_MAPS.find(&MapIdentifier::Name(map_name))?;
 	let map_identifier = MapIdentifier::Name(map.name);
 	let mode = match mode {
 		Some(choice) => Mode::from(choice),
 		None => db_entry
+			.as_ref()
+			.map_err(|_| Error::MissingMode)?
 			.mode
 			.ok_or(Error::MissingMode)?,
 	};
-	let steam_id = match player {
+	let player = match player {
 		Some(target) => {
 			target
 				.parse::<Target>()?
-				.into_steam_id(&ctx)
+				.into_player(&ctx)
 				.await?
 		}
-		None => db_entry
-			.steam_id
-			.ok_or(Error::MissingSteamID { blame_user: true })?,
+		None => {
+			let db_entry = db_entry.map_err(|_| Error::NoPlayerInfo)?;
+
+			if let Some(steam_id) = &db_entry.steam_id {
+				PlayerIdentifier::SteamID(steam_id.to_owned())
+			} else {
+				PlayerIdentifier::Name(db_entry.name)
+			}
+		}
 	};
-	let player = PlayerIdentifier::SteamID(steam_id);
 	let course = course.unwrap_or(1);
 
 	let tp =

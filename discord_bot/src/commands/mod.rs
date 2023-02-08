@@ -7,6 +7,9 @@ pub use bmaptop::bmaptop;
 mod bpb;
 pub use bpb::bpb;
 
+mod btop;
+pub use btop::btop;
+
 mod bwr;
 pub use bwr::bwr;
 
@@ -34,6 +37,9 @@ pub use pb::pb;
 mod ping;
 pub use ping::ping;
 
+mod profile;
+pub use profile::profile;
+
 mod recent;
 pub use recent::recent;
 
@@ -42,6 +48,9 @@ pub use report::report;
 
 mod setsteam;
 pub use setsteam::setsteam;
+
+mod top;
+pub use top::top;
 
 mod wr;
 pub use wr::wr;

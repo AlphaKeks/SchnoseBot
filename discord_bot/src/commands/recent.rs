@@ -20,23 +20,25 @@ pub async fn recent(
 
 	let db_entry = ctx
 		.find_by_id(*ctx.author().id.as_u64())
-		.await?;
+		.await;
 
-	let mode = db_entry
-		.mode
-		.ok_or(Error::MissingMode)?;
-	let steam_id = match player {
+	let player = match player {
 		Some(target) => {
 			target
 				.parse::<Target>()?
-				.into_steam_id(&ctx)
+				.into_player(&ctx)
 				.await?
 		}
-		None => db_entry
-			.steam_id
-			.ok_or(Error::MissingSteamID { blame_user: true })?,
+		None => {
+			let db_entry = db_entry.map_err(|_| Error::NoPlayerInfo)?;
+
+			if let Some(steam_id) = &db_entry.steam_id {
+				PlayerIdentifier::SteamID(steam_id.to_owned())
+			} else {
+				PlayerIdentifier::Name(db_entry.name)
+			}
+		}
 	};
-	let player = PlayerIdentifier::SteamID(steam_id);
 
 	let recent_records = GlobalAPI::get_recent(&player, Some(10), ctx.gokz_client()).await?;
 
@@ -56,6 +58,8 @@ pub async fn recent(
 				.map_name
 				.unwrap_or_else(|| String::from("unknown")),
 		))?;
+
+		let mode = record.mode.parse::<Mode>()?;
 
 		let n_teleports = if record.teleports > 0 {
 			format!(" ({} TPs)", record.teleports)

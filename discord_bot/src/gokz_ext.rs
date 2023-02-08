@@ -1,4 +1,7 @@
-use gokz_rs::{records::Record, GlobalAPI};
+use {
+	gokz_rs::{records::Record, GlobalAPI},
+	serde::{Deserialize, Serialize},
+};
 
 pub trait GokzRecord: Sized {
 	fn replay_link(&self) -> Option<String>;
@@ -82,3 +85,20 @@ pub fn fmt_time(time: f64) -> String {
 
 	s
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorldRecordParams;
+impl gokz_rs::GlobalAPIParams for WorldRecordParams {}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorldRecordResponse {
+	pub steamid64: String,
+	pub steam_id: String,
+	pub count: u32,
+	pub player_name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorldRecordLeaderboard(pub Vec<WorldRecordResponse>);
+
+impl gokz_rs::GlobalAPIResponse for WorldRecordLeaderboard {}
