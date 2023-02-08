@@ -46,6 +46,11 @@ pub enum Error {
 
 	/// No records were found for a given query.
 	NoRecords,
+
+	/// The global map cache is empty for some reason. This shouldn't be possible since the cache
+	/// gets populated right at the start (and should panic if something goes wrong) but you never
+	/// know ¯\_(ツ)_/¯
+	EmptyMapCache,
 }
 
 impl std::fmt::Display for Error {
@@ -70,7 +75,8 @@ impl std::fmt::Display for Error {
 				Error::ParseJSON => "Failed to parse JSON.",
 				Error::InputOutOfRange => "Your input was out of range. Please provide some realistic values.",
 				Error::GOKZ(msg) => msg,
-                Error::NoRecords => "No records found."
+                Error::NoRecords => "No records found.",
+                Error::EmptyMapCache => unreachable!("How did we get here?")
 			}
 		)
 	}

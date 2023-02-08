@@ -29,6 +29,7 @@ toml = { workspace = true }
 chrono = { workspace = true }
 regex = { workspace = true }
 num-format = { workspace = true }
+rand = { workspace = true }
 
 # GOKZ
 gokz_rs = { workspace = true }

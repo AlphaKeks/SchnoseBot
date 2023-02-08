@@ -40,6 +40,9 @@ pub use ping::ping;
 mod profile;
 pub use profile::profile;
 
+mod random;
+pub use random::random;
+
 mod recent;
 pub use recent::recent;
 
@@ -157,6 +160,31 @@ mod choices {
 		fn from(value: BoolChoice) -> Self {
 			matches!(value, BoolChoice::Yes)
 		}
+	}
+
+	#[derive(Debug, Clone, Copy, ChoiceParameter)]
+	#[allow(clippy::upper_case_acronyms)]
+	pub enum TierChoice {
+		#[name = "VeryEasy"]
+		VeryEasy = 1,
+
+		#[name = "Easy"]
+		Easy = 2,
+
+		#[name = "Medium"]
+		Medium = 3,
+
+		#[name = "Hard"]
+		Hard = 4,
+
+		#[name = "VeryHard"]
+		VeryHard = 5,
+
+		#[name = "Extreme"]
+		Extreme = 6,
+
+		#[name = "Death"]
+		Death = 7,
 	}
 }
 

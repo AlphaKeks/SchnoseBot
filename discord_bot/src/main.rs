@@ -51,7 +51,7 @@ static GLOBAL_MAPS: OnceCell<Vec<GlobalMap>> = OnceCell::new();
 impl GlobalMapsContainer for OnceCell<Vec<GlobalMap>> {
 	fn try_get(&self) -> Result<&Vec<GlobalMap>, error::Error> {
 		self.get()
-			.ok_or(error::Error::MapNotGlobal)
+			.ok_or(error::Error::EmptyMapCache)
 	}
 
 	fn find(&self, map_identifier: &MapIdentifier) -> Result<GlobalMap, error::Error> {
@@ -143,6 +143,7 @@ async fn main() -> Eyre<()> {
 				commands::pb(),
 				commands::ping(),
 				commands::profile(),
+				commands::random(),
 				commands::recent(),
 				commands::report(),
 				commands::setsteam(),
