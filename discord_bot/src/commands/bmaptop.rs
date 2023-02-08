@@ -11,13 +11,14 @@ use {
 };
 
 #[poise::command(slash_command, on_error = "Error::handle_command")]
-pub async fn maptop(
+pub async fn bmaptop(
 	ctx: Context<'_>, #[autocomplete = "autocomplete_map"] map_name: String,
 	#[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
 	#[description = "TP/PRO"] runtype: Option<RuntypeChoice>,
+	#[description = "Course"] course: Option<u8>,
 ) -> Result<(), Error> {
 	ctx.defer().await?;
-	trace!("[/maptop] map_name: `{map_name}`, mode: `{mode:?}`, runtype: `{runtype:?}`");
+	trace!("[/bmaptop] map_name: `{map_name}`, mode: `{mode:?}`, runtype: `{runtype:?}`, course: `{course:?}`");
 
 	let db_entry = ctx
 		.find_by_id(*ctx.author().id.as_u64())
@@ -32,9 +33,10 @@ pub async fn maptop(
 			.ok_or(Error::MissingMode)?,
 	};
 	let runtype = matches!(runtype, Some(RuntypeChoice::TP));
+	let course = course.unwrap_or(1);
 
 	let maptop =
-		GlobalAPI::get_maptop(&map_identifier, mode, runtype, 0, ctx.gokz_client()).await?;
+		GlobalAPI::get_maptop(&map_identifier, mode, runtype, course, ctx.gokz_client()).await?;
 	let max_pages = (maptop.len() as f64 / 12f64).ceil() as u8;
 
 	let mut embeds = Vec::new();
@@ -47,12 +49,13 @@ pub async fn maptop(
 	for (page_idx, records) in maptop.chunks(chunk_size).enumerate() {
 		temp_embed
 			.title(format!(
-				"[Top 100 {}] {} (T{})",
+				"[Top 100 {}] {} B{} (T{})",
 				if runtype { "TP" } else { "PRO" },
 				map_identifier,
+				course,
 				&map.tier
 			))
-			.url(format!("{}?{}=", &map.url, mode.short().to_lowercase()))
+			.url(format!("{}?{}=&bonus={}", &map.url, mode.short().to_lowercase(), course))
 			.thumbnail(&map.thumbnail)
 			.footer(|f| f.text(format!("Mode: {} | Page {} / {}", mode, page_idx + 1, max_pages)));
 

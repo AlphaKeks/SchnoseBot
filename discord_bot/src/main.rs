@@ -129,6 +129,9 @@ async fn main() -> Eyre<()> {
 			},
 			commands: vec![
 				commands::apistatus(),
+				commands::bmaptop(),
+				commands::bpb(),
+				commands::bwr(),
 				commands::db(),
 				commands::invite(),
 				commands::map(),
