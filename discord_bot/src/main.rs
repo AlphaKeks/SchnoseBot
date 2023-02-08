@@ -132,6 +132,7 @@ async fn main() -> Eyre<()> {
 				commands::db(),
 				commands::invite(),
 				commands::map(),
+				commands::maptop(),
 				commands::mode(),
 				commands::nocrouch(),
 				commands::pb(),

@@ -23,6 +23,7 @@ pub async fn pb(
 		.await?;
 
 	let map = GLOBAL_MAPS.find(&MapIdentifier::Name(map_name))?;
+	let map_identifier = MapIdentifier::Name(map.name);
 	let mode = match mode {
 		Some(choice) => Mode::from(choice),
 		None => db_entry
@@ -41,7 +42,6 @@ pub async fn pb(
 			.ok_or(Error::MissingSteamID { blame_user: true })?,
 	};
 	let player = PlayerIdentifier::SteamID(steam_id);
-	let map_identifier = MapIdentifier::Name(map.name);
 
 	let tp = GlobalAPI::get_pb(&player, &map_identifier, mode, true, 0, ctx.gokz_client()).await;
 	let pro = GlobalAPI::get_pb(&player, &map_identifier, mode, false, 0, ctx.gokz_client()).await;

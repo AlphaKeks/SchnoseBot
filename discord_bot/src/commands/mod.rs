@@ -10,6 +10,9 @@ pub use invite::invite;
 mod map;
 pub use map::map;
 
+mod maptop;
+pub use maptop::maptop;
+
 mod mode;
 pub use mode::mode;
 

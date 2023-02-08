@@ -22,13 +22,13 @@ pub async fn wr(
 		.await?;
 
 	let map = GLOBAL_MAPS.find(&MapIdentifier::Name(map_name))?;
+	let map_identifier = MapIdentifier::Name(map.name);
 	let mode = match mode {
 		Some(choice) => Mode::from(choice),
 		None => db_entry
 			.mode
 			.ok_or(Error::MissingMode)?,
 	};
-	let map_identifier = MapIdentifier::Name(map.name);
 
 	let tp = GlobalAPI::get_wr(&map_identifier, mode, true, 0, ctx.gokz_client()).await;
 	let pro = GlobalAPI::get_wr(&map_identifier, mode, false, 0, ctx.gokz_client()).await;
