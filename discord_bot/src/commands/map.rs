@@ -1,6 +1,6 @@
 use {
 	super::autocompletion::autocomplete_map,
-	crate::{error::Error, Context, GlobalMapsContainer, State, GLOBAL_MAPS},
+	crate::{error::Error, Context, State},
 	gokz_rs::{prelude::*, GlobalAPI},
 	log::trace,
 };
@@ -12,7 +12,7 @@ pub async fn map(
 	ctx.defer().await?;
 	trace!("[/map] map_name: `{map_name}`");
 
-	let map = GLOBAL_MAPS.find(&MapIdentifier::Name(map_name))?;
+	let map = ctx.get_map(&MapIdentifier::Name(map_name))?;
 
 	let mappers = map
 		.mapper_names

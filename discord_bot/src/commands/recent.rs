@@ -3,7 +3,7 @@ use {
 	crate::{
 		error::Error,
 		gokz_ext::{fmt_time, GokzRecord},
-		Context, GlobalMapsContainer, State, Target, GLOBAL_MAPS,
+		Context, State, Target,
 	},
 	chrono::NaiveDateTime,
 	gokz_rs::{prelude::*, GlobalAPI},
@@ -53,7 +53,7 @@ pub async fn recent(
 			.await
 			.map(|place| format!("[#{place}]"))?;
 
-		let map = GLOBAL_MAPS.find(&MapIdentifier::Name(
+		let map = ctx.get_map(&MapIdentifier::Name(
 			record
 				.map_name
 				.unwrap_or_else(|| String::from("unknown")),

@@ -1,6 +1,6 @@
 use {
 	super::choices::TierChoice,
-	crate::{error::Error, global_maps::GlobalMap, Context, GlobalMapsContainer, GLOBAL_MAPS},
+	crate::{error::Error, global_maps::GlobalMap, Context, State},
 	log::trace,
 	rand::Rng,
 };
@@ -12,8 +12,8 @@ pub async fn random(
 	ctx.defer().await?;
 	trace!("[/random] tier: `{tier:?}`");
 
-	let global_maps = GLOBAL_MAPS
-		.try_get()?
+	let global_maps = ctx
+		.global_maps()
 		.iter()
 		.filter(|map| tier.map_or(true, |tier| map.tier == tier as u8))
 		.collect::<Vec<_>>();

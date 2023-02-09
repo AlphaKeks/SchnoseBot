@@ -20,7 +20,6 @@ use {
 	color_eyre::Result as Eyre,
 	gokz_rs::{prelude::*, GlobalAPI},
 	log::{debug, info},
-	once_cell::sync::OnceCell,
 	poise::{
 		async_trait,
 		serenity_prelude::{GatewayIntents, GuildId, UserId},
@@ -31,62 +30,6 @@ use {
 	sqlx::{mysql::MySqlPoolOptions, MySql, Pool},
 	std::{collections::HashSet, path::PathBuf},
 };
-
-/// Convenience trait to get data out of a static `OnceCell` so that I can retrieve data with
-/// `Result`s instead of `Option`s.
-pub trait GlobalMapsContainer {
-	/// Tries to get the `OnceCell` but returns a `Result` instead of `Option`. This makes error
-	/// handling a lot more convenient.
-	fn try_get(&self) -> Result<&Vec<GlobalMap>, error::Error>;
-
-	/// Tries to find a specific map in the `OnceCell`.
-	fn find(&self, map_identifier: &MapIdentifier) -> Result<GlobalMap, error::Error>;
-
-	/// Tries to find a specific map name in the `OnceCell`.
-	fn find_name(&self, map_name: &str) -> Result<String, error::Error>;
-}
-
-/// Cache of all global maps so I don't need to fetch them every time.
-static GLOBAL_MAPS: OnceCell<Vec<GlobalMap>> = OnceCell::new();
-
-impl GlobalMapsContainer for OnceCell<Vec<GlobalMap>> {
-	fn try_get(&self) -> Result<&Vec<GlobalMap>, error::Error> {
-		self.get()
-			.ok_or(error::Error::EmptyMapCache)
-	}
-
-	fn find(&self, map_identifier: &MapIdentifier) -> Result<GlobalMap, error::Error> {
-		self.try_get()?
-			.iter()
-			.find_map(|map| {
-				if let MapIdentifier::ID(map_id) = map_identifier {
-					if map.id == *map_id as u16 {
-						return Some(map.to_owned());
-					}
-				}
-
-				if let MapIdentifier::Name(map_name) = map_identifier {
-					if map
-						.name
-						.contains(&map_name.to_lowercase())
-					{
-						return Some(map.to_owned());
-					}
-				}
-
-				None
-			})
-			.ok_or(error::Error::MapNotGlobal)
-	}
-
-	fn find_name(&self, map_name: &str) -> Result<String, error::Error> {
-		self.find(&MapIdentifier::Name(map_name.to_owned()))
-			.map(|map| map.name)
-	}
-}
-
-/// Regex for testing for Discord mentions
-static MENTION_REGEX: OnceCell<Regex> = OnceCell::new();
 
 #[tokio::main]
 async fn main() -> Eyre<()> {
@@ -109,17 +52,6 @@ async fn main() -> Eyre<()> {
 	env_logger::init();
 
 	let state = GlobalState::new(config).await;
-
-	let global_maps = global_maps::init(&state.gokz_client).await?;
-
-	GLOBAL_MAPS
-		.set(global_maps)
-		.expect("This is the first use of this Cell.");
-
-	let mention_regex = Regex::new(r#""#).expect("Failed to construct Mention Regex.");
-	MENTION_REGEX
-		.set(mention_regex)
-		.expect("This is the first use of this Cell.");
 
 	let framework = Framework::builder()
 		.options(FrameworkOptions {
@@ -327,6 +259,9 @@ pub struct GlobalState {
 	/// HTTP Client for making requests with `gokz_rs`.
 	pub gokz_client: gokz_rs::Client,
 
+	/// Cache of all global maps.
+	pub global_maps: &'static Vec<GlobalMap>,
+
 	/// #7480c2
 	pub color: (u8, u8, u8),
 
@@ -346,13 +281,21 @@ impl GlobalState {
 			.await
 			.expect("Failed to establish database connection.");
 
+		let gokz_client = gokz_rs::Client::new();
+		let global_maps = Box::leak(Box::new(
+			global_maps::init(&gokz_client)
+				.await
+				.expect("Failed to fetch global maps."),
+		));
+
 		Self {
 			config,
 			database,
-			gokz_client: gokz_rs::Client::new(),
-            color: (116, 128, 194),
-            icon: String::from("https://media.discordapp.net/attachments/981130651094900756/1068608508645347408/schnose.png"),
-            schnose: String::from("(͡ ͡° ͜ つ ͡͡°)")
+			gokz_client,
+			global_maps,
+			color: (116, 128, 194),
+			icon: String::from("https://media.discordapp.net/attachments/981130651094900756/1068608508645347408/schnose.png"),
+			schnose: String::from("(͡ ͡° ͜ つ ͡͡°)")
 		}
 	}
 }
@@ -371,6 +314,9 @@ pub trait State {
 	fn config(&self) -> &Config;
 	fn database(&self) -> &Pool<MySql>;
 	fn gokz_client(&self) -> &gokz_rs::Client;
+	fn global_maps(&self) -> &'static Vec<GlobalMap>;
+	fn get_map(&self, map_identifier: &MapIdentifier) -> Result<GlobalMap, error::Error>;
+	fn get_map_name(&self, map_name: &str) -> Result<String, error::Error>;
 	fn color(&self) -> (u8, u8, u8);
 	fn icon(&self) -> &str;
 	fn schnose(&self) -> &str;
@@ -392,6 +338,49 @@ impl State for Context<'_> {
 
 	fn gokz_client(&self) -> &gokz_rs::Client {
 		&self.data().gokz_client
+	}
+
+	fn global_maps(&self) -> &'static Vec<GlobalMap> {
+		self.data().global_maps
+	}
+
+	fn get_map(&self, map_identifier: &MapIdentifier) -> Result<GlobalMap, error::Error> {
+		let mut iter = self.global_maps().iter();
+		match map_identifier {
+			MapIdentifier::ID(map_id) => iter
+				.find_map(|map| if map.id == *map_id as u16 { Some(map.to_owned()) } else { None })
+				.ok_or(error::Error::MapNotGlobal),
+			MapIdentifier::Name(map_name) => self
+				.global_maps()
+				.iter()
+				.find_map(|map| {
+					if map
+						.name
+						.contains(&map_name.to_lowercase())
+					{
+						Some(map.to_owned())
+					} else {
+						None
+					}
+				})
+				.ok_or(error::Error::MapNotGlobal),
+		}
+	}
+
+	fn get_map_name(&self, map_name: &str) -> Result<String, error::Error> {
+		self.global_maps()
+			.iter()
+			.find_map(|map| {
+				if map
+					.name
+					.contains(&map_name.to_lowercase())
+				{
+					Some(map.name.clone())
+				} else {
+					None
+				}
+			})
+			.ok_or(error::Error::MapNotGlobal)
 	}
 
 	fn color(&self) -> (u8, u8, u8) {
@@ -463,6 +452,49 @@ impl State for ApplicationContext<'_> {
 
 	fn gokz_client(&self) -> &gokz_rs::Client {
 		&self.data().gokz_client
+	}
+
+	fn global_maps(&self) -> &'static Vec<GlobalMap> {
+		self.data().global_maps
+	}
+
+	fn get_map(&self, map_identifier: &MapIdentifier) -> Result<GlobalMap, error::Error> {
+		let mut iter = self.global_maps().iter();
+		match map_identifier {
+			MapIdentifier::ID(map_id) => iter
+				.find_map(|map| if map.id == *map_id as u16 { Some(map.to_owned()) } else { None })
+				.ok_or(error::Error::MapNotGlobal),
+			MapIdentifier::Name(map_name) => self
+				.global_maps()
+				.iter()
+				.find_map(|map| {
+					if map
+						.name
+						.contains(&map_name.to_lowercase())
+					{
+						Some(map.to_owned())
+					} else {
+						None
+					}
+				})
+				.ok_or(error::Error::MapNotGlobal),
+		}
+	}
+
+	fn get_map_name(&self, map_name: &str) -> Result<String, error::Error> {
+		self.global_maps()
+			.iter()
+			.find_map(|map| {
+				if map
+					.name
+					.contains(&map_name.to_lowercase())
+				{
+					Some(map.name.clone())
+				} else {
+					None
+				}
+			})
+			.ok_or(error::Error::MapNotGlobal)
 	}
 
 	fn color(&self) -> (u8, u8, u8) {
@@ -546,9 +578,8 @@ impl std::str::FromStr for Target {
 			return Ok(Self::SteamID(steam_id));
 		}
 
-		if MENTION_REGEX
-			.get()
-			.expect("The Cell has definitely been constructed already.")
+		if Regex::new(r#"<@[0-9]+>"#)
+			.unwrap()
 			.is_match(s)
 		{
 			if let Ok(user_id) = s

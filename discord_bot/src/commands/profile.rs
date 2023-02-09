@@ -2,10 +2,7 @@
 
 use {
 	super::choices::ModeChoice,
-	crate::{
-		error::Error, steam_ext::get_steam_avatar, Context, GlobalMapsContainer, State, Target,
-		GLOBAL_MAPS,
-	},
+	crate::{error::Error, steam_ext::get_steam_avatar, Context, State, Target},
 	gokz_rs::{prelude::*, GlobalAPI, KZGO},
 	log::{error, trace},
 	num_format::{Locale, ToFormattedString},
@@ -68,16 +65,14 @@ pub async fn profile(
 	let mut completion = [(0, 0); 8];
 	let (mut tp_records, mut pro_records) = (0, 0);
 
-	let global_maps = GLOBAL_MAPS.try_get()?;
-
 	let mut tier_maps = [
 		HashMap::<String, u8>::from_iter(
-			global_maps
+			ctx.global_maps()
 				.iter()
 				.map(|map| (map.name.clone(), map.tier)),
 		),
 		HashMap::<String, u8>::from_iter(
-			global_maps
+			ctx.global_maps()
 				.iter()
 				.map(|map| (map.name.clone(), map.tier)),
 		),

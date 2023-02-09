@@ -72,27 +72,21 @@ pub use wr::wr;
 
 mod autocompletion {
 	use {
-		crate::{Context, GlobalMapsContainer, GLOBAL_MAPS},
+		crate::{Context, State},
 		futures::StreamExt,
 	};
 
 	/// Provides autocompletion for map names on certain commands using the
 	pub async fn autocomplete_map<'a>(
-		_: Context<'a>, input: &'a str,
+		ctx: Context<'a>, input: &'a str,
 	) -> impl futures::Stream<Item = String> + 'a {
-		loop {
-			if let Ok(maps) = GLOBAL_MAPS.try_get() {
-				break futures::stream::iter(maps).filter_map(move |map| async {
-					if map.name.contains(&input.to_lowercase()) {
-						Some(map.name.clone())
-					} else {
-						None
-					}
-				});
+		futures::stream::iter(ctx.global_maps()).filter_map(move |map| async {
+			if map.name.contains(&input.to_lowercase()) {
+				Some(map.name.clone())
 			} else {
-				continue;
+				None
 			}
-		}
+		})
 	}
 }
 

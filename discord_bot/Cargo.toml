@@ -37,7 +37,6 @@ gokz_rs = { workspace = true }
 # async
 tokio = { workspace = true }
 futures = { workspace = true }
-once_cell = { workspace = true }
 
 # SQL
 sqlx = { workspace = true }

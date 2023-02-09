@@ -3,7 +3,7 @@ use {
 	crate::{
 		error::Error,
 		gokz_ext::{fmt_time, GokzRecord},
-		Context, GlobalMapsContainer, State, GLOBAL_MAPS,
+		Context, State,
 	},
 	gokz_rs::{prelude::*, records::Record, GlobalAPI},
 	log::trace,
@@ -21,7 +21,7 @@ pub async fn wr(
 		.find_by_id(*ctx.author().id.as_u64())
 		.await;
 
-	let map = GLOBAL_MAPS.find(&MapIdentifier::Name(map_name))?;
+	let map = ctx.get_map(&MapIdentifier::Name(map_name))?;
 	let map_identifier = MapIdentifier::Name(map.name);
 	let mode = match mode {
 		Some(choice) => Mode::from(choice),
