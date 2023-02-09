@@ -1,31 +1,33 @@
 //! Discord Bot for CS:GO KZ.
 //!
-//! You can use this bot to communicate with the [GlobalAPI](https://portal.global-api.com/dashboard) in a convenient way.
-//! For example checking world records, personal bests or looking up detailed information about
-//! maps. The Bot also uses [KZ:GO](https://kzgo.eu/) and it's API for some extra info.
+//! You can use this bot to communicate with the
+//! [GlobalAPI](https://portal.global-api.com/dashboard) in a convenient way. For example checking
+//! world records, personal bests or looking up detailed information about maps. The Bot also uses
+//! [KZ:GO](https://kzgo.eu/) and it's API for some extra info.
 
 #![warn(missing_debug_implementations, missing_docs, rust_2018_idioms)]
 #![warn(clippy::style, clippy::perf, clippy::complexity, clippy::correctness)]
+
 mod commands;
+mod custom_types;
+mod db;
 mod error;
 mod global_maps;
-use global_maps::GlobalMap;
-mod db;
-mod gokz_ext;
+mod gokz;
 mod process;
-mod steam_ext;
+mod steam;
 
 use {
+	crate::global_maps::GlobalMap,
 	clap::{Parser, ValueEnum},
 	color_eyre::Result as Eyre,
-	gokz_rs::{prelude::*, GlobalAPI},
+	gokz_rs::prelude::*,
 	log::{debug, info},
 	poise::{
 		async_trait,
 		serenity_prelude::{GatewayIntents, GuildId, UserId},
 		Framework, FrameworkOptions, PrefixFrameworkOptions,
 	},
-	regex::Regex,
 	serde::Deserialize,
 	sqlx::{mysql::MySqlPoolOptions, MySql, Pool},
 	std::{collections::HashSet, path::PathBuf},
@@ -87,10 +89,9 @@ async fn main() -> Eyre<()> {
 				commands::unfinished(),
 				commands::wr(),
 			],
-			event_handler: |_ctx, event, _framework, _global_state| {
+			event_handler: |_, event, _, _| {
 				Box::pin(async {
 					debug!("Received event `{}`", event.name());
-
 					Ok(())
 				})
 			},
@@ -103,7 +104,7 @@ async fn main() -> Eyre<()> {
 				| GatewayIntents::GUILD_MESSAGES
 				| GatewayIntents::MESSAGE_CONTENT,
 		)
-		.setup(move |ctx, _ready, framework| {
+		.setup(move |ctx, _, framework| {
 			Box::pin(async move {
 				let commands = &framework.options().commands;
 				match &state.config.mode {
@@ -137,7 +138,7 @@ async fn main() -> Eyre<()> {
 }
 
 /// Some convenience CLI arguments to configure the bot quickly without changing the config file.
-/// Any of these options will _override_ the values set in the config file.
+/// Any of these options will override the values set in the config file.
 #[derive(Debug, Clone, Parser)]
 struct Args {
 	/// The path to the bot's config file.
@@ -146,8 +147,8 @@ struct Args {
 	pub config: PathBuf,
 
 	/// Which level to register commands on.
-	/// - `Dev`: commands will be registered on a single guild only. This is fast and useful
-	///          for development.
+	/// - `Dev`: commands will be registered on a single guild only. This is fast and useful for
+	///          development.
 	/// - `Prod`: commands will be registered on every guild the bot is on and allowed to register
 	///           commands on. This might take a while to reload and therefore should only be used
 	///           when running in production.
@@ -161,8 +162,7 @@ struct Args {
 	pub debug: bool,
 }
 
-/// Config file used for storing potentially sensitive, as well as non-sensitive but necessary
-/// configuration parameters which are needed for the bot to run.
+/// Config file for the bot.
 #[derive(Debug, Deserialize)]
 pub struct Config {
 	/// Can be one of the following:
@@ -176,36 +176,36 @@ pub struct Config {
 	/// The `--debug` flag will always override this value to `DEBUG`.
 	pub log_level: Option<String>,
 
-	/// Discord API Token for authentication.
+	/// Authentication Token for the Discord API.
 	pub discord_token: String,
 
-	/// Steam WebAPI Token for authentication.
+	/// Authentication Token for the Steam WebAPI.
 	pub steam_token: String,
 
 	/// Which level to register commands on.
-	/// - `Dev`: commands will be registered on a single guild only. This is fast and useful
-	///          for development.
+	/// - `Dev`: commands will be registered on a single guild only. This is fast and useful for
+	///          development.
 	/// - `Prod`: commands will be registered on every guild the bot is on and allowed to register
 	///           commands on. This might take a while to reload and therefore should only be used
 	///           when running in production.
 	pub mode: RegisterMode,
 
-	/// The GuildID of the development server. This will be used for registering commands when
+	/// The [`GuildID`] of the development server. This will be used for registering commands when
 	/// running in `Dev` mode.
 	pub dev_guild: u64,
 
-	/// The UserID of the bot's owner. This is used for some restricted commands which should only
-	/// be used by the bot's owner.
+	/// The [`UserID`] of the bot's owner. This is used for some restricted commands which should not
+	/// be available for everybody to use. (E.g. restarting the bot)
 	pub owner_id: u64,
 
-	/// The ChannelID to send report messages to. The bot has a `/report` command which will send
-	/// those reports to the `report_channel` channel.
+	/// The [`ChannelID`] to send report messages to. The bot has a `/report` command which will
+	/// send those reports to the `report_channel` channel.
 	pub report_channel: u64,
 
-	/// MySQL connection string. The database is used for storing user data.
+	/// `MySQL` connection string. The database is used for storing user data.
 	pub mysql_url: String,
 
-	/// MySQL table name for storing user data.
+	/// `MySQL` table name for storing user data.
 	pub mysql_table: String,
 
 	/// Shell command to restart the bot's process.
@@ -217,11 +217,16 @@ pub struct Config {
 	/// Directory for the bot's crate.
 	pub bot_directory: String,
 
-	/// How many threads to use for compilation
+	/// How many CPU threads to use for compilation.
 	pub jobs: u8,
 }
 
 /// Which level to register commands on.
+/// - `Dev`: commands will be registered on a single guild only. This is fast and useful for
+///          development.
+/// - `Prod`: commands will be registered on every guild the bot is on and allowed to register
+///           commands on. This might take a while to reload and therefore should only be used
+///           when running in production.
 #[derive(Debug, Clone, Deserialize, ValueEnum)]
 pub enum RegisterMode {
 	/// Commands will be registered on a single guild only. This is fast and useful for development.
@@ -246,17 +251,17 @@ impl std::fmt::Display for RegisterMode {
 	}
 }
 
-/// Global State Object used across the entire program. This holds long-living data which I don't
-/// want to compute over and over again.
+/// Global State Object used for the entire runtime of the process. This holds "global" information
+/// such as the parsed config file, a database connection pool etc.
 #[derive(Debug)]
 pub struct GlobalState {
-	/// Config for the bot.
+	/// Parsed config file of the bot.
 	pub config: Config,
 
-	/// MySQL connection pool for user data.
+	/// MySQL connection pool for storing user data.
 	pub database: Pool<MySql>,
 
-	/// HTTP Client for making requests with `gokz_rs`.
+	/// [`gokz_rs::Client`] for making requests with the `gokz_rs` crate.
 	pub gokz_client: gokz_rs::Client,
 
 	/// Cache of all global maps.
@@ -294,16 +299,23 @@ impl GlobalState {
 			gokz_client,
 			global_maps,
 			color: (116, 128, 194),
-			icon: String::from("https://media.discordapp.net/attachments/981130651094900756/1068608508645347408/schnose.png"),
+			icon: String::from(
+				"https://media.discordapp.net/attachments/981130651094900756/1068608508645347408/schnose.png"
+			),
 			schnose: String::from("(͡ ͡° ͜ つ ͡͡°)")
 		}
 	}
 }
 
-/// Global `Context` type which gets passed to events, commands, etc.
+/// Global `Context` type which gets passed to slash commands.
 pub type Context<'ctx> = poise::Context<'ctx, GlobalState, crate::error::Error>;
 
-/// Global `ApplicationContext` type which gets passed to events, commands, etc.
+// TODO: It's kind of annoying that I need both of those `Context` types... There might be a way to
+// replace it with [`GlobalState`] completeley so I don't need traits to implement convenience
+// methods?
+
+/// Global `ApplicationContext` type which gets passed to the `/report` slash commands. It seems to
+/// be required to send modals, although I would prefer not having it at all.
 pub type ApplicationContext<'ctx> =
 	poise::ApplicationContext<'ctx, GlobalState, crate::error::Error>;
 
@@ -326,23 +338,13 @@ pub trait State {
 	async fn find_by_mode(&self, mode: Mode) -> Result<db::User, error::Error>;
 }
 
+#[rustfmt::skip] // until `fn_single_line` is stable I don't want this to get formatted.
 #[async_trait]
 impl State for Context<'_> {
-	fn config(&self) -> &Config {
-		&self.data().config
-	}
-
-	fn database(&self) -> &Pool<MySql> {
-		&self.data().database
-	}
-
-	fn gokz_client(&self) -> &gokz_rs::Client {
-		&self.data().gokz_client
-	}
-
-	fn global_maps(&self) -> &'static Vec<GlobalMap> {
-		self.data().global_maps
-	}
+	fn config(&self) -> &Config { &self.data().config }
+	fn database(&self) -> &Pool<MySql> { &self.data().database }
+	fn gokz_client(&self) -> &gokz_rs::Client { &self.data().gokz_client }
+	fn global_maps(&self) -> &'static Vec<GlobalMap> { self.data().global_maps }
 
 	fn get_map(&self, map_identifier: &MapIdentifier) -> Result<GlobalMap, error::Error> {
 		let mut iter = self.global_maps().iter();
@@ -383,17 +385,9 @@ impl State for Context<'_> {
 			.ok_or(error::Error::MapNotGlobal)
 	}
 
-	fn color(&self) -> (u8, u8, u8) {
-		self.data().color
-	}
-
-	fn icon(&self) -> &str {
-		&self.data().icon
-	}
-
-	fn schnose(&self) -> &str {
-		&self.data().schnose
-	}
+	fn color(&self) -> (u8, u8, u8) { self.data().color }
+	fn icon(&self) -> &str { &self.data().icon }
+	fn schnose(&self) -> &str { &self.data().schnose }
 
 	async fn find_by_id(&self, user_id: u64) -> Result<db::User, error::Error> {
 		Ok(sqlx::query_as::<_, db::UserSchema>(&format!(
@@ -440,23 +434,13 @@ impl State for Context<'_> {
 	}
 }
 
+#[rustfmt::skip] // until `fn_single_line` is stable I don't want this to get formatted.
 #[async_trait]
 impl State for ApplicationContext<'_> {
-	fn config(&self) -> &Config {
-		&self.data().config
-	}
-
-	fn database(&self) -> &Pool<MySql> {
-		&self.data().database
-	}
-
-	fn gokz_client(&self) -> &gokz_rs::Client {
-		&self.data().gokz_client
-	}
-
-	fn global_maps(&self) -> &'static Vec<GlobalMap> {
-		self.data().global_maps
-	}
+	fn config(&self) -> &Config { &self.data().config }
+	fn database(&self) -> &Pool<MySql> { &self.data().database }
+	fn gokz_client(&self) -> &gokz_rs::Client { &self.data().gokz_client }
+	fn global_maps(&self) -> &'static Vec<GlobalMap> { self.data().global_maps }
 
 	fn get_map(&self, map_identifier: &MapIdentifier) -> Result<GlobalMap, error::Error> {
 		let mut iter = self.global_maps().iter();
@@ -497,17 +481,9 @@ impl State for ApplicationContext<'_> {
 			.ok_or(error::Error::MapNotGlobal)
 	}
 
-	fn color(&self) -> (u8, u8, u8) {
-		self.data().color
-	}
-
-	fn icon(&self) -> &str {
-		&self.data().icon
-	}
-
-	fn schnose(&self) -> &str {
-		&self.data().schnose
-	}
+	fn color(&self) -> (u8, u8, u8) { self.data().color }
+	fn icon(&self) -> &str { &self.data().icon }
+	fn schnose(&self) -> &str { &self.data().schnose }
 
 	async fn find_by_id(&self, user_id: u64) -> Result<db::User, error::Error> {
 		Ok(sqlx::query_as::<_, db::UserSchema>(&format!(
@@ -551,92 +527,5 @@ impl State for ApplicationContext<'_> {
 		.fetch_one(self.database())
 		.await?
 		.into())
-	}
-}
-
-/// Enum for `player` parameters on commands.
-#[derive(Debug, Clone)]
-pub enum Target {
-	/// The user didn't specify a target -> we take their UserID.
-	None(u64),
-
-	/// The user @mention'd somebody -> we take that UserID.
-	Mention(u64),
-
-	/// The user put in a valid `SteamID` -> we take that.
-	SteamID(SteamID),
-
-	/// The user specified none of the above. We interpret that as a name.
-	Name(String),
-}
-
-impl std::str::FromStr for Target {
-	type Err = error::Error;
-
-	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		if let Ok(steam_id) = SteamID::new(s) {
-			return Ok(Self::SteamID(steam_id));
-		}
-
-		if Regex::new(r#"<@[0-9]+>"#)
-			.unwrap()
-			.is_match(s)
-		{
-			if let Ok(user_id) = s
-				.replace("<@", "")
-				.replace('>', "")
-				.parse::<u64>()
-			{
-				return Ok(Self::Mention(user_id));
-			}
-		}
-
-		Ok(Self::Name(s.to_owned()))
-	}
-}
-
-impl Target {
-	async fn into_player(self, ctx: &Context<'_>) -> Result<PlayerIdentifier, error::Error> {
-		match self {
-			Self::None(user_id) => {
-				if let Ok(user) = ctx.find_by_id(user_id).await {
-					if let Some(steam_id) = user.steam_id {
-						Ok(PlayerIdentifier::SteamID(steam_id))
-					} else {
-						Ok(PlayerIdentifier::Name(user.name))
-					}
-				} else {
-					Ok(PlayerIdentifier::Name(ctx.author().name.clone()))
-				}
-			}
-			Self::Mention(user_id) => ctx
-				.find_by_id(user_id)
-				.await
-				.map(|user| {
-					if let Some(steam_id) = user.steam_id {
-						Ok(PlayerIdentifier::SteamID(steam_id))
-					} else {
-						Ok(PlayerIdentifier::Name(user.name))
-					}
-				})?,
-			Self::SteamID(steam_id) => Ok(PlayerIdentifier::SteamID(steam_id)),
-			Self::Name(ref name) => {
-				if let Ok(user) = ctx.find_by_name(name).await {
-					if let Some(steam_id) = user.steam_id {
-						Ok(PlayerIdentifier::SteamID(steam_id))
-					} else {
-						Ok(PlayerIdentifier::Name(user.name))
-					}
-				} else {
-					let player = GlobalAPI::get_player(
-						&PlayerIdentifier::Name(name.to_owned()),
-						ctx.gokz_client(),
-					)
-					.await?;
-
-					Ok(PlayerIdentifier::SteamID(SteamID::new(&player.steam_id)?))
-				}
-			}
-		}
 	}
 }

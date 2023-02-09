@@ -1,5 +1,9 @@
-use crate::{error::Error, Context, State};
+use {
+	crate::{error::Error, Context, State},
+	log::trace,
+};
 
+/// Pull new changes from GitHub.
 #[poise::command(
 	prefix_command,
 	on_error = "Error::handle_command",
@@ -7,6 +11,7 @@ use crate::{error::Error, Context, State};
 	global_cooldown = 120
 )]
 pub async fn pull(ctx: Context<'_>) -> Result<(), Error> {
+	trace!("[/pull ({})]", ctx.author().tag());
 	ctx.defer().await?;
 
 	let msg_handle = ctx

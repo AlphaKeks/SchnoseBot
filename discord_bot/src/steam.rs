@@ -1,3 +1,5 @@
+//! Steam WebAPI functions.
+
 use {
 	color_eyre::{eyre::eyre, Result as Eyre},
 	serde::{Deserialize, Serialize},

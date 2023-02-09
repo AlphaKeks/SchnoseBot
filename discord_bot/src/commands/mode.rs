@@ -5,12 +5,14 @@ use {
 	log::trace,
 };
 
+/// Set your mode preference.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn mode(
 	ctx: Context<'_>, #[description = "KZT/SKZ/VNL"] mode: DBModeChoice,
 ) -> Result<(), Error> {
+	trace!("[/mode ({})]", ctx.author().tag());
+	trace!("> `mode`: {mode:?}");
 	ctx.defer().await?;
-	trace!("[/mode] mode: `{mode}`");
 
 	let mode = Mode::try_from(mode);
 	let mode_id = mode

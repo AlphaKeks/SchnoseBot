@@ -5,12 +5,14 @@ use {
 	rand::Rng,
 };
 
+/// Get a random map name from the global map pool.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn random(
 	ctx: Context<'_>, #[description = "Filter by map difficulty."] tier: Option<TierChoice>,
 ) -> Result<(), Error> {
+	trace!("[/random ({})]", ctx.author().tag());
+	trace!("> `tier`: {tier:?}");
 	ctx.defer().await?;
-	trace!("[/random] tier: `{tier:?}`");
 
 	let global_maps = ctx
 		.global_maps()

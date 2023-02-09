@@ -4,12 +4,14 @@ use {
 	log::trace,
 };
 
+/// Save your `SteamID` in the bot's database.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn setsteam(
 	ctx: Context<'_>, #[description = "Your SteamID, e.g. `STEAM_1:1:161178172`"] steam_id: String,
 ) -> Result<(), Error> {
+	trace!("[/setsteam ({})]", ctx.author().tag());
+	trace!("> `steam_id`: {steam_id:?}");
 	ctx.defer().await?;
-	trace!("[/setsteam] steam_id: `{steam_id}`");
 
 	let steam_id = SteamID::new(&steam_id)?;
 

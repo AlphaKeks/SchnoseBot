@@ -1,3 +1,5 @@
+//! Some extra utilities in addition to [`gokz_rs`] to make working with the `GlobalAPI` easier.
+
 use {
 	gokz_rs::{records::Record, GlobalAPI},
 	serde::{Deserialize, Serialize},
@@ -86,6 +88,7 @@ pub fn fmt_time(time: f64) -> String {
 	s
 }
 
+// TODO: implement this in [`gokz_rs`]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorldRecordParams;
 impl gokz_rs::GlobalAPIParams for WorldRecordParams {}

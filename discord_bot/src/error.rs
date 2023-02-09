@@ -1,13 +1,15 @@
+//! The global [`Error`] type used across the entire crate.
+
 use log::{error, info, warn};
 
-/// Global Error type for the entire crate.
+/// Global `Error` type for the entire crate.
 #[derive(Debug, Clone)]
 #[allow(clippy::upper_case_acronyms)]
 pub enum Error {
 	/// Some unknown error occurred.
 	Unknown,
 
-	/// Some custom edge-case error that doesn't deserve it's own eblame_use: blame_usernt.
+	/// Some custom edge-case error that doesn't deserve it's own enum variant.
 	Custom(String),
 
 	/// Used for the static map cache / invalid user input.
@@ -24,15 +26,16 @@ pub enum Error {
 
 	/// The user didn't specify a `SteamID` and also has no database entries for it.
 	MissingSteamID {
-		/// If the user @mention'd somebody, the blame is not on them. If they didn't specify any
-		/// `player` argument though, we need to tell them about `/setsteam`.
+		/// If the user @mention'd somebody, tell them that that user doesn't have any database
+		/// entries. If they didn't specify any `player` argument though, we need to tell them
+		/// about `/setsteam`.
 		blame_user: bool,
 	},
 
 	/// The user didn't specify a `Mode` and also has no database entries for it.
 	MissingMode,
 
-	/// No SteamID or Name was found and `player` param wasn't specified
+	/// No SteamID or Name was found in the database and `player` param wasn't specified.
 	NoPlayerInfo,
 
 	/// Failed to parse JSON.
@@ -41,27 +44,22 @@ pub enum Error {
 	/// User Input was out of range.
 	InputOutOfRange,
 
-	/// An error from the `gokz_rs` crate.
+	/// An error from the [`gokz_rs`] crate.
 	GOKZ(String),
 
 	/// No records were found for a given query.
 	NoRecords,
 
-	/// The global map cache is empty for some reason. This shouldn't be possible since the cache
-	/// gets populated right at the start (and should panic if something goes wrong) but you never
-	/// know ¯\_(ツ)_/¯
-	EmptyMapCache,
-
-	/// Failed to restart the bot's process
+	/// Failed to restart the bot's process.
 	BotRestart,
 
-	/// Failed to git pull
+	/// Failed to `git pull`.
 	GitPull,
 
-	/// Failed to clean target dir
+	/// Failed to clean target dir.
 	CleanTargetDir,
 
-	/// Failed to compile
+	/// Failed to compile.
 	Build,
 }
 
@@ -88,11 +86,10 @@ impl std::fmt::Display for Error {
 				Error::InputOutOfRange => "Your input was out of range. Please provide some realistic values.",
 				Error::GOKZ(msg) => msg,
 				Error::NoRecords => "No records found.",
-				Error::EmptyMapCache => unreachable!("How did we get here?"),
 				Error::BotRestart => "Failed to restart.",
-                Error::GitPull => "Failed to pull from GitHub.",
-                Error::CleanTargetDir => "Failed to clean build directory.",
-                Error::Build => "Failed to compile."
+				Error::GitPull => "Failed to pull from GitHub.",
+				Error::CleanTargetDir => "Failed to clean build directory.",
+				Error::Build => "Failed to compile."
 			}
 		)
 	}
@@ -168,29 +165,29 @@ impl Error {
 				)
 			}
 			poise::FrameworkError::MissingBotPermissions { missing_permissions, .. } => {
-                error!("{missing_permissions}");
-                (
-                    String::from("The bot is missing permissions for this action. Please contact the server owner and kindly ask them to give the bot the required permissions."),
-                    false
-                )
-            }
+				error!("{missing_permissions}");
+				(
+					String::from("The bot is missing permissions for this action. Please contact the server owner and kindly ask them to give the bot the required permissions."),
+					false
+				)
+			}
 			poise::FrameworkError::MissingUserPermissions { missing_permissions, .. } => {
-                (
-                    if let Some(perms) = missing_permissions {
-                        format!("You are missing the `{perms}` permissions for this command.")
-                    } else {
-                        String::from("You are missing the required permissions for this command.")
-                    },
-                    true
-                )
-            }
+				(
+					if let Some(perms) = missing_permissions {
+						format!("You are missing the `{perms}` permissions for this command.")
+					} else {
+						String::from("You are missing the required permissions for this command.")
+					},
+					true
+				)
+			}
 			poise::FrameworkError::NotAnOwner { .. } => {
-                (String::from("This command requires you to be the owner of the bot."), true)
-            }
+				(String::from("This command requires you to be the owner of the bot."), true)
+			}
 			why => {
-                error!("{why:?}");
-                (String::from("Failed to execute command."), true)
-            }
+				error!("{why:?}");
+				(String::from("Failed to execute command."), true)
+			}
 		};
 
 		if let Some(ctx) = &error.ctx() {

@@ -1,5 +1,9 @@
-use crate::{error::Error, Context, State};
+use {
+	crate::{error::Error, Context, State},
+	log::trace,
+};
 
+/// Recompile the bot's source code.
 #[poise::command(
 	prefix_command,
 	on_error = "Error::handle_command",
@@ -7,6 +11,8 @@ use crate::{error::Error, Context, State};
 	global_cooldown = 120
 )]
 pub async fn recompile(ctx: Context<'_>, clean: Option<String>) -> Result<(), Error> {
+	trace!("[/recompile ({})]", ctx.author().tag());
+	trace!("> `clean`: {clean:?}");
 	ctx.defer().await?;
 
 	let msg_handle = ctx

@@ -4,12 +4,13 @@ use {
 		choices::{ModeChoice, RuntypeChoice},
 		pagination::paginate,
 	},
-	crate::{error::Error, gokz_ext::fmt_time, Context, State},
+	crate::{error::Error, gokz::fmt_time, Context, State},
 	gokz_rs::{prelude::*, GlobalAPI},
 	log::trace,
 	poise::serenity_prelude::CreateEmbed,
 };
 
+/// Top 100 records on a bonus course.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn bmaptop(
 	ctx: Context<'_>, #[autocomplete = "autocomplete_map"] map_name: String,
@@ -17,8 +18,12 @@ pub async fn bmaptop(
 	#[description = "TP/PRO"] runtype: Option<RuntypeChoice>,
 	#[description = "Course"] course: Option<u8>,
 ) -> Result<(), Error> {
+	trace!("[/bmaptop ({})]", ctx.author().tag());
+	trace!("> `map_name`: {map_name:?}");
+	trace!("> `mode`: {mode:?}");
+	trace!("> `runtype`: {runtype:?}");
+	trace!("> `course`: {course:?}");
 	ctx.defer().await?;
-	trace!("[/bmaptop] map_name: `{map_name}`, mode: `{mode:?}`, runtype: `{runtype:?}`, course: `{course:?}`");
 
 	let db_entry = ctx
 		.find_by_id(*ctx.author().id.as_u64())
@@ -66,7 +71,14 @@ pub async fn bmaptop(
 				.as_ref()
 				.map_or_else(|| "unknown", |name| name.as_str());
 
-			temp_embed.field(format!("{player_name} [#{place}]"), fmt_time(record.time), true);
+			let player_profile =
+				format!("https://steamcommunity.com/profiles/{}", record.steamid64);
+
+			temp_embed.field(
+				format!("[{player_name}]({player_profile}) [#{place}]"),
+				fmt_time(record.time),
+				true,
+			);
 			place += 1;
 		}
 

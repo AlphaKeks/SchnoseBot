@@ -1,3 +1,6 @@
+//! Fetch all global maps from the `GlobalAPI` and `KZ:GO` and put them into a unified data
+//! structure.
+
 use {
 	crate::error::Error,
 	chrono::NaiveDateTime,
@@ -5,6 +8,8 @@ use {
 	serde::{Deserialize, Serialize},
 };
 
+/// Custom version of [`gokz_rs::maps::Map`] which has additional info from `KZ:GO` and proper data
+/// types.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GlobalMap {
 	pub id: u16,
@@ -23,21 +28,24 @@ pub struct GlobalMap {
 	pub thumbnail: String,
 }
 
+/// Gets called once at the start to fetch and process all maps.
 pub async fn init(gokz_client: &gokz_rs::Client) -> Result<Vec<GlobalMap>, Error> {
 	let global_maps = GlobalAPI::get_maps(true, Some(9999), gokz_client).await?;
-	let mut kzgo_maps = KZGO::get_maps(gokz_client).await?;
+	let mut kzgo_maps = KZGO::get_maps(gokz_client)
+		.await?
+		.into_iter();
 
 	Ok(global_maps
 		.into_iter()
 		.filter_map(|global_map| {
-			let kzgo_map = kzgo_maps.iter().position(|map| {
-				if let Some(name) = &map.name {
-					name.eq(&global_map.name)
-				} else {
-					false
+			let kzgo_map = kzgo_maps.find_map(|map| {
+				if let Some(map_name) = &map.name {
+					if map_name == &global_map.name {
+						return Some(map);
+					}
 				}
+				None
 			})?;
-			let kzgo_map = kzgo_maps.remove(kzgo_map);
 
 			Some(GlobalMap {
 				id: global_map.id as u16,

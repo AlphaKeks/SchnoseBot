@@ -1,21 +1,25 @@
-// TODO: MAKE THIS NOT CRINGE
+// TODO: Make this cleaner. I'm really unhappy with the current implementation but at the same time
+// I don't know how to make it less complex. Gotta fix those skill issues...
 
 use {
 	super::choices::ModeChoice,
-	crate::{error::Error, steam_ext::get_steam_avatar, Context, State, Target},
+	crate::{custom_types::Target, error::Error, steam::get_steam_avatar, Context, State},
 	gokz_rs::{prelude::*, GlobalAPI, KZGO},
 	log::{error, trace},
 	num_format::{Locale, ToFormattedString},
 	std::collections::HashMap,
 };
 
+/// Similar to how a player profile is displayed on KZ:GO. (I tried my best...)
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn profile(
 	ctx: Context<'_>, #[description = "The player you want to target."] player: Option<String>,
 	#[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
 ) -> Result<(), Error> {
+	trace!("[/profile ({})]", ctx.author().tag());
+	trace!("> `player`: {player:?}");
+	trace!("> `mode`: {mode:?}");
 	ctx.defer().await?;
-	trace!("[/profile] player: `{player:?}`, mode: `{mode:?}`");
 
 	let db_entry = ctx
 		.find_by_id(*ctx.author().id.as_u64())
@@ -37,13 +41,9 @@ pub async fn profile(
 				.await?
 		}
 		None => {
-			let db_entry = db_entry.map_err(|_| Error::NoPlayerInfo)?;
-
-			if let Some(steam_id) = &db_entry.steam_id {
-				PlayerIdentifier::SteamID(steam_id.to_owned())
-			} else {
-				PlayerIdentifier::Name(db_entry.name)
-			}
+			Target::None(*ctx.author().id.as_u64())
+				.into_player(&ctx)
+				.await?
 		}
 	};
 

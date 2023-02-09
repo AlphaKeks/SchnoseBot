@@ -1,9 +1,10 @@
 use {
 	super::pagination::paginate,
 	crate::{
+		custom_types::Target,
 		error::Error,
-		gokz_ext::{fmt_time, GokzRecord},
-		Context, State, Target,
+		gokz::{fmt_time, GokzRecord},
+		Context, State,
 	},
 	chrono::NaiveDateTime,
 	gokz_rs::{prelude::*, GlobalAPI},
@@ -11,16 +12,14 @@ use {
 	poise::serenity_prelude::CreateEmbed,
 };
 
+/// Get a player's most recent PB. (Main course only)
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn recent(
 	ctx: Context<'_>, #[description = "The player you want to target."] player: Option<String>,
 ) -> Result<(), Error> {
+	trace!("[/recent ({})]", ctx.author().tag());
+	trace!("> `player`: {player:?}");
 	ctx.defer().await?;
-	trace!("[/recent] player: `{player:?}`");
-
-	let db_entry = ctx
-		.find_by_id(*ctx.author().id.as_u64())
-		.await;
 
 	let player = match player {
 		Some(target) => {
@@ -30,13 +29,9 @@ pub async fn recent(
 				.await?
 		}
 		None => {
-			let db_entry = db_entry.map_err(|_| Error::NoPlayerInfo)?;
-
-			if let Some(steam_id) = &db_entry.steam_id {
-				PlayerIdentifier::SteamID(steam_id.to_owned())
-			} else {
-				PlayerIdentifier::Name(db_entry.name)
-			}
+			Target::None(*ctx.author().id.as_u64())
+				.into_player(&ctx)
+				.await?
 		}
 	};
 

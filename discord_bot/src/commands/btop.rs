@@ -5,7 +5,7 @@ use {
 	},
 	crate::{
 		error::Error,
-		gokz_ext::{WorldRecordLeaderboard, WorldRecordParams},
+		gokz::{WorldRecordLeaderboard, WorldRecordParams},
 		Context, State,
 	},
 	gokz_rs::{prelude::*, GlobalAPI},
@@ -13,13 +13,16 @@ use {
 	poise::serenity_prelude::CreateEmbed,
 };
 
+/// Top 100 bonus world record holders.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn btop(
 	ctx: Context<'_>, #[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
 	#[description = "TP/PRO"] runtype: Option<RuntypeChoice>,
 ) -> Result<(), Error> {
+	trace!("[/btop ({})]", ctx.author().tag());
+	trace!("> `mode`: {mode:?}");
+	trace!("> `runtype`: {runtype:?}");
 	ctx.defer().await?;
-	trace!("[/btop] mode: `{mode:?}`, runtype: `{runtype:?}`");
 
 	let db_entry = ctx
 		.find_by_id(*ctx.author().id.as_u64())

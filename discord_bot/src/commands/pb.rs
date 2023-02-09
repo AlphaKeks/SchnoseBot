@@ -1,22 +1,27 @@
 use {
 	super::{autocompletion::autocomplete_map, choices::ModeChoice},
 	crate::{
+		custom_types::Target,
 		error::Error,
-		gokz_ext::{fmt_time, GokzRecord},
-		Context, State, Target,
+		gokz::{fmt_time, GokzRecord},
+		Context, State,
 	},
 	gokz_rs::{prelude::*, records::Record, GlobalAPI},
 	log::trace,
 };
 
+/// A player's personal best on a map.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn pb(
 	ctx: Context<'_>, #[autocomplete = "autocomplete_map"] map_name: String,
 	#[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
 	#[description = "The player you want to target."] player: Option<String>,
 ) -> Result<(), Error> {
+	trace!("[/pb ({})]", ctx.author().tag());
+	trace!("> `map_name`: {map_name:?}");
+	trace!("> `mode`: {mode:?}");
+	trace!("> `player`: {player:?}");
 	ctx.defer().await?;
-	trace!("[/pb] map_name: `{map_name}`, mode: `{mode:?}`, player: `{player:?}`");
 
 	let db_entry = ctx
 		.find_by_id(*ctx.author().id.as_u64())
@@ -40,13 +45,9 @@ pub async fn pb(
 				.await?
 		}
 		None => {
-			let db_entry = db_entry.map_err(|_| Error::NoPlayerInfo)?;
-
-			if let Some(steam_id) = &db_entry.steam_id {
-				PlayerIdentifier::SteamID(steam_id.to_owned())
-			} else {
-				PlayerIdentifier::Name(db_entry.name)
-			}
+			Target::None(*ctx.author().id.as_u64())
+				.into_player(&ctx)
+				.await?
 		}
 	};
 

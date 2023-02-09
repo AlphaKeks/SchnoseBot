@@ -4,20 +4,24 @@ use {
 		choices::{ModeChoice, RuntypeChoice},
 		pagination::paginate,
 	},
-	crate::{error::Error, gokz_ext::fmt_time, Context, State},
+	crate::{error::Error, gokz::fmt_time, Context, State},
 	gokz_rs::{prelude::*, GlobalAPI},
 	log::trace,
 	poise::serenity_prelude::CreateEmbed,
 };
 
+/// Top 100 records on a map.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn maptop(
 	ctx: Context<'_>, #[autocomplete = "autocomplete_map"] map_name: String,
 	#[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
 	#[description = "TP/PRO"] runtype: Option<RuntypeChoice>,
 ) -> Result<(), Error> {
+	trace!("[/maptop ({})]", ctx.author().tag());
+	trace!("> `map_name`: {map_name:?}");
+	trace!("> `mode`: {mode:?}");
+	trace!("> `runtype`: {runtype:?}");
 	ctx.defer().await?;
-	trace!("[/maptop] map_name: `{map_name}`, mode: `{mode:?}`, runtype: `{runtype:?}`");
 
 	let db_entry = ctx
 		.find_by_id(*ctx.author().id.as_u64())

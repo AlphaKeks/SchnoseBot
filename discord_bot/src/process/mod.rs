@@ -1,3 +1,7 @@
+//! Functions to interact with the bot's system process (e.g. restarting).
+//!
+//! **Do not expose these to random users. Only in `owners_only` commands!**
+
 use {
 	crate::{error::Error, Config},
 	log::{error, info, trace},
@@ -18,7 +22,7 @@ pub fn restart(config: &Config) -> Result<(), Error> {
 		.output()
 	{
 		Ok(Output { .. }) => {
-			unreachable!("The bot has restarted... how would this ever get executed?")
+			unreachable!("The bot has restarted... how did we get here?");
 		}
 		Err(why) => {
 			error!("Failed to restart the bot: {why:?}");

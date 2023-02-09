@@ -2,21 +2,25 @@ use {
 	super::{autocompletion::autocomplete_map, choices::ModeChoice},
 	crate::{
 		error::Error,
-		gokz_ext::{fmt_time, GokzRecord},
+		gokz::{fmt_time, GokzRecord},
 		Context, State,
 	},
 	gokz_rs::{prelude::*, records::Record, GlobalAPI},
 	log::trace,
 };
 
+/// Check a bonus world record.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn bwr(
 	ctx: Context<'_>, #[autocomplete = "autocomplete_map"] map_name: String,
 	#[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
 	#[description = "Course"] course: Option<u8>,
 ) -> Result<(), Error> {
+	trace!("[/bwr ({})]", ctx.author().tag());
+	trace!("> `map_name`: {map_name:?}");
+	trace!("> `mode`: {mode:?}");
+	trace!("> `course`: {course:?}");
 	ctx.defer().await?;
-	trace!("[/bwr] map_name: `{map_name}`, mode: `{mode:?}`, course: `{course:?}`");
 
 	let db_entry = ctx
 		.find_by_id(*ctx.author().id.as_u64())

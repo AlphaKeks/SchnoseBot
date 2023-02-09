@@ -5,12 +5,14 @@ use {
 	log::trace,
 };
 
+/// Detailed information on a map.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn map(
 	ctx: Context<'_>, #[autocomplete = "autocomplete_map"] map_name: String,
 ) -> Result<(), Error> {
+	trace!("[/map ({})]", ctx.author().tag());
+	trace!("> `map_name`: {map_name:?}");
 	ctx.defer().await?;
-	trace!("[/map] map_name: `{map_name}`");
 
 	let map = ctx.get_map(&MapIdentifier::Name(map_name))?;
 

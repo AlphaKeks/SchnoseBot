@@ -1,10 +1,11 @@
 use {
 	super::choices::{ModeChoice, RuntypeChoice, TierChoice},
-	crate::{error::Error, Context, State, Target},
+	crate::{custom_types::Target, error::Error, Context, State},
 	gokz_rs::{prelude::*, GlobalAPI},
 	log::trace,
 };
 
+/// Check which maps you still need to finish.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn unfinished(
 	ctx: Context<'_>, #[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
@@ -12,8 +13,12 @@ pub async fn unfinished(
 	#[description = "Filter by map difficulty."] tier: Option<TierChoice>,
 	#[description = "The player you want to target."] player: Option<String>,
 ) -> Result<(), Error> {
+	trace!("[/unfinished ({})]", ctx.author().tag());
+	trace!("> `mode`: {mode:?}");
+	trace!("> `runtype`: {runtype:?}");
+	trace!("> `tier`: {tier:?}");
+	trace!("> `player`: {player:?}");
 	ctx.defer().await?;
-	trace!("[/unfinished] mode: `{mode:?}`, runtype: `{runtype:?}`, tier: `{tier:?}`, player: `{player:?}`");
 
 	let db_entry = ctx
 		.find_by_id(*ctx.author().id.as_u64())
@@ -36,13 +41,9 @@ pub async fn unfinished(
 				.await?
 		}
 		None => {
-			let db_entry = db_entry.map_err(|_| Error::NoPlayerInfo)?;
-
-			if let Some(steam_id) = &db_entry.steam_id {
-				PlayerIdentifier::SteamID(steam_id.to_owned())
-			} else {
-				PlayerIdentifier::Name(db_entry.name)
-			}
+			Target::None(*ctx.author().id.as_u64())
+				.into_player(&ctx)
+				.await?
 		}
 	};
 

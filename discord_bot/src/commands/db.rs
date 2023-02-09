@@ -4,14 +4,17 @@ use {
 	log::trace,
 };
 
+/// Check your database entries.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn db(ctx: Context<'_>, public: Option<BoolChoice>) -> Result<(), Error> {
+	trace!("[/db ({})]", ctx.author().tag());
+	trace!("> `public`: {public:?}");
+
 	if matches!(public, Some(BoolChoice::Yes)) {
 		ctx.defer().await?;
 	} else {
 		ctx.defer_ephemeral().await?;
 	}
-	trace!("[/db] public: {public:?}");
 
 	let User { name, discord_id, steam_id, mode } = ctx
 		.find_by_id(*ctx.author().id.as_u64())

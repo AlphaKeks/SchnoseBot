@@ -4,10 +4,11 @@ use {
 	log::trace,
 };
 
-#[poise::command(slash_command, on_error = "Error::handle_command")]
+/// `GlobalAPI` health report.
+#[poise::command(prefix_command, slash_command, on_error = "Error::handle_command")]
 pub async fn apistatus(ctx: Context<'_>) -> Result<(), Error> {
+	trace!("[/apistatus ({})]", ctx.author().tag());
 	ctx.defer().await?;
-	trace!("[/apistatus] ({})", ctx.author().tag());
 
 	let health_report = GlobalAPI::checkhealth(ctx.gokz_client()).await?;
 
