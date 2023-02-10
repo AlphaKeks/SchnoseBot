@@ -26,7 +26,7 @@ use {
 	poise::{
 		async_trait,
 		serenity_prelude::{GatewayIntents, GuildId, UserId},
-		Framework, FrameworkOptions, PrefixFrameworkOptions,
+		Event, Framework, FrameworkOptions, PrefixFrameworkOptions,
 	},
 	serde::Deserialize,
 	sqlx::{mysql::MySqlPoolOptions, MySql, Pool},
@@ -91,8 +91,11 @@ async fn main() -> Eyre<()> {
 				commands::wr(),
 			],
 			event_handler: |_, event, _, _| {
-				Box::pin(async {
+				Box::pin(async move {
 					debug!("Received event `{}`", event.name());
+					if let Event::Ready { data_about_bot } = event {
+						info!("Connected to Discord as {}!", data_about_bot.user.tag());
+					}
 					Ok(())
 				})
 			},

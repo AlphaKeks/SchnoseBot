@@ -8,7 +8,7 @@ use {
 pub async fn get_steam_avatar(
 	steam_api_key: &str,
 	steam_id64: &str,
-	client: &reqwest::Client,
+	client: &gokz_rs::Client,
 ) -> Eyre<String> {
 	let response = client
 		.get(format!("https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key={steam_api_key}&steamids={steam_id64}"))
