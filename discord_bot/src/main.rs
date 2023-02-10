@@ -70,6 +70,7 @@ async fn main() -> Eyre<()> {
 				commands::btop(),
 				commands::bwr(),
 				commands::db(),
+				commands::help(),
 				commands::invite(),
 				commands::map(),
 				commands::maptop(),
@@ -288,9 +289,10 @@ impl GlobalState {
 
 		let gokz_client = gokz_rs::Client::new();
 		let global_maps = Box::leak(Box::new(
-			global_maps::init(&gokz_client)
-				.await
-				.expect("Failed to fetch global maps."),
+			// global_maps::init(&gokz_client)
+			// 	.await
+			// 	.expect("Failed to fetch global maps."),
+			Vec::new(),
 		));
 
 		Self {

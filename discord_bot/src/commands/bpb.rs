@@ -11,9 +11,19 @@ use {
 };
 
 /// A player's personal best on a bonus course.
+///
+/// This command will fetch a given player's personal best on a given bonus course. You can \
+/// specify the following parameters:
+/// - `map_name`: any of [these](https://maps.global-api.com/mapcycles/gokz.txt)
+/// - `mode`: filter by mode (KZT/SKZ/VNL)
+/// - `player`: `SteamID`, Player Name or @mention
+/// - `course`: Which bonus you want to check (i.e. `3` means "bonus 3")
+/// If the API has a global replay stored for your run, the bot will attach some links for you to \
+/// view and/or download the replay.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn bpb(
-	ctx: Context<'_>, #[autocomplete = "autocomplete_map"] map_name: String,
+	ctx: Context<'_>,
+	#[autocomplete = "autocomplete_map"] map_name: String,
 	#[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
 	#[description = "The player you want to target."] player: Option<String>,
 	#[description = "Course"] course: Option<u8>,
@@ -65,13 +75,16 @@ pub async fn bpb(
 	let player_name = || {
 		if let Ok(tp) = &tp {
 			if let Some(name) = &tp.player_name {
-				return name.to_owned();
+				return format!("[{}](https://steamcommunity.com/profiles/{})", name, tp.steamid64);
 			}
 		}
 
 		if let Ok(pro) = &pro {
 			if let Some(name) = &pro.player_name {
-				return name.to_owned();
+				return format!(
+					"[{}](https://steamcommunity.com/profiles/{})",
+					name, pro.steamid64
+				);
 			}
 		}
 

@@ -11,9 +11,16 @@ use {
 };
 
 /// Top 100 records on a map.
+///
+/// This command will fetch the top 100 records on a given map. You can specify the following \
+/// parameters:
+/// - `map_name`: any of [these](https://maps.global-api.com/mapcycles/gokz.txt)
+/// - `mode`: filter by mode (KZT/SKZ/VNL)
+/// - `runtype`: TP/PRO
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn maptop(
-	ctx: Context<'_>, #[autocomplete = "autocomplete_map"] map_name: String,
+	ctx: Context<'_>,
+	#[autocomplete = "autocomplete_map"] map_name: String,
 	#[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
 	#[description = "TP/PRO"] runtype: Option<RuntypeChoice>,
 ) -> Result<(), Error> {
@@ -67,7 +74,14 @@ pub async fn maptop(
 				.as_ref()
 				.map_or_else(|| "unknown", |name| name.as_str());
 
-			temp_embed.field(format!("{player_name} [#{place}]"), fmt_time(record.time), true);
+			let player_profile =
+				format!("https://steamcommunity.com/profiles/{}", record.steamid64);
+
+			temp_embed.field(
+				format!("[{player_name}]({player_profile}) [#{place}]"),
+				fmt_time(record.time),
+				true,
+			);
 			place += 1;
 		}
 

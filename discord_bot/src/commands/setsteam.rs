@@ -5,9 +5,14 @@ use {
 };
 
 /// Save your `SteamID` in the bot's database.
+///
+/// This command will associate the `SteamID` you specify with your Discord `UserID` for later \
+/// use. This is very helpful on commands such as `/wr` or `/profile` where the bot needs to \
+/// target a specific player.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn setsteam(
-	ctx: Context<'_>, #[description = "Your SteamID, e.g. `STEAM_1:1:161178172`"] steam_id: String,
+	ctx: Context<'_>,
+	#[description = "Your SteamID, e.g. `STEAM_1:1:161178172`"] steam_id: String,
 ) -> Result<(), Error> {
 	trace!("[/setsteam ({})]", ctx.author().tag());
 	trace!("> `steam_id`: {steam_id:?}");

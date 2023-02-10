@@ -13,9 +13,15 @@ use {
 };
 
 /// Get a player's most recent PB. (Main course only)
+///
+/// Due to limitations with the [GlobalAPI](https://portal.global-api.com/dashboard) this only \
+/// works for non-bonus PB runs. It will fetch all of your PBs and then filter them by date to \
+/// give you the most recent one. If the API has a global replay stored for your run, the bot will \
+/// attach some links for you to view and/or download the replay.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn recent(
-	ctx: Context<'_>, #[description = "The player you want to target."] player: Option<String>,
+	ctx: Context<'_>,
+	#[description = "The player you want to target."] player: Option<String>,
 ) -> Result<(), Error> {
 	trace!("[/recent ({})]", ctx.author().tag());
 	trace!("> `player`: {player:?}");

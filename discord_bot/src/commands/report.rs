@@ -25,11 +25,15 @@ struct Report {
 
 // TODO: find out why [`ApplicationContext`] is required here and potentially replace it with the
 // normal [`crate::Context`].
+
 /// Report issues/bugs with the bot or suggest changes.
+///
+/// This command will open a `Modal` where you can describe an issue you had with the bot. The \
+/// contents of that `Modal` will be sent to me (AlphaKeks) for review. The more info you provide, \
+/// the better. Timestamps, screenshots, detailed description etc. make it much easier to fix bugs.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn report(ctx: ApplicationContext<'_>) -> Result<(), Error> {
 	trace!("[/report ({})]", ctx.author().tag());
-	ctx.defer().await?;
 
 	let Some(modal) = execute_modal(ctx, Some(Report::default()), Some(Duration::from_secs(300))).await? else {
 		// User didn't submit modal in time.

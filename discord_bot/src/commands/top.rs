@@ -14,9 +14,15 @@ use {
 };
 
 /// Top 100 world record holders.
+///
+/// This command will fetch the top 100 world records holders for TP or PRO. You can specify the \
+/// following parameters:
+/// - `mode`: filter by mode (KZT/SKZ/VNL)
+/// - `runtype`: TP/PRO
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn top(
-	ctx: Context<'_>, #[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
+	ctx: Context<'_>,
+	#[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
 	#[description = "TP/PRO"] runtype: Option<RuntypeChoice>,
 ) -> Result<(), Error> {
 	trace!("[/top ({})]", ctx.author().tag());
@@ -61,7 +67,10 @@ pub async fn top(
 			.footer(|f| f.text(format!("Mode: {} | Page {} / {}", mode, page_idx + 1, max_pages)));
 
 		for player in players {
-			let player_name = &player.player_name;
+			let player_name = format!(
+				"[{}](https://steamcommunity.com/profiles/{})",
+				player.player_name, player.steamid64
+			);
 
 			temp_embed.field(format!("{player_name} [#{place}]"), player.count, true);
 			place += 1;

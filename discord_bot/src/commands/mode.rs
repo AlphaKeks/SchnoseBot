@@ -6,9 +6,14 @@ use {
 };
 
 /// Set your mode preference.
+///
+/// This command will associate the mode you specify with your Discord `UserID` for later use. \
+/// This is very helpful on commands such as `/wr` or `/profile` where the bot only wants to fetch \
+/// information for a specific mode.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn mode(
-	ctx: Context<'_>, #[description = "KZT/SKZ/VNL"] mode: DBModeChoice,
+	ctx: Context<'_>,
+	#[description = "KZT/SKZ/VNL"] mode: DBModeChoice,
 ) -> Result<(), Error> {
 	trace!("[/mode ({})]", ctx.author().tag());
 	trace!("> `mode`: {mode:?}");

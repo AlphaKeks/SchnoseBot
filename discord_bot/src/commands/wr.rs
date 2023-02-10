@@ -9,10 +9,18 @@ use {
 	log::trace,
 };
 
-/// Check a world record.
+/// World record on a given map.
+///
+/// This command will fetch the world record on a given map. You can specify the following \
+/// parameters:
+/// - `map_name`: any of [these](https://maps.global-api.com/mapcycles/gokz.txt)
+/// - `mode`: filter by mode (KZT/SKZ/VNL)
+/// If the API has a global replay stored for your run, the bot will attach some links for you to \
+/// view and/or download the replay.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn wr(
-	ctx: Context<'_>, #[autocomplete = "autocomplete_map"] map_name: String,
+	ctx: Context<'_>,
+	#[autocomplete = "autocomplete_map"] map_name: String,
 	#[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
 ) -> Result<(), Error> {
 	trace!("[/wr ({})]", ctx.author().tag());
@@ -45,8 +53,10 @@ pub async fn wr(
 			"{} ({} TPs)\nby {}",
 			fmt_time(tp.time),
 			tp.teleports,
-			tp.player_name
-				.unwrap_or_else(|| String::from("unknown"))
+			tp.player_name.map_or_else(
+				|| String::from("unknown"),
+				|name| format!("[{}](https://steamcommunity.com/profiles/{})", name, tp.steamid64)
+			)
 		)
 	} else {
 		String::from("😔")
@@ -56,8 +66,10 @@ pub async fn wr(
 		format!(
 			"{}\nby {}",
 			fmt_time(pro.time),
-			pro.player_name
-				.unwrap_or_else(|| String::from("unknown"))
+			pro.player_name.map_or_else(
+				|| String::from("unknown"),
+				|name| format!("[{}](https://steamcommunity.com/profiles/{})", name, pro.steamid64)
+			)
 		)
 	} else {
 		String::from("😔")

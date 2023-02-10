@@ -16,6 +16,9 @@ pub use bwr::bwr;
 mod db;
 pub use db::db;
 
+mod help;
+pub use help::help;
+
 mod invite;
 pub use invite::invite;
 

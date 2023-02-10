@@ -5,10 +5,15 @@ use {
 	log::trace,
 };
 
-/// Detailed information on a map.
+/// Get detailed information on a map.
+///
+/// This command will combine information from both the \
+/// [GlobalAPI](https://portal.global-api.com/dashboard) and [KZ:GO](https://kzgo.eu) to give you \
+/// a compact summary of a given map's most important information.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn map(
-	ctx: Context<'_>, #[autocomplete = "autocomplete_map"] map_name: String,
+	ctx: Context<'_>,
+	#[autocomplete = "autocomplete_map"] map_name: String,
 ) -> Result<(), Error> {
 	trace!("[/map ({})]", ctx.author().tag());
 	trace!("> `map_name`: {map_name:?}");

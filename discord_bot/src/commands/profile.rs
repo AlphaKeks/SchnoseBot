@@ -11,9 +11,15 @@ use {
 };
 
 /// Similar to how a player profile is displayed on KZ:GO. (I tried my best...)
+///
+/// This command will fetch a bunch of information about you and is meant to somewhat replicate \
+/// the profile view of [KZ:GO](https://kzgo.eu). It will show some bars representing your \
+/// completion % for each tier as well as your amount of world records, total points, rank and \
+/// preferred mode.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn profile(
-	ctx: Context<'_>, #[description = "The player you want to target."] player: Option<String>,
+	ctx: Context<'_>,
+	#[description = "The player you want to target."] player: Option<String>,
 	#[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
 ) -> Result<(), Error> {
 	trace!("[/profile ({})]", ctx.author().tag());

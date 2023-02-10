@@ -6,9 +6,17 @@ use {
 };
 
 /// Check which maps you still need to finish.
+///
+/// This command will fetch all maps which you haven't yet completed. You can apply the following \
+/// filters to this:
+/// - `mode`: filter by mode (KZT/SKZ/VNL)
+/// - `runtype`: TP/PRO
+/// - `tier`: filter by difficulty
+/// - `player`: `SteamID`, Player Name or @mention
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn unfinished(
-	ctx: Context<'_>, #[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
+	ctx: Context<'_>,
+	#[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
 	#[description = "TP/PRO"] runtype: Option<RuntypeChoice>,
 	#[description = "Filter by map difficulty."] tier: Option<TierChoice>,
 	#[description = "The player you want to target."] player: Option<String>,

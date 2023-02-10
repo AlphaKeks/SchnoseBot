@@ -5,8 +5,16 @@ use {
 };
 
 /// Check your database entries.
+///
+/// This command will query the bot's database for all the information it has about you \
+/// (not a lot). By default the bot's response will be ephemeral \
+/// (only you will be able to see it), but you can tell it to send a normal message as well via \
+/// the `public` argument.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
-pub async fn db(ctx: Context<'_>, public: Option<BoolChoice>) -> Result<(), Error> {
+pub async fn db(
+	ctx: Context<'_>,
+	#[description = "Send the message so that everybody can see it."] public: Option<BoolChoice>,
+) -> Result<(), Error> {
 	trace!("[/db ({})]", ctx.author().tag());
 	trace!("> `public`: {public:?}");
 

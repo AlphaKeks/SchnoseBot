@@ -3,10 +3,18 @@ use {
 	log::trace,
 };
 
-/// Approximate a nocrouch jump's potential distance. (NOT PERFECTLY ACCURATE)
+/// Approximate a nocrouch jump's potential distance.
+///
+/// This is by no means 100% accurate and also not very hard to calculate yourself. The command \
+/// only really exists for the sake of convenience.
+///
+/// ```
+/// potential_distance = actual_distance + (max_speed / 128) * 4
+/// ```
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn nocrouch(
-	ctx: Context<'_>, #[description = "The distance of your jump"] distance: f64,
+	ctx: Context<'_>,
+	#[description = "The distance of your jump"] distance: f64,
 	#[description = "The max speed of your jump"] max: f64,
 ) -> Result<(), Error> {
 	trace!("[/nocrouch ({})]", ctx.author().tag());

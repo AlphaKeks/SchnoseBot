@@ -11,9 +11,17 @@ use {
 };
 
 /// Top 100 records on a bonus course.
+///
+/// This command will fetch the top 100 records on a given bonus course. You can specify the \
+/// following parameters:
+/// - `map_name`: any of [these](https://maps.global-api.com/mapcycles/gokz.txt)
+/// - `mode`: filter by mode (KZT/SKZ/VNL)
+/// - `runtype`: TP/PRO
+/// - `course`: Which bonus you want to check (i.e. `3` means "bonus 3")
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn bmaptop(
-	ctx: Context<'_>, #[autocomplete = "autocomplete_map"] map_name: String,
+	ctx: Context<'_>,
+	#[autocomplete = "autocomplete_map"] map_name: String,
 	#[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
 	#[description = "TP/PRO"] runtype: Option<RuntypeChoice>,
 	#[description = "Course"] course: Option<u8>,
