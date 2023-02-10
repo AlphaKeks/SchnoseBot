@@ -1,7 +1,10 @@
 //! Custom types which I couldn't find a better place for.
 
 use {
-	crate::{error::Error, Context, State},
+	crate::{
+		error::{Error, Result},
+		Context, State,
+	},
 	gokz_rs::{
 		prelude::{PlayerIdentifier, SteamID},
 		GlobalAPI,
@@ -28,7 +31,7 @@ pub enum Target {
 impl std::str::FromStr for Target {
 	type Err = Error;
 
-	fn from_str(s: &str) -> Result<Self, Self::Err> {
+	fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
 		if let Ok(steam_id) = SteamID::new(s) {
 			return Ok(Self::SteamID(steam_id));
 		}
@@ -51,7 +54,7 @@ impl std::str::FromStr for Target {
 }
 
 impl Target {
-	pub async fn into_player(self, ctx: &Context<'_>) -> Result<PlayerIdentifier, Error> {
+	pub async fn into_player(self, ctx: &Context<'_>) -> Result<PlayerIdentifier> {
 		match self {
 			Self::None(user_id) => {
 				if let Ok(user) = ctx.find_by_id(user_id).await {

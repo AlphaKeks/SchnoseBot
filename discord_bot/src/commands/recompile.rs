@@ -1,5 +1,8 @@
 use {
-	crate::{error::Error, Context, State},
+	crate::{
+		error::{Error, Result},
+		Context, State,
+	},
 	log::trace,
 };
 
@@ -10,7 +13,7 @@ use {
 	owners_only,
 	global_cooldown = 120
 )]
-pub async fn recompile(ctx: Context<'_>, clean: Option<String>) -> Result<(), Error> {
+pub async fn recompile(ctx: Context<'_>, clean: Option<String>) -> Result<()> {
 	trace!("[/recompile ({})]", ctx.author().tag());
 	trace!("> `clean`: {clean:?}");
 	ctx.defer().await?;

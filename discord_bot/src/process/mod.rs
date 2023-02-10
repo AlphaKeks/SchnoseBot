@@ -3,12 +3,15 @@
 //! **Do not expose these to random users. Only in `owners_only` commands!**
 
 use {
-	crate::{error::Error, Config},
+	crate::{
+		error::{Error, Result},
+		Config,
+	},
 	log::{error, info, trace},
 	std::process::{Command, Output},
 };
 
-pub fn restart(config: &Config) -> Result<(), Error> {
+pub fn restart(config: &Config) -> Result<()> {
 	trace!("[/restart]");
 
 	let restart_command = &config
@@ -31,7 +34,7 @@ pub fn restart(config: &Config) -> Result<(), Error> {
 	}
 }
 
-pub fn git_pull(config: &Config) -> Result<(String, String), Error> {
+pub fn git_pull(config: &Config) -> Result<(String, String)> {
 	trace!("[/pull]");
 
 	match Command::new("git")
@@ -54,7 +57,7 @@ pub fn git_pull(config: &Config) -> Result<(String, String), Error> {
 	}
 }
 
-pub fn cargo_clean(config: &Config) -> Result<(String, String), Error> {
+pub fn cargo_clean(config: &Config) -> Result<(String, String)> {
 	match Command::new("cargo")
 		.current_dir(&config.workspace_directory)
 		.arg("clean")
@@ -75,7 +78,7 @@ pub fn cargo_clean(config: &Config) -> Result<(String, String), Error> {
 	}
 }
 
-pub fn cargo_build(config: &Config) -> Result<(String, String), Error> {
+pub fn cargo_build(config: &Config) -> Result<(String, String)> {
 	trace!("[/recompile]");
 
 	match Command::new("cargo")

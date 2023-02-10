@@ -1,5 +1,8 @@
 use {
-	crate::{error::Error, Context},
+	crate::{
+		error::{Error, Result},
+		Context,
+	},
 	log::trace,
 };
 
@@ -16,7 +19,7 @@ pub async fn nocrouch(
 	ctx: Context<'_>,
 	#[description = "The distance of your jump"] distance: f64,
 	#[description = "The max speed of your jump"] max: f64,
-) -> Result<(), Error> {
+) -> Result<()> {
 	trace!("[/nocrouch ({})]", ctx.author().tag());
 	trace!("> `distance`: {distance:?}");
 	trace!("> `max`: {max:?}");

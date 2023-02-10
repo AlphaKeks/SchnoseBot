@@ -1,5 +1,8 @@
 use {
-	crate::{error::Error, Context, State},
+	crate::{
+		error::{Error, Result},
+		Context, State,
+	},
 	log::trace,
 	poise::serenity_prelude::{CollectComponentInteraction, InteractionResponseType},
 	std::{collections::BTreeMap, time::Duration},
@@ -26,7 +29,7 @@ use {
 /// `SteamID` and your preferred mode in the bot's database. You can do that with `/setsteam` and \
 /// `/mode`. Those will then be used as fallback options.
 #[poise::command(slash_command, ephemeral, on_error = "Error::handle_command")]
-pub async fn help(ctx: Context<'_>) -> Result<(), Error> {
+pub async fn help(ctx: Context<'_>) -> Result<()> {
 	trace!("[/help ({})]", ctx.author().tag());
 
 	let commands = ctx
@@ -37,6 +40,8 @@ pub async fn help(ctx: Context<'_>) -> Result<(), Error> {
 		.filter_map(|command| {
 			Some((
 				command.name.clone(),
+				// The `description` and `help_text` come from the doc comments on each command
+				// function.
 				(command.description.as_ref()?.to_owned(), command.help_text?()),
 			))
 		})

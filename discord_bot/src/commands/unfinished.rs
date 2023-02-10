@@ -1,6 +1,10 @@
 use {
 	super::choices::{ModeChoice, RuntypeChoice, TierChoice},
-	crate::{custom_types::Target, error::Error, Context, State},
+	crate::{
+		custom_types::Target,
+		error::{Error, Result},
+		Context, State,
+	},
 	gokz_rs::{prelude::*, GlobalAPI},
 	log::trace,
 };
@@ -20,7 +24,7 @@ pub async fn unfinished(
 	#[description = "TP/PRO"] runtype: Option<RuntypeChoice>,
 	#[description = "Filter by map difficulty."] tier: Option<TierChoice>,
 	#[description = "The player you want to target."] player: Option<String>,
-) -> Result<(), Error> {
+) -> Result<()> {
 	trace!("[/unfinished ({})]", ctx.author().tag());
 	trace!("> `mode`: {mode:?}");
 	trace!("> `runtype`: {runtype:?}");

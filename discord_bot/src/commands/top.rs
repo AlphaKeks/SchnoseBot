@@ -4,7 +4,7 @@ use {
 		pagination::paginate,
 	},
 	crate::{
-		error::Error,
+		error::{Error, Result},
 		gokz::{WorldRecordLeaderboard, WorldRecordParams},
 		Context, State,
 	},
@@ -24,7 +24,7 @@ pub async fn top(
 	ctx: Context<'_>,
 	#[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
 	#[description = "TP/PRO"] runtype: Option<RuntypeChoice>,
-) -> Result<(), Error> {
+) -> Result<()> {
 	trace!("[/top ({})]", ctx.author().tag());
 	trace!("> `mode`: {mode:?}");
 	trace!("> `runtype`: {runtype:?}");

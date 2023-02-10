@@ -1,6 +1,9 @@
 use {
 	super::autocompletion::autocomplete_map,
-	crate::{error::Error, Context, State},
+	crate::{
+		error::{Error, Result},
+		Context, State,
+	},
 	gokz_rs::{prelude::*, GlobalAPI},
 	log::trace,
 };
@@ -14,7 +17,7 @@ use {
 pub async fn map(
 	ctx: Context<'_>,
 	#[autocomplete = "autocomplete_map"] map_name: String,
-) -> Result<(), Error> {
+) -> Result<()> {
 	trace!("[/map ({})]", ctx.author().tag());
 	trace!("> `map_name`: {map_name:?}");
 	ctx.defer().await?;

@@ -289,10 +289,9 @@ impl GlobalState {
 
 		let gokz_client = gokz_rs::Client::new();
 		let global_maps = Box::leak(Box::new(
-			// global_maps::init(&gokz_client)
-			// 	.await
-			// 	.expect("Failed to fetch global maps."),
-			Vec::new(),
+			global_maps::init(&gokz_client)
+				.await
+				.expect("Failed to fetch global maps."),
 		));
 
 		Self {

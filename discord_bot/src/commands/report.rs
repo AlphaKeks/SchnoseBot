@@ -1,5 +1,8 @@
 use {
-	crate::{error::Error, ApplicationContext, State},
+	crate::{
+		error::{Error, Result},
+		ApplicationContext, State,
+	},
 	chrono::Utc,
 	log::trace,
 	poise::{
@@ -32,7 +35,7 @@ struct Report {
 /// contents of that `Modal` will be sent to me (AlphaKeks) for review. The more info you provide, \
 /// the better. Timestamps, screenshots, detailed description etc. make it much easier to fix bugs.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
-pub async fn report(ctx: ApplicationContext<'_>) -> Result<(), Error> {
+pub async fn report(ctx: ApplicationContext<'_>) -> Result<()> {
 	trace!("[/report ({})]", ctx.author().tag());
 
 	let Some(modal) = execute_modal(ctx, Some(Report::default()), Some(Duration::from_secs(300))).await? else {

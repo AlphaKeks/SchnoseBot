@@ -4,7 +4,11 @@ use {
 		choices::{ModeChoice, RuntypeChoice},
 		pagination::paginate,
 	},
-	crate::{error::Error, gokz::fmt_time, Context, State},
+	crate::{
+		error::{Error, Result},
+		gokz::fmt_time,
+		Context, State,
+	},
 	gokz_rs::{prelude::*, GlobalAPI},
 	log::trace,
 	poise::serenity_prelude::CreateEmbed,
@@ -23,7 +27,7 @@ pub async fn maptop(
 	#[autocomplete = "autocomplete_map"] map_name: String,
 	#[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
 	#[description = "TP/PRO"] runtype: Option<RuntypeChoice>,
-) -> Result<(), Error> {
+) -> Result<()> {
 	trace!("[/maptop ({})]", ctx.author().tag());
 	trace!("> `map_name`: {map_name:?}");
 	trace!("> `mode`: {mode:?}");

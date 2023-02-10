@@ -2,7 +2,7 @@
 //! structure.
 
 use {
-	crate::error::Error,
+	crate::error::Result,
 	chrono::NaiveDateTime,
 	gokz_rs::{GlobalAPI, KZGO},
 	serde::{Deserialize, Serialize},
@@ -29,7 +29,7 @@ pub struct GlobalMap {
 }
 
 /// Gets called once at the start to fetch and process all maps.
-pub async fn init(gokz_client: &gokz_rs::Client) -> Result<Vec<GlobalMap>, Error> {
+pub async fn init(gokz_client: &gokz_rs::Client) -> Result<Vec<GlobalMap>> {
 	let global_maps = GlobalAPI::get_maps(true, Some(9999), gokz_client).await?;
 	let mut kzgo_maps = KZGO::get_maps(gokz_client)
 		.await?

@@ -3,7 +3,12 @@
 
 use {
 	super::choices::ModeChoice,
-	crate::{custom_types::Target, error::Error, steam::get_steam_avatar, Context, State},
+	crate::{
+		custom_types::Target,
+		error::{Error, Result},
+		steam::get_steam_avatar,
+		Context, State,
+	},
 	gokz_rs::{prelude::*, GlobalAPI, KZGO},
 	log::{error, trace},
 	num_format::{Locale, ToFormattedString},
@@ -21,7 +26,7 @@ pub async fn profile(
 	ctx: Context<'_>,
 	#[description = "The player you want to target."] player: Option<String>,
 	#[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
-) -> Result<(), Error> {
+) -> Result<()> {
 	trace!("[/profile ({})]", ctx.author().tag());
 	trace!("> `player`: {player:?}");
 	trace!("> `mode`: {mode:?}");

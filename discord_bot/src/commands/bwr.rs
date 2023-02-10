@@ -1,7 +1,7 @@
 use {
 	super::{autocompletion::autocomplete_map, choices::ModeChoice},
 	crate::{
-		error::Error,
+		error::{Error, Result},
 		gokz::{fmt_time, GokzRecord},
 		Context, State,
 	},
@@ -24,7 +24,7 @@ pub async fn bwr(
 	#[autocomplete = "autocomplete_map"] map_name: String,
 	#[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
 	#[description = "Course"] course: Option<u8>,
-) -> Result<(), Error> {
+) -> Result<()> {
 	trace!("[/bwr ({})]", ctx.author().tag());
 	trace!("> `map_name`: {map_name:?}");
 	trace!("> `mode`: {mode:?}");

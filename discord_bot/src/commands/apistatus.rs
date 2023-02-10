@@ -1,5 +1,8 @@
 use {
-	crate::{error::Error, Context, State},
+	crate::{
+		error::{Error, Result},
+		Context, State,
+	},
 	gokz_rs::GlobalAPI,
 	log::trace,
 };
@@ -12,7 +15,7 @@ use {
 /// [this website](https://health.global-api.com/endpoints/_globalapi).
 /// (The bot uses that website internally as well.)
 #[poise::command(prefix_command, slash_command, on_error = "Error::handle_command")]
-pub async fn apistatus(ctx: Context<'_>) -> Result<(), Error> {
+pub async fn apistatus(ctx: Context<'_>) -> Result<()> {
 	trace!("[/apistatus ({})]", ctx.author().tag());
 	ctx.defer().await?;
 

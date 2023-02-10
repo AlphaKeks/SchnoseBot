@@ -1,6 +1,9 @@
 use {
 	super::choices::DBModeChoice,
-	crate::{error::Error, Context, State},
+	crate::{
+		error::{Error, Result},
+		Context, State,
+	},
 	gokz_rs::prelude::*,
 	log::trace,
 };
@@ -14,7 +17,7 @@ use {
 pub async fn mode(
 	ctx: Context<'_>,
 	#[description = "KZT/SKZ/VNL"] mode: DBModeChoice,
-) -> Result<(), Error> {
+) -> Result<()> {
 	trace!("[/mode ({})]", ctx.author().tag());
 	trace!("> `mode`: {mode:?}");
 	ctx.defer().await?;

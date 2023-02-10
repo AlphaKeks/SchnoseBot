@@ -2,7 +2,7 @@ use {
 	super::{autocompletion::autocomplete_map, choices::ModeChoice},
 	crate::{
 		custom_types::Target,
-		error::Error,
+		error::{Error, Result},
 		gokz::{fmt_time, GokzRecord},
 		Context, State,
 	},
@@ -25,7 +25,7 @@ pub async fn pb(
 	#[autocomplete = "autocomplete_map"] map_name: String,
 	#[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
 	#[description = "The player you want to target."] player: Option<String>,
-) -> Result<(), Error> {
+) -> Result<()> {
 	trace!("[/pb ({})]", ctx.author().tag());
 	trace!("> `map_name`: {map_name:?}");
 	trace!("> `mode`: {mode:?}");

@@ -2,7 +2,7 @@ use {
 	super::pagination::paginate,
 	crate::{
 		custom_types::Target,
-		error::Error,
+		error::{Error, Result},
 		gokz::{fmt_time, GokzRecord},
 		Context, State,
 	},
@@ -22,7 +22,7 @@ use {
 pub async fn recent(
 	ctx: Context<'_>,
 	#[description = "The player you want to target."] player: Option<String>,
-) -> Result<(), Error> {
+) -> Result<()> {
 	trace!("[/recent ({})]", ctx.author().tag());
 	trace!("> `player`: {player:?}");
 	ctx.defer().await?;

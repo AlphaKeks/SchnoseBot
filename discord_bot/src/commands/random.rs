@@ -1,6 +1,10 @@
 use {
 	super::choices::TierChoice,
-	crate::{error::Error, global_maps::GlobalMap, Context, State},
+	crate::{
+		error::{Error, Result},
+		global_maps::GlobalMap,
+		Context, State,
+	},
 	log::trace,
 	rand::Rng,
 };
@@ -13,7 +17,7 @@ use {
 pub async fn random(
 	ctx: Context<'_>,
 	#[description = "Filter by map difficulty."] tier: Option<TierChoice>,
-) -> Result<(), Error> {
+) -> Result<()> {
 	trace!("[/random ({})]", ctx.author().tag());
 	trace!("> `tier`: {tier:?}");
 	ctx.defer().await?;

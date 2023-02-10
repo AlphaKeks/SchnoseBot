@@ -1,5 +1,8 @@
 use {
-	crate::{error::Error, Context, State},
+	crate::{
+		error::{Error, Result},
+		Context, State,
+	},
 	gokz_rs::prelude::*,
 	log::trace,
 };
@@ -13,7 +16,7 @@ use {
 pub async fn setsteam(
 	ctx: Context<'_>,
 	#[description = "Your SteamID, e.g. `STEAM_1:1:161178172`"] steam_id: String,
-) -> Result<(), Error> {
+) -> Result<()> {
 	trace!("[/setsteam ({})]", ctx.author().tag());
 	trace!("> `steam_id`: {steam_id:?}");
 	ctx.defer().await?;

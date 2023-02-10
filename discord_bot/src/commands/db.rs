@@ -1,6 +1,10 @@
 use {
 	super::choices::BoolChoice,
-	crate::{db::User, error::Error, Context, State},
+	crate::{
+		db::User,
+		error::{Error, Result},
+		Context, State,
+	},
 	log::trace,
 };
 
@@ -14,7 +18,7 @@ use {
 pub async fn db(
 	ctx: Context<'_>,
 	#[description = "Send the message so that everybody can see it."] public: Option<BoolChoice>,
-) -> Result<(), Error> {
+) -> Result<()> {
 	trace!("[/db ({})]", ctx.author().tag());
 	trace!("> `public`: {public:?}");
 

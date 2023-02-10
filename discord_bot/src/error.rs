@@ -1,6 +1,8 @@
-//! The global [`Error`] type used across the entire crate.
+//! The global [`Error`] and [`Result`] types used across the entire crate.
 
 use log::{error, info, warn};
+
+pub type Result<T> = std::result::Result<T, Error>;
 
 /// Global `Error` type for the entire crate.
 #[derive(Debug, Clone)]

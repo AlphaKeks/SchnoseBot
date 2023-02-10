@@ -81,7 +81,8 @@ mod autocompletion {
 
 	/// Provides autocompletion for map names on certain commands using the
 	pub async fn autocomplete_map<'a>(
-		ctx: Context<'a>, input: &'a str,
+		ctx: Context<'a>,
+		input: &'a str,
 	) -> impl futures::Stream<Item = String> + 'a {
 		futures::stream::iter(ctx.global_maps()).filter_map(move |map| async {
 			if map.name.contains(&input.to_lowercase()) {
@@ -213,14 +214,14 @@ mod choices {
 
 mod pagination {
 	use {
-		crate::{error::Error, Context},
+		crate::{error::Result, Context},
 		poise::serenity_prelude::{
 			CollectComponentInteraction, CreateEmbed, InteractionResponseType,
 		},
 		std::time::Duration,
 	};
 
-	pub async fn paginate(ctx: &Context<'_>, embeds: Vec<CreateEmbed>) -> Result<(), Error> {
+	pub async fn paginate(ctx: &Context<'_>, embeds: Vec<CreateEmbed>) -> Result<()> {
 		let ctx_id = ctx.id();
 		let prev_id = format!("{ctx_id}_prev");
 		let next_id = format!("{ctx_id}_next");
