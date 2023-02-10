@@ -314,15 +314,6 @@ impl GlobalState {
 /// Global `Context` type which gets passed to slash commands.
 pub type Context<'ctx> = poise::Context<'ctx, GlobalState, crate::error::Error>;
 
-// TODO: It's kind of annoying that I need both of those `Context` types... There might be a way to
-// replace it with [`GlobalState`] completeley so I don't need traits to implement convenience
-// methods?
-
-/// Global `ApplicationContext` type which gets passed to the `/report` slash commands. It seems to
-/// be required to send modals, although I would prefer not having it at all.
-pub type ApplicationContext<'ctx> =
-	poise::ApplicationContext<'ctx, GlobalState, crate::error::Error>;
-
 /// Convenience trait to access the Global State more easily. Should be self explanatory.
 #[allow(missing_docs)]
 #[async_trait]
@@ -345,102 +336,6 @@ pub trait State {
 #[rustfmt::skip] // until `fn_single_line` is stable I don't want this to get formatted.
 #[async_trait]
 impl State for Context<'_> {
-	fn config(&self) -> &Config { &self.data().config }
-	fn database(&self) -> &Pool<MySql> { &self.data().database }
-	fn gokz_client(&self) -> &gokz_rs::Client { &self.data().gokz_client }
-	fn global_maps(&self) -> &'static Vec<GlobalMap> { self.data().global_maps }
-
-	fn get_map(&self, map_identifier: &MapIdentifier) -> Result<GlobalMap, error::Error> {
-		let mut iter = self.global_maps().iter();
-		match map_identifier {
-			MapIdentifier::ID(map_id) => iter
-				.find_map(|map| if map.id == *map_id as u16 { Some(map.to_owned()) } else { None })
-				.ok_or(error::Error::MapNotGlobal),
-			MapIdentifier::Name(map_name) => self
-				.global_maps()
-				.iter()
-				.find_map(|map| {
-					if map
-						.name
-						.contains(&map_name.to_lowercase())
-					{
-						Some(map.to_owned())
-					} else {
-						None
-					}
-				})
-				.ok_or(error::Error::MapNotGlobal),
-		}
-	}
-
-	fn get_map_name(&self, map_name: &str) -> Result<String, error::Error> {
-		self.global_maps()
-			.iter()
-			.find_map(|map| {
-				if map
-					.name
-					.contains(&map_name.to_lowercase())
-				{
-					Some(map.name.clone())
-				} else {
-					None
-				}
-			})
-			.ok_or(error::Error::MapNotGlobal)
-	}
-
-	fn color(&self) -> (u8, u8, u8) { self.data().color }
-	fn icon(&self) -> &str { &self.data().icon }
-	fn schnose(&self) -> &str { &self.data().schnose }
-
-	async fn find_by_id(&self, user_id: u64) -> Result<db::User, error::Error> {
-		Ok(sqlx::query_as::<_, db::UserSchema>(&format!(
-			"SELECT * FROM {} WHERE discord_id = {}",
-			&self.config().mysql_table,
-			user_id,
-		))
-		.fetch_one(self.database())
-		.await?
-		.into())
-	}
-
-	async fn find_by_name(&self, user_name: &str) -> Result<db::User, error::Error> {
-		Ok(sqlx::query_as::<_, db::UserSchema>(&format!(
-			r#"SELECT * FROM {} WHERE user_name = "{}""#,
-			&self.config().mysql_table,
-			user_name
-		))
-		.fetch_one(self.database())
-		.await?
-		.into())
-	}
-
-	async fn find_by_steam_id(&self, steam_id: &SteamID) -> Result<db::User, error::Error> {
-		Ok(sqlx::query_as::<_, db::UserSchema>(&format!(
-			r#"SELECT * FROM {} WHERE steam_id = "{}""#,
-			&self.config().mysql_table,
-			steam_id
-		))
-		.fetch_one(self.database())
-		.await?
-		.into())
-	}
-
-	async fn find_by_mode(&self, mode: Mode) -> Result<db::User, error::Error> {
-		Ok(sqlx::query_as::<_, db::UserSchema>(&format!(
-			r#"SELECT * FROM {} WHERE mode = "{}""#,
-			&self.config().mysql_table,
-			mode as u8
-		))
-		.fetch_one(self.database())
-		.await?
-		.into())
-	}
-}
-
-#[rustfmt::skip] // until `fn_single_line` is stable I don't want this to get formatted.
-#[async_trait]
-impl State for ApplicationContext<'_> {
 	fn config(&self) -> &Config { &self.data().config }
 	fn database(&self) -> &Pool<MySql> { &self.data().database }
 	fn gokz_client(&self) -> &gokz_rs::Client { &self.data().gokz_client }

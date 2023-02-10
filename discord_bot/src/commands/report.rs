@@ -1,33 +1,17 @@
 use {
 	crate::{
 		error::{Error, Result},
-		ApplicationContext, State,
+		Context, GlobalState, State,
 	},
 	chrono::Utc,
 	log::trace,
 	poise::{
 		execute_modal,
 		serenity_prelude::{CacheHttp, ChannelId},
-		Modal,
+		ApplicationContext, Modal,
 	},
 	std::time::Duration,
 };
-
-#[derive(Debug, Default, Modal)]
-#[name = "Report Issue / Suggest change"]
-struct Report {
-	#[name = "Title"]
-	#[placeholder = "<title>"]
-	title: String,
-
-	#[name = "Description"]
-	#[placeholder = "Describe your issue here. Please provide Screenshots if you can."]
-	#[paragraph]
-	description: String,
-}
-
-// TODO: find out why [`ApplicationContext`] is required here and potentially replace it with the
-// normal [`crate::Context`].
 
 /// Report issues/bugs with the bot or suggest changes.
 ///
@@ -35,13 +19,15 @@ struct Report {
 /// contents of that `Modal` will be sent to me (AlphaKeks) for review. The more info you provide, \
 /// the better. Timestamps, screenshots, detailed description etc. make it much easier to fix bugs.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
-pub async fn report(ctx: ApplicationContext<'_>) -> Result<()> {
+pub async fn report(ctx: ApplicationContext<'_, GlobalState, Error>) -> Result<()> {
 	trace!("[/report ({})]", ctx.author().tag());
 
 	let Some(modal) = execute_modal(ctx, Some(Report::default()), Some(Duration::from_secs(300))).await? else {
 		// User didn't submit modal in time.
 		return Ok(());
 	};
+
+	let ctx = Context::from(ctx);
 
 	ChannelId(ctx.config().report_channel)
 		.send_message(ctx.serenity_context().http(), |msg| {
@@ -72,4 +58,17 @@ pub async fn report(ctx: ApplicationContext<'_>) -> Result<()> {
 	.await?;
 
 	Ok(())
+}
+
+#[derive(Debug, Default, Modal)]
+#[name = "Report Issue / Suggest change"]
+struct Report {
+	#[name = "Title"]
+	#[placeholder = "<title>"]
+	title: String,
+
+	#[name = "Description"]
+	#[placeholder = "Describe your issue here. Please provide Screenshots if you can."]
+	#[paragraph]
+	description: String,
 }
