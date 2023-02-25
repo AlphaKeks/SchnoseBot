@@ -61,15 +61,31 @@ pub async fn recent(
 			String::new()
 		};
 
-		let discord_timestamp = NaiveDateTime::parse_from_str(
-			&record.created_on, "%Y-%m-%dT%H:%M:%S",
-		)
-		.map_or_else(|_| String::new(), |parsed_time| format!("<t:{}:R>", parsed_time.timestamp()));
+		let (created_on, _) = record
+			.created_on
+			.rsplit_once('.')
+			.unwrap_or_default();
+
+		let discord_timestamp = NaiveDateTime::parse_from_str(created_on, "%Y-%m-%d %H:%M:%S")
+			.map_or_else(
+				|_| String::new(),
+				|parsed_time| format!("<t:{}:R>", parsed_time.timestamp()),
+			);
 
 		let mut embed = CreateEmbed::default();
 		embed
 			.color(ctx.color())
-			.title(format!("[PB] {} on {} (T{})", record.player.name, &map.name, &map.tier))
+			.title(format!(
+				"[PB] {} on {} {}(T{})",
+				record.player.name,
+				&map.name,
+				if record.course.stage > 0 {
+					format!("B{} ", record.course.stage)
+				} else {
+					String::new()
+				},
+				&map.tier
+			))
 			.url(format!("{}?{}=", &map.url, mode.short().to_lowercase()))
 			.thumbnail(&map.thumbnail)
 			.field(
