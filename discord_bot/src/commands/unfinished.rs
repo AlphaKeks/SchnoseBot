@@ -5,7 +5,7 @@ use {
 		error::{Error, Result},
 		Context, State,
 	},
-	gokz_rs::{prelude::*, GlobalAPI},
+	gokz_rs::{prelude::*, schnose_api},
 	log::trace,
 };
 
@@ -59,32 +59,31 @@ pub async fn unfinished(
 		}
 	};
 
-	let (description, amount) = gokz_rs::extra::get_unfinished(
-		&player,
-		mode,
-		runtype,
-		tier.map(Tier::from),
-		ctx.gokz_client(),
-	)
-	.await
-	.map(|map_names| {
-		let description = if map_names.len() <= 10 {
-			map_names.join("\n")
-		} else {
-			format!("{}\n...{} more", map_names[0..10].join("\n"), map_names.len() - 10)
-		};
+	let (description, amount) =
+		schnose_api::get_unfinished(player.clone(), mode, runtype, tier.map(Tier::from), ctx.gokz_client())
+			.await
+			.map(|map_names| {
+				let Some(map_names) = map_names else {
+					return (String::from("You have no more maps to complete! Congrats 🥳"), String::from("0 uncompleted maps"));
+				};
 
-		// I love and hate this at the same time.
-		let amount = format!(
-			"{} uncompleted map{}",
-			map_names.len(),
-			if map_names.len() == 1 { "" } else { "s" }
-		);
+				let description = if map_names.len() <= 10 {
+					map_names.join("\n")
+				} else {
+					format!("{}\n...{} more", map_names[0..10].join("\n"), map_names.len() - 10)
+				};
 
-		(description, amount)
-	})?;
+				// I love and hate this at the same time.
+				let amount = format!(
+					"{} uncompleted map{}",
+					map_names.len(),
+					if map_names.len() == 1 { "" } else { "s" }
+				);
 
-	let player = GlobalAPI::get_player(&player, ctx.gokz_client()).await?;
+				(description, amount)
+			})?;
+
+	let player = schnose_api::get_player(player, ctx.gokz_client()).await?;
 
 	ctx.send(|reply| {
 		reply.embed(|e| {
@@ -96,11 +95,7 @@ pub async fn unfinished(
 					if runtype { "TP" } else { "PRO" },
 					tier.map_or_else(String::new, |tier| format!("[T{}]", tier as u8))
 				))
-				.description(if description.is_empty() {
-					String::from("You have no maps left to complete! Congrats! 🥳")
-				} else {
-					description
-				})
+				.description(description)
 				.footer(|f| {
 					f.text(format!("Player: {}", player.name))
 						.icon_url(ctx.icon())

@@ -3,10 +3,10 @@ use {
 	crate::{
 		custom_types::Target,
 		error::{Error, Result},
-		gokz::{fmt_time, GokzRecord},
+		gokz::fmt_time,
 		Context, State,
 	},
-	gokz_rs::{prelude::*, records::Record, GlobalAPI},
+	gokz_rs::{prelude::*, schnose_api},
 	log::trace,
 };
 
@@ -64,51 +64,43 @@ pub async fn bpb(
 	};
 	let course = course.unwrap_or(1);
 
-	let tp =
-		GlobalAPI::get_pb(&player, &map_identifier, mode, true, course, ctx.gokz_client()).await;
-	let pro =
-		GlobalAPI::get_pb(&player, &map_identifier, mode, false, course, ctx.gokz_client()).await;
-
-	let replay_links = Record::formatted_replay_links(tp.as_ref().ok(), pro.as_ref().ok());
-	let view_links = Record::formatted_view_links(tp.as_ref().ok(), pro.as_ref().ok());
-
-	let player_name = || {
-		if let Ok(tp) = &tp {
-			if let Some(name) = &tp.player_name {
-				return format!("[{}](https://steamcommunity.com/profiles/{})", name, tp.steamid64);
-			}
-		}
-
-		if let Ok(pro) = &pro {
-			if let Some(name) = &pro.player_name {
-				return format!(
-					"[{}](https://steamcommunity.com/profiles/{})",
-					name, pro.steamid64
-				);
-			}
-		}
-
-		String::from("unknown")
-	};
+	let tp = schnose_api::get_pb(
+		player.clone(),
+		map_identifier.clone(),
+		course,
+		mode,
+		true,
+		ctx.gokz_client(),
+	)
+	.await;
+	let pro = schnose_api::get_pb(
+		player.clone(),
+		map_identifier.clone(),
+		course,
+		mode,
+		false,
+		ctx.gokz_client(),
+	)
+	.await;
 
 	let tp_time = if let Ok(tp) = &tp {
-		let place = GlobalAPI::get_place(tp.id, ctx.gokz_client())
+		let place = schnose_api::get_place(tp.id, ctx.gokz_client())
 			.await
 			.map(|place| format!("[#{place}]"))
 			.unwrap_or_default();
 
-		format!("{} {}\nby {}", fmt_time(tp.time), place, player_name())
+		format!("{} {}\nby {}", fmt_time(tp.time), place, tp.player.name)
 	} else {
 		String::from("😔")
 	};
 
 	let pro_time = if let Ok(pro) = &pro {
-		let place = GlobalAPI::get_place(pro.id, ctx.gokz_client())
+		let place = schnose_api::get_place(pro.id, ctx.gokz_client())
 			.await
 			.map(|place| format!("[#{place}]"))
 			.unwrap_or_default();
 
-		format!("{} {}\nby {}", fmt_time(pro.time), place, player_name())
+		format!("{} {}\nby {}", fmt_time(pro.time), place, pro.player.name)
 	} else {
 		String::from("😔")
 	};
@@ -118,18 +110,16 @@ pub async fn bpb(
 			e.color(ctx.color())
 				.title(format!(
 					"[PB] {} on {} B{} (T{})",
-					player_name(),
+					tp.map_or(
+						pro.map_or_else(|_| String::from("unknown"), |pro| pro.player.name),
+						|tp| tp.player.name
+					),
 					&map_identifier.to_string(),
 					course,
 					&map.tier
 				))
 				.url(format!("{}?{}=&bonus={}", &map.url, mode.short().to_lowercase(), course))
 				.thumbnail(&map.thumbnail)
-				.description(format!(
-					"{}\n{}",
-					view_links.unwrap_or_default(),
-					replay_links.unwrap_or_default()
-				))
 				.field("TP", tp_time, true)
 				.field("PRO", pro_time, true)
 				.footer(|f| {

@@ -118,9 +118,9 @@ impl From<serenity::Error> for Error {
 	}
 }
 
-impl From<gokz_rs::prelude::Error> for Error {
-	fn from(value: gokz_rs::prelude::Error) -> Self {
-		Self::GOKZ(value.msg)
+impl From<gokz_rs::Error> for Error {
+	fn from(value: gokz_rs::Error) -> Self {
+		Self::GOKZ(value.to_string())
 	}
 }
 

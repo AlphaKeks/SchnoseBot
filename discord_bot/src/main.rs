@@ -67,7 +67,7 @@ async fn main() -> Eyre<()> {
 				commands::apistatus(),
 				commands::bmaptop(),
 				commands::bpb(),
-				commands::btop(),
+				// commands::btop(),
 				commands::bwr(),
 				commands::db(),
 				commands::help(),
@@ -86,7 +86,7 @@ async fn main() -> Eyre<()> {
 				commands::report(),
 				commands::restart(),
 				commands::setsteam(),
-				commands::top(),
+				// commands::top(),
 				commands::unfinished(),
 				commands::wr(),
 			],
@@ -345,7 +345,7 @@ impl State for Context<'_> {
 		let mut iter = self.global_maps().iter();
 		match map_identifier {
 			MapIdentifier::ID(map_id) => iter
-				.find_map(|map| if map.id == *map_id as u16 { Some(map.to_owned()) } else { None })
+				.find_map(|map| if map.id == *map_id { Some(map.to_owned()) } else { None })
 				.ok_or(error::Error::MapNotGlobal),
 			MapIdentifier::Name(map_name) => self
 				.global_maps()

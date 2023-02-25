@@ -9,7 +9,7 @@ use {
 		gokz::fmt_time,
 		Context, State,
 	},
-	gokz_rs::{prelude::*, GlobalAPI},
+	gokz_rs::{prelude::*, schnose_api},
 	log::trace,
 	poise::serenity_prelude::CreateEmbed,
 };
@@ -53,8 +53,14 @@ pub async fn bmaptop(
 	let runtype = matches!(runtype, Some(RuntypeChoice::TP));
 	let course = course.unwrap_or(1);
 
-	let maptop =
-		GlobalAPI::get_maptop(&map_identifier, mode, runtype, course, ctx.gokz_client()).await?;
+	let maptop = schnose_api::get_maptop(
+		map_identifier.clone(),
+		Some(course),
+		Some(mode),
+		Some(runtype),
+		ctx.gokz_client(),
+	)
+	.await?;
 	let max_pages = (maptop.len() as f64 / 12f64).ceil() as u8;
 
 	let mut embeds = Vec::new();
@@ -78,16 +84,8 @@ pub async fn bmaptop(
 			.footer(|f| f.text(format!("Mode: {} | Page {} / {}", mode, page_idx + 1, max_pages)));
 
 		for record in records {
-			let player_name = record
-				.player_name
-				.as_ref()
-				.map_or_else(|| "unknown", |name| name.as_str());
-
-			let player_profile =
-				format!("https://steamcommunity.com/profiles/{}", record.steamid64);
-
 			temp_embed.field(
-				format!("[{player_name}]({player_profile}) [#{place}]"),
+				format!("{} [#{}]", record.player.name, place),
 				fmt_time(record.time),
 				true,
 			);

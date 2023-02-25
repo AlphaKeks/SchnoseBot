@@ -3,11 +3,11 @@ use {
 	crate::{
 		custom_types::Target,
 		error::{Error, Result},
-		gokz::{fmt_time, GokzRecord},
+		gokz::fmt_time,
 		Context, State,
 	},
 	chrono::NaiveDateTime,
-	gokz_rs::{prelude::*, GlobalAPI},
+	gokz_rs::{prelude::*, schnose_api},
 	log::trace,
 	poise::serenity_prelude::CreateEmbed,
 };
@@ -41,24 +41,17 @@ pub async fn recent(
 		}
 	};
 
-	let recent_records = GlobalAPI::get_recent(&player, Some(10), ctx.gokz_client()).await?;
+	let recent_records = schnose_api::get_records(player, 10, ctx.gokz_client()).await?;
 
 	let mut embeds = Vec::new();
 	let max_records = recent_records.len();
 
 	for (i, record) in recent_records.into_iter().enumerate() {
-		let replay_link = record.replay_link();
-		let view_link = record.view_link();
-
-		let place = GlobalAPI::get_place(record.id, ctx.gokz_client())
+		let place = schnose_api::get_place(record.id, ctx.gokz_client())
 			.await
 			.map(|place| format!("[#{place}]"))?;
 
-		let map = ctx.get_map(&MapIdentifier::Name(
-			record
-				.map_name
-				.unwrap_or_else(|| String::from("unknown")),
-		))?;
+		let map = ctx.get_map(&MapIdentifier::Name(record.map_name))?;
 
 		let mode = record.mode.parse::<Mode>()?;
 
@@ -76,30 +69,17 @@ pub async fn recent(
 		let mut embed = CreateEmbed::default();
 		embed
 			.color(ctx.color())
-			.title(format!(
-				"[PB] {} on {} (T{})",
-				record
-					.player_name
-					.unwrap_or_else(|| String::from("unknown")),
-				&map.name,
-				&map.tier
-			))
+			.title(format!("[PB] {} on {} (T{})", record.player.name, &map.name, &map.tier))
 			.url(format!("{}?{}=", &map.url, mode.short().to_lowercase()))
 			.thumbnail(&map.thumbnail)
 			.field(
 				format!("{} {}", mode.short(), if record.teleports > 0 { "TP" } else { "PRO" }),
 				format!(
-					"> {} {}{}\n> {}{}{}",
+					"> {} {}{}\n> {}",
 					fmt_time(record.time),
 					place,
 					n_teleports,
 					discord_timestamp,
-					view_link
-						.map(|link| format!("\n> [Watch Replay]({link})"))
-						.unwrap_or_default(),
-					replay_link
-						.map(|link| format!("\n> [Download Replay]({link})"))
-						.unwrap_or_default()
 				),
 				true,
 			)

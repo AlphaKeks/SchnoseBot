@@ -5,10 +5,7 @@ use {
 		error::{Error, Result},
 		Context, State,
 	},
-	gokz_rs::{
-		prelude::{PlayerIdentifier, SteamID},
-		GlobalAPI,
-	},
+	gokz_rs::{prelude::*, schnose_api},
 	regex::Regex,
 };
 
@@ -86,8 +83,8 @@ impl Target {
 						Ok(PlayerIdentifier::Name(user.name))
 					}
 				} else {
-					let player = GlobalAPI::get_player(
-						&PlayerIdentifier::Name(name.to_owned()),
+					let player = schnose_api::get_player(
+						PlayerIdentifier::Name(name.to_owned()),
 						ctx.gokz_client(),
 					)
 					.await?;

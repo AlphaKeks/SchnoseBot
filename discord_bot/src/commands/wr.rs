@@ -2,10 +2,10 @@ use {
 	super::{autocompletion::autocomplete_map, choices::ModeChoice},
 	crate::{
 		error::{Error, Result},
-		gokz::{fmt_time, GokzRecord},
+		gokz::fmt_time,
 		Context, State,
 	},
-	gokz_rs::{prelude::*, records::Record, GlobalAPI},
+	gokz_rs::{prelude::*, schnose_api},
 	log::trace,
 };
 
@@ -42,35 +42,17 @@ pub async fn wr(
 			.ok_or(Error::MissingMode)?,
 	};
 
-	let tp = GlobalAPI::get_wr(&map_identifier, mode, true, 0, ctx.gokz_client()).await;
-	let pro = GlobalAPI::get_wr(&map_identifier, mode, false, 0, ctx.gokz_client()).await;
-
-	let replay_links = Record::formatted_replay_links(tp.as_ref().ok(), pro.as_ref().ok());
-	let view_links = Record::formatted_view_links(tp.as_ref().ok(), pro.as_ref().ok());
+	let tp = schnose_api::get_wr(map_identifier.clone(), 0, mode, true, ctx.gokz_client()).await;
+	let pro = schnose_api::get_wr(map_identifier.clone(), 0, mode, false, ctx.gokz_client()).await;
 
 	let tp_time = if let Ok(tp) = tp {
-		format!(
-			"{} ({} TPs)\nby {}",
-			fmt_time(tp.time),
-			tp.teleports,
-			tp.player_name.map_or_else(
-				|| String::from("unknown"),
-				|name| format!("[{}](https://steamcommunity.com/profiles/{})", name, tp.steamid64)
-			)
-		)
+		format!("{} ({} TPs)\nby {}", fmt_time(tp.time), tp.teleports, tp.player.name)
 	} else {
 		String::from("😔")
 	};
 
 	let pro_time = if let Ok(pro) = pro {
-		format!(
-			"{}\nby {}",
-			fmt_time(pro.time),
-			pro.player_name.map_or_else(
-				|| String::from("unknown"),
-				|name| format!("[{}](https://steamcommunity.com/profiles/{})", name, pro.steamid64)
-			)
-		)
+		format!("{}\nby {}", fmt_time(pro.time), pro.player.name)
 	} else {
 		String::from("😔")
 	};
@@ -81,11 +63,6 @@ pub async fn wr(
 				.title(format!("[WR] {} (T{})", &map_identifier.to_string(), &map.tier))
 				.url(format!("{}?{}=", &map.url, mode.short().to_lowercase()))
 				.thumbnail(&map.thumbnail)
-				.description(format!(
-					"{}\n{}",
-					view_links.unwrap_or_default(),
-					replay_links.unwrap_or_default()
-				))
 				.field("TP", tp_time, true)
 				.field("PRO", pro_time, true)
 				.footer(|f| {

@@ -3,7 +3,7 @@ use {
 		error::{Error, Result},
 		Context, State,
 	},
-	gokz_rs::GlobalAPI,
+	gokz_rs::global_api,
 	log::trace,
 };
 
@@ -19,7 +19,7 @@ pub async fn apistatus(ctx: Context<'_>) -> Result<()> {
 	trace!("[/apistatus ({})]", ctx.author().tag());
 	ctx.defer().await?;
 
-	let health_report = GlobalAPI::checkhealth(ctx.gokz_client()).await?;
+	let health_report = global_api::checkhealth(ctx.gokz_client()).await?;
 
 	let avg =
 		(health_report.successful_responses as f64 + health_report.fast_responses as f64) / 2f64;

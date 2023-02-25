@@ -4,7 +4,7 @@ use {
 		error::{Error, Result},
 		Context, State,
 	},
-	gokz_rs::{prelude::*, GlobalAPI},
+	gokz_rs::prelude::*,
 	log::trace,
 };
 
@@ -33,20 +33,9 @@ pub async fn map(
 			names
 		});
 
-	let (kzt_filter, skz_filter, vnl_filter) =
-		GlobalAPI::get_filters(map.id as i32, ctx.gokz_client())
-			.await?
-			.into_iter()
-			.filter(|f| f.stage == 0)
-			.fold(("❌", "❌", "❌"), |mut symbols, f| {
-				match f.mode_id {
-					200 => symbols.0 = "✅",
-					201 => symbols.1 = "✅",
-					202 => symbols.2 = "✅",
-					_ => {}
-				}
-				symbols
-			});
+	let kzt_filter = if map.courses[0].kzt { "✅" } else { "❌" };
+	let skz_filter = if map.courses[0].skz { "✅" } else { "❌" };
+	let vnl_filter = if map.courses[0].vnl { "✅" } else { "❌" };
 
 	ctx.send(|reply| {
 		reply.embed(|e| {
@@ -65,7 +54,7 @@ pub async fn map(
 				",
 					&map.tier,
 					mappers.join(", "),
-					&map.courses,
+					&map.courses.len(),
 					&map.updated_on
 						.format("%d/%m/%Y")
 						.to_string()
