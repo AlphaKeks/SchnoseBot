@@ -1,15 +1,25 @@
 use {
-	crate::{error::Error, Context, State},
-	gokz_rs::GlobalAPI,
+	crate::{
+		error::{Error, Result},
+		Context, State,
+	},
+	gokz_rs::global_api,
 	log::trace,
 };
 
-#[poise::command(slash_command, on_error = "Error::handle_command")]
-pub async fn apistatus(ctx: Context<'_>) -> Result<(), Error> {
+/// `GlobalAPI` health report.
+///
+/// Both this bot and GOKZ rely on the [GlobalAPI](https://portal.global-api.com/dashboard) to \
+/// function properly. Sometimes it has downtimes though, and the bot commands might not work. You \
+/// can either check the API's uptime via this command or on \
+/// [this website](https://health.global-api.com/endpoints/_globalapi).
+/// (The bot uses that website internally as well.)
+#[poise::command(prefix_command, slash_command, on_error = "Error::handle_command")]
+pub async fn apistatus(ctx: Context<'_>) -> Result<()> {
+	trace!("[/apistatus ({})]", ctx.author().tag());
 	ctx.defer().await?;
-	trace!("[/apistatus] ({})", ctx.author().tag());
 
-	let health_report = GlobalAPI::checkhealth(ctx.gokz_client()).await?;
+	let health_report = global_api::checkhealth(ctx.gokz_client()).await?;
 
 	let avg =
 		(health_report.successful_responses as f64 + health_report.fast_responses as f64) / 2f64;

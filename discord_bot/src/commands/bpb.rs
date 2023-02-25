@@ -10,26 +10,29 @@ use {
 	log::trace,
 };
 
-/// A player's personal best on a map.
+/// A player's personal best on a bonus course.
 ///
-/// This command will fetch a given player's personal best on a given map. You can specify the \
-/// following parameters:
+/// This command will fetch a given player's personal best on a given bonus course. You can \
+/// specify the following parameters:
 /// - `map_name`: any of [these](https://maps.global-api.com/mapcycles/gokz.txt)
 /// - `mode`: filter by mode (KZT/SKZ/VNL)
 /// - `player`: `SteamID`, Player Name or @mention
+/// - `course`: Which bonus you want to check (i.e. `3` means "bonus 3")
 /// If the API has a global replay stored for your run, the bot will attach some links for you to \
 /// view and/or download the replay.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
-pub async fn pb(
+pub async fn bpb(
 	ctx: Context<'_>,
 	#[autocomplete = "autocomplete_map"] map_name: String,
 	#[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
 	#[description = "The player you want to target."] player: Option<String>,
+	#[description = "Course"] course: Option<u8>,
 ) -> Result<()> {
-	trace!("[/pb ({})]", ctx.author().tag());
+	trace!("[/bpb ({})]", ctx.author().tag());
 	trace!("> `map_name`: {map_name:?}");
 	trace!("> `mode`: {mode:?}");
 	trace!("> `player`: {player:?}");
+	trace!("> `course`: {course:?}");
 	ctx.defer().await?;
 
 	let db_entry = ctx
@@ -59,19 +62,26 @@ pub async fn pb(
 				.await?
 		}
 	};
+	let course = course.unwrap_or(1);
 
 	let tp = schnose_api::get_pb(
 		player.clone(),
 		map_identifier.clone(),
-		0,
+		course,
 		mode,
 		true,
 		ctx.gokz_client(),
 	)
 	.await;
-	let pro =
-		schnose_api::get_pb(player, map_identifier.clone(), 0, mode, false, ctx.gokz_client())
-			.await;
+	let pro = schnose_api::get_pb(
+		player.clone(),
+		map_identifier.clone(),
+		course,
+		mode,
+		false,
+		ctx.gokz_client(),
+	)
+	.await;
 
 	let tp_time = if let Ok(tp) = &tp {
 		let place = schnose_api::get_place(tp.id, ctx.gokz_client())
@@ -99,15 +109,16 @@ pub async fn pb(
 		replay.embed(|e| {
 			e.color(ctx.color())
 				.title(format!(
-					"[PB] {} on {} (T{})",
+					"[PB] {} on {} B{} (T{})",
 					tp.map_or(
 						pro.map_or_else(|_| String::from("unknown"), |pro| pro.player.name),
 						|tp| tp.player.name
 					),
 					&map_identifier.to_string(),
+					course,
 					&map.tier
 				))
-				.url(format!("{}?{}=", &map.url, mode.short().to_lowercase()))
+				.url(format!("{}?{}=&bonus={}", &map.url, mode.short().to_lowercase(), course))
 				.thumbnail(&map.thumbnail)
 				.field("TP", tp_time, true)
 				.field("PRO", pro_time, true)

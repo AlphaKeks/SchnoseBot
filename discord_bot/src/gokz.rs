@@ -1,4 +1,9 @@
-use gokz_rs::{records::Record, GlobalAPI};
+//! Some extra utilities in addition to [`gokz_rs`] to make working with the `GlobalAPI` easier.
+
+use {
+	gokz_rs::global_api::{self, records::Record},
+	serde::{Deserialize, Serialize},
+};
 
 pub trait GokzRecord: Sized {
 	fn replay_link(&self) -> Option<String>;
@@ -10,7 +15,7 @@ pub trait GokzRecord: Sized {
 impl GokzRecord for Record {
 	fn replay_link(&self) -> Option<String> {
 		if self.replay_id != 0 {
-			Some(GlobalAPI::get_replay_by_id(self.replay_id))
+			Some(global_api::get_replay_by_id(self.replay_id))
 		} else {
 			None
 		}
@@ -82,3 +87,14 @@ pub fn fmt_time(time: f64) -> String {
 
 	s
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorldRecordResponse {
+	pub steamid64: String,
+	pub steam_id: String,
+	pub count: u32,
+	pub player_name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorldRecordLeaderboard(pub Vec<WorldRecordResponse>);

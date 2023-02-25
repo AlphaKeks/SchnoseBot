@@ -1,13 +1,17 @@
+//! The global [`Error`] and [`Result`] types used across the entire crate.
+
 use log::{error, info, warn};
 
-/// Global Error type for the entire crate.
+pub type Result<T> = std::result::Result<T, Error>;
+
+/// Global `Error` type for the entire crate.
 #[derive(Debug, Clone)]
 #[allow(clippy::upper_case_acronyms)]
 pub enum Error {
 	/// Some unknown error occurred.
 	Unknown,
 
-	/// Some custom edge-case error that doesn't deserve it's own eblame_use: blame_usernt.
+	/// Some custom edge-case error that doesn't deserve it's own enum variant.
 	Custom(String),
 
 	/// Used for the static map cache / invalid user input.
@@ -19,15 +23,22 @@ pub enum Error {
 	/// Failed to update an entry in the database.
 	DatabaseUpdate,
 
+	/// Failed to find any database entries for a given user.
+	NoDatabaseEntries,
+
 	/// The user didn't specify a `SteamID` and also has no database entries for it.
 	MissingSteamID {
-		/// If the user @mention'd somebody, the blame is not on them. If they didn't specify any
-		/// `player` argument though, we need to tell them about `/setsteam`.
+		/// If the user @mention'd somebody, tell them that that user doesn't have any database
+		/// entries. If they didn't specify any `player` argument though, we need to tell them
+		/// about `/setsteam`.
 		blame_user: bool,
 	},
 
 	/// The user didn't specify a `Mode` and also has no database entries for it.
 	MissingMode,
+
+	/// No SteamID or Name was found in the database and `player` param wasn't specified.
+	NoPlayerInfo,
 
 	/// Failed to parse JSON.
 	ParseJSON,
@@ -35,8 +46,23 @@ pub enum Error {
 	/// User Input was out of range.
 	InputOutOfRange,
 
-	/// An error from the `gokz_rs` crate.
+	/// An error from the [`gokz_rs`] crate.
 	GOKZ(String),
+
+	/// No records were found for a given query.
+	NoRecords,
+
+	/// Failed to restart the bot's process.
+	BotRestart,
+
+	/// Failed to `git pull`.
+	GitPull,
+
+	/// Failed to clean target dir.
+	CleanTargetDir,
+
+	/// Failed to compile.
+	Build,
 }
 
 impl std::fmt::Display for Error {
@@ -50,15 +76,22 @@ impl std::fmt::Display for Error {
 				Error::MapNotGlobal => "The map you specified is not global.",
 				Error::DatabaseAccess => "Failed to access the database.",
 				Error::DatabaseUpdate => "Failed to update an entry in the database.",
+				Error::NoDatabaseEntries => "No database entries found.",
 				Error::MissingSteamID { blame_user } => if *blame_user {
-                    "You didn't specify a SteamID and also didn't set it with `/setsteam`. Please specify a SteamID or save yours with `/setsteam`."
-                } else {
-                    "The user you @mention'd didn't save their SteamID in my database."
-                }
+					"You didn't specify a SteamID and also didn't set it with `/setsteam`. Please specify a SteamID or save yours with `/setsteam`."
+				} else {
+					"The user you @mention'd didn't save their SteamID in my database."
+				}
 				Error::MissingMode => "You didn't specify a mode and also didn't set your preference with `/mode`. Please specify one or use `/mode` to set a preference.",
+				Error::NoPlayerInfo => "You didn't specify a `player` parameter and don't have any database entries. Please specify a `player` or set your SteamID via `/setsteam`.",
 				Error::ParseJSON => "Failed to parse JSON.",
 				Error::InputOutOfRange => "Your input was out of range. Please provide some realistic values.",
-				Error::GOKZ(msg) => msg
+				Error::GOKZ(msg) => msg,
+				Error::NoRecords => "No records found.",
+				Error::BotRestart => "Failed to restart.",
+				Error::GitPull => "Failed to pull from GitHub.",
+				Error::CleanTargetDir => "Failed to clean build directory.",
+				Error::Build => "Failed to compile."
 			}
 		)
 	}
@@ -85,23 +118,23 @@ impl From<serenity::Error> for Error {
 	}
 }
 
-impl From<gokz_rs::prelude::Error> for Error {
-	fn from(value: gokz_rs::prelude::Error) -> Self {
-		Self::GOKZ(value.msg)
+impl From<gokz_rs::Error> for Error {
+	fn from(value: gokz_rs::Error) -> Self {
+		Self::GOKZ(value.to_string())
 	}
 }
 
 impl From<sqlx::Error> for Error {
 	fn from(value: sqlx::Error) -> Self {
-		warn!("DB ERROR `{}`", value);
+		warn!("DB ERROR `{value:?}`");
 		match value {
 			sqlx::Error::Database(why) => {
-				warn!("{}", why);
+				warn!("{why:?}");
 				Self::DatabaseAccess
 			}
 			sqlx::Error::RowNotFound => {
-				dbg!(value.to_string());
-				Self::MissingMode
+				warn!("{}", value.to_string());
+				Self::NoDatabaseEntries
 			}
 			_ => Self::DatabaseAccess,
 		}
@@ -134,29 +167,29 @@ impl Error {
 				)
 			}
 			poise::FrameworkError::MissingBotPermissions { missing_permissions, .. } => {
-                error!("{missing_permissions}");
-                (
-                    String::from("The bot is missing permissions for this action. Please contact the server owner and kindly ask them to give the bot the required permissions."),
-                    false
-                )
-            }
+				error!("{missing_permissions}");
+				(
+					String::from("The bot is missing permissions for this action. Please contact the server owner and kindly ask them to give the bot the required permissions."),
+					false
+				)
+			}
 			poise::FrameworkError::MissingUserPermissions { missing_permissions, .. } => {
-                (
-                    if let Some(perms) = missing_permissions {
-                        format!("You are missing the `{perms}` permissions for this command.")
-                    } else {
-                        String::from("You are missing the required permissions for this command.")
-                    },
-                    true
-                )
-            }
+				(
+					if let Some(perms) = missing_permissions {
+						format!("You are missing the `{perms}` permissions for this command.")
+					} else {
+						String::from("You are missing the required permissions for this command.")
+					},
+					true
+				)
+			}
 			poise::FrameworkError::NotAnOwner { .. } => {
-                (String::from("This command requires you to be the owner of the bot."), true)
-            }
+				(String::from("This command requires you to be the owner of the bot."), true)
+			}
 			why => {
-                error!("{why:?}");
-                (String::from("Failed to execute command."), true)
-            }
+				error!("{why:?}");
+				(String::from("Failed to execute command."), true)
+			}
 		};
 
 		if let Some(ctx) = &error.ctx() {

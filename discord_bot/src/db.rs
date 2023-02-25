@@ -1,9 +1,12 @@
+//! `MySQL` module for the bot's database.
+
 use {
 	gokz_rs::prelude::*,
 	serde::{Deserialize, Serialize},
 	sqlx::FromRow,
 };
 
+/// `MySQL` representation of a user row in the database.
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct UserSchema {
 	pub name: String,
@@ -12,6 +15,7 @@ pub struct UserSchema {
 	pub mode: Option<u8>,
 }
 
+/// Parsed version of [`UserSchema`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct User {
 	pub name: String,

@@ -1,6 +1,6 @@
 [package]
 name = "discord_bot"
-version = "0.13.0"
+version = "0.14.0"
 edition = "2021"
 
 authors = ["AlphaKeks <alphakeks@dawn.sh>"]
@@ -28,6 +28,8 @@ toml = { workspace = true }
 # util
 chrono = { workspace = true }
 regex = { workspace = true }
+num-format = { workspace = true }
+rand = { workspace = true }
 
 # GOKZ
 gokz_rs = { workspace = true }
@@ -35,7 +37,6 @@ gokz_rs = { workspace = true }
 # async
 tokio = { workspace = true }
 futures = { workspace = true }
-once_cell = { workspace = true }
 
 # SQL
 sqlx = { workspace = true }
