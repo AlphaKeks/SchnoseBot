@@ -1,3 +1,5 @@
+//! FIXME
+
 use {
 	super::choices::ModeChoice,
 	crate::{
@@ -184,10 +186,7 @@ pub async fn profile(
 	}
 
 	let fav_mode = match &player_identifier {
-		PlayerIdentifier::Name(player_name) => {
-			ctx.find_user_by_name(&player_name)
-				.await
-		}
+		PlayerIdentifier::Name(player_name) => ctx.find_user_by_name(player_name).await,
 		PlayerIdentifier::SteamID(steam_id) => {
 			ctx.find_user_by_steam_id(steam_id)
 				.await

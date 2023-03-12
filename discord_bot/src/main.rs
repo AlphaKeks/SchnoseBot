@@ -68,7 +68,7 @@ async fn main() -> Eyre<()> {
 				commands::apistatus(),
 				commands::bmaptop(),
 				commands::bpb(),
-				// commands::btop(),
+				commands::btop(),
 				commands::bwr(),
 				commands::db(),
 				commands::help(),
@@ -79,7 +79,7 @@ async fn main() -> Eyre<()> {
 				commands::nocrouch(),
 				commands::pb(),
 				commands::ping(),
-				commands::profile(),
+				// commands::profile(), FIXME
 				commands::pull(),
 				commands::random(),
 				commands::recent(),
@@ -87,8 +87,8 @@ async fn main() -> Eyre<()> {
 				commands::report(),
 				commands::restart(),
 				commands::setsteam(),
-				// commands::top(),
-				commands::unfinished(),
+				commands::top(),
+				// commands::unfinished(), // FIXME
 				commands::wr(),
 			],
 			event_handler: |_, event, _, _| {

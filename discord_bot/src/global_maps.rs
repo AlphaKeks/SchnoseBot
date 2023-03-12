@@ -22,7 +22,7 @@ pub struct GlobalMap {
 	pub skz: bool,
 	pub vnl: bool,
 	pub mapper_name: String,
-	pub mapper_steam_id: SteamID,
+	pub mapper_steam_id: Option<SteamID>,
 	pub validated: bool,
 	pub filesize: u64,
 	pub created_on: NaiveDateTime,
@@ -36,7 +36,7 @@ pub async fn init(gokz_client: &gokz_rs::Client) -> Result<Vec<GlobalMap>> {
 	Ok(schnose_api::get_global_maps(gokz_client)
 		.await?
 		.into_iter()
-		.filter_map(|global_map| {
+		.map(|global_map| {
 			let kzt = global_map.courses[0].kzt;
 			let skz = global_map.courses[0].skz;
 			let vnl = global_map.courses[0].vnl;
@@ -46,7 +46,7 @@ pub async fn init(gokz_client: &gokz_rs::Client) -> Result<Vec<GlobalMap>> {
 				&global_map.name
 			);
 
-			Some(GlobalMap {
+			GlobalMap {
 				id: global_map.id,
 				name: global_map.name,
 				tier: global_map.tier,
@@ -62,7 +62,7 @@ pub async fn init(gokz_client: &gokz_rs::Client) -> Result<Vec<GlobalMap>> {
 				updated_on: global_map.updated_on,
 				url,
 				thumbnail,
-			})
+			}
 		})
 		.collect())
 }

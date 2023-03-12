@@ -42,7 +42,7 @@ pub async fn btop(
 	};
 	let runtype = matches!(runtype, Some(RuntypeChoice::TP));
 
-	let top = global_api::get_wr_top(mode, runtype, 0..0, ctx.gokz_client()).await?;
+	let top = global_api::get_wr_top(mode, runtype, 1..101, ctx.gokz_client()).await?;
 	let max_pages = (top.len() as f64 / 12f64).ceil() as u8;
 
 	let mut embeds = Vec::new();
@@ -59,12 +59,7 @@ pub async fn btop(
 			.footer(|f| f.text(format!("Mode: {} | Page {} / {}", mode, page_idx + 1, max_pages)));
 
 		for player in players {
-			let player_name = format!(
-				"[{}](https://steamcommunity.com/profiles/{})",
-				player.player_name,
-				player.steam_id.as_id64()
-			);
-
+			let player_name = &player.player_name;
 			temp_embed.field(format!("{player_name} [#{place}]"), player.count, true);
 			place += 1;
 		}

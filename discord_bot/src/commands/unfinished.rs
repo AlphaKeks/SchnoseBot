@@ -1,3 +1,5 @@
+#![allow(unused)] // FIXME
+
 use {
 	super::choices::{ModeChoice, RuntypeChoice, TierChoice},
 	crate::{
@@ -59,51 +61,28 @@ pub async fn unfinished(
 		}
 	};
 
-	let (description, amount) = global_api::get_unfinished(player.clone(), mode, runtype, tier.map(Tier::from), ctx.gokz_client())
-			.await
-			.map(|maps| {
-				let Some(maps) = maps else {
-					return (String::from("You have no more maps to complete! Congrats 🥳"), String::from("0 uncompleted maps"));
-				};
+	todo!("FIXME");
 
-				let map_names = maps.into_iter().map(|map| map.name).collect::<Vec<_>>();
-
-				let description = if map_names.len() <= 10 {
-					map_names.join("\n")
-				} else {
-					format!("{}\n...{} more", map_names[0..10].join("\n"), map_names.len() - 10)
-				};
-
-				// I love and hate this at the same time.
-				let amount = format!(
-					"{} uncompleted map{}",
-					map_names.len(),
-					if map_names.len() == 1 { "" } else { "s" }
-				);
-
-				(description, amount)
-			})?;
-
-	let player = schnose_api::get_player(player, ctx.gokz_client()).await?;
-
-	ctx.send(|reply| {
-		reply.embed(|e| {
-			e.color(ctx.color())
-				.title(format!(
-					"{} - {} {} {}",
-					amount,
-					mode.short(),
-					if runtype { "TP" } else { "PRO" },
-					tier.map_or_else(String::new, |tier| format!("[T{}]", tier as u8))
-				))
-				.description(description)
-				.footer(|f| {
-					f.text(format!("Player: {}", player.name))
-						.icon_url(ctx.icon())
-				})
-		})
-	})
-	.await?;
-
-	Ok(())
+	// let player = schnose_api::get_player(player, ctx.gokz_client()).await?;
+	//
+	// ctx.send(|reply| {
+	// 	reply.embed(|e| {
+	// 		e.color(ctx.color())
+	// 			.title(format!(
+	// 				"{} - {} {} {}",
+	// 				amount,
+	// 				mode.short(),
+	// 				if runtype { "TP" } else { "PRO" },
+	// 				tier.map_or_else(String::new, |tier| format!("[T{}]", tier as u8))
+	// 			))
+	// 			.description(description)
+	// 			.footer(|f| {
+	// 				f.text(format!("Player: {}", player.name))
+	// 					.icon_url(ctx.icon())
+	// 			})
+	// 	})
+	// })
+	// .await?;
+	//
+	// Ok(())
 }

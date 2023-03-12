@@ -24,11 +24,11 @@ pub async fn map(
 
 	let map = ctx.get_map(&MapIdentifier::Name(map_name))?;
 
-	let mapper = format!(
-		"[{}](https://steamcommunity.com/profiles/{})",
-		map.mapper_name,
-		map.mapper_steam_id.as_id64()
-	);
+	let mapper = if let Some(steam_id) = map.mapper_steam_id {
+		format!("[{}](https://steamcommunity.com/profiles/{})", map.mapper_name, steam_id.as_id64())
+	} else {
+		map.mapper_name
+	};
 
 	let kzt_filter = if map.courses[0].kzt { "✅" } else { "❌" };
 	let skz_filter = if map.courses[0].skz { "✅" } else { "❌" };
