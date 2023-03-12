@@ -46,8 +46,15 @@ pub async fn wr(
 	let pro = global_api::get_wr(map_identifier.clone(), mode, false, 0, ctx.gokz_client()).await;
 
 	let (tp_time, tp_links) = if let Ok(tp) = tp {
+		let player_name = format!(
+			"[{}](https://kzgo.eu/players/{}?{}=)",
+			tp.player_name,
+			tp.steam_id,
+			mode.short().to_lowercase()
+		);
+
 		(
-			format!("{} ({} TPs)\nby {}", fmt_time(tp.time), tp.teleports, tp.player_name),
+			format!("{} ({} TPs)\nby {}", fmt_time(tp.time), tp.teleports, player_name),
 			Some((tp.replay_view_link(), tp.replay_download_link())),
 		)
 	} else {
@@ -55,8 +62,15 @@ pub async fn wr(
 	};
 
 	let (pro_time, pro_links) = if let Ok(pro) = pro {
+		let player_name = format!(
+			"[{}](https://kzgo.eu/players/{}?{}=)",
+			pro.player_name,
+			pro.steam_id,
+			mode.short().to_lowercase()
+		);
+
 		(
-			format!("{}\nby {}", fmt_time(pro.time), pro.player_name),
+			format!("{}\nby {}", fmt_time(pro.time), player_name),
 			Some((pro.replay_view_link(), pro.replay_download_link())),
 		)
 	} else {

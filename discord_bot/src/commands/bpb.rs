@@ -93,8 +93,15 @@ pub async fn bpb(
 			.map(|place| format!("[#{place}]"))
 			.unwrap_or_default();
 
+		let player_name = format!(
+			"[{}](https://kzgo.eu/players/{}?{}=)",
+			tp.player_name,
+			tp.steam_id,
+			mode.short().to_lowercase()
+		);
+
 		(
-			format!("{} {}\nby {}", fmt_time(tp.time), place, tp.player_name),
+			format!("{} {}\nby {}", fmt_time(tp.time), place, player_name),
 			Some((tp.replay_download_link(), tp.replay_view_link())),
 		)
 	} else {
@@ -109,8 +116,15 @@ pub async fn bpb(
 			.map(|place| format!("[#{place}]"))
 			.unwrap_or_default();
 
+		let player_name = format!(
+			"[{}](https://kzgo.eu/players/{}?{}=)",
+			pro.player_name,
+			pro.steam_id,
+			mode.short().to_lowercase()
+		);
+
 		(
-			format!("{} {}\nby {}", fmt_time(pro.time), place, pro.player_name),
+			format!("{} {}\nby {}", fmt_time(pro.time), place, player_name),
 			Some((pro.replay_download_link(), pro.replay_view_link())),
 		)
 	} else {
