@@ -6,7 +6,7 @@ use {
 		gokz::fmt_time,
 		Context, State,
 	},
-	gokz_rs::{prelude::*, schnose_api},
+	gokz_rs::{global_api, MapIdentifier, Mode},
 	log::trace,
 };
 
@@ -36,7 +36,7 @@ pub async fn bpb(
 	ctx.defer().await?;
 
 	let db_entry = ctx
-		.find_by_id(*ctx.author().id.as_u64())
+		.find_user_by_id(*ctx.author().id.as_u64())
 		.await;
 
 	let map = ctx.get_map(&MapIdentifier::Name(map_name))?;
@@ -64,43 +64,49 @@ pub async fn bpb(
 	};
 	let course = course.unwrap_or(1);
 
-	let tp = schnose_api::get_pb(
+	let tp = global_api::get_pb(
 		player.clone(),
 		map_identifier.clone(),
-		course,
 		mode,
 		true,
+		course,
 		ctx.gokz_client(),
 	)
 	.await;
-	let pro = schnose_api::get_pb(
+	let pro = global_api::get_pb(
 		player.clone(),
 		map_identifier.clone(),
-		course,
 		mode,
 		false,
+		course,
 		ctx.gokz_client(),
 	)
 	.await;
 
+	let mut player_name = String::from("unknown");
+
 	let tp_time = if let Ok(tp) = &tp {
-		let place = schnose_api::get_place(tp.id, ctx.gokz_client())
+		player_name = tp.player_name.clone();
+
+		let place = global_api::get_place(tp.id, ctx.gokz_client())
 			.await
 			.map(|place| format!("[#{place}]"))
 			.unwrap_or_default();
 
-		format!("{} {}\nby {}", fmt_time(tp.time), place, tp.player.name)
+		format!("{} {}\nby {}", fmt_time(tp.time), place, tp.player_name)
 	} else {
 		String::from("😔")
 	};
 
 	let pro_time = if let Ok(pro) = &pro {
-		let place = schnose_api::get_place(pro.id, ctx.gokz_client())
+		player_name = pro.player_name.clone();
+
+		let place = global_api::get_place(pro.id, ctx.gokz_client())
 			.await
 			.map(|place| format!("[#{place}]"))
 			.unwrap_or_default();
 
-		format!("{} {}\nby {}", fmt_time(pro.time), place, pro.player.name)
+		format!("{} {}\nby {}", fmt_time(pro.time), place, pro.player_name)
 	} else {
 		String::from("😔")
 	};
@@ -110,13 +116,7 @@ pub async fn bpb(
 			e.color(ctx.color())
 				.title(format!(
 					"[PB] {} on {} B{} (T{})",
-					tp.map_or(
-						pro.map_or_else(|_| String::from("unknown"), |pro| pro.player.name),
-						|tp| tp.player.name
-					),
-					&map_identifier.to_string(),
-					course,
-					&map.tier
+					player_name, map_identifier, course, &map.tier
 				))
 				.url(format!("{}?{}=&bonus={}", &map.url, mode.short().to_lowercase(), course))
 				.thumbnail(&map.thumbnail)

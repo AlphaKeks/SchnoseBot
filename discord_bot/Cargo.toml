@@ -32,7 +32,11 @@ num-format = { workspace = true }
 rand = { workspace = true }
 
 # GOKZ
-gokz_rs = { workspace = true }
+gokz_rs = { git = "https://github.com/AlphaKeks/gokz.rs", branch = "rewrite_fr", features = [
+	"global_api",
+	"kzgo_api",
+	"schnose_api",
+] }
 
 # async
 tokio = { workspace = true }

@@ -3,7 +3,7 @@ use {
 		error::{Error, Result},
 		Context, State,
 	},
-	gokz_rs::prelude::*,
+	gokz_rs::SteamID,
 	log::trace,
 };
 
@@ -30,7 +30,7 @@ pub async fn setsteam(
 
 	let table = &ctx.config().mysql_table;
 
-	match ctx.find_by_id(id).await {
+	match ctx.find_user_by_id(id).await {
 		// User already has a database entry => modify current one
 		Ok(user) => {
 			// :tf:

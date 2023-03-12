@@ -5,7 +5,7 @@ use {
 		error::{Error, Result},
 		Context, State,
 	},
-	gokz_rs::{prelude::*, schnose_api},
+	gokz_rs::{schnose_api, PlayerIdentifier, SteamID},
 	regex::Regex,
 };
 
@@ -54,7 +54,7 @@ impl Target {
 	pub async fn into_player(self, ctx: &Context<'_>) -> Result<PlayerIdentifier> {
 		match self {
 			Self::None(user_id) => {
-				if let Ok(user) = ctx.find_by_id(user_id).await {
+				if let Ok(user) = ctx.find_user_by_id(user_id).await {
 					if let Some(steam_id) = user.steam_id {
 						Ok(PlayerIdentifier::SteamID(steam_id))
 					} else {
@@ -65,7 +65,7 @@ impl Target {
 				}
 			}
 			Self::Mention(user_id) => ctx
-				.find_by_id(user_id)
+				.find_user_by_id(user_id)
 				.await
 				.map(|user| {
 					if let Some(steam_id) = user.steam_id {
@@ -76,7 +76,7 @@ impl Target {
 				})?,
 			Self::SteamID(steam_id) => Ok(PlayerIdentifier::SteamID(steam_id)),
 			Self::Name(ref name) => {
-				if let Ok(user) = ctx.find_by_name(name).await {
+				if let Ok(user) = ctx.find_user_by_name(name).await {
 					if let Some(steam_id) = user.steam_id {
 						Ok(PlayerIdentifier::SteamID(steam_id))
 					} else {
@@ -89,7 +89,7 @@ impl Target {
 					)
 					.await?;
 
-					Ok(PlayerIdentifier::SteamID(SteamID::new(&player.steam_id)?))
+					Ok(PlayerIdentifier::SteamID(player.steam_id))
 				}
 			}
 		}

@@ -5,7 +5,7 @@ use {
 		gokz::fmt_time,
 		Context, State,
 	},
-	gokz_rs::{prelude::*, schnose_api},
+	gokz_rs::{global_api, MapIdentifier, Mode},
 	log::trace,
 };
 
@@ -32,7 +32,7 @@ pub async fn bwr(
 	ctx.defer().await?;
 
 	let db_entry = ctx
-		.find_by_id(*ctx.author().id.as_u64())
+		.find_user_by_id(*ctx.author().id.as_u64())
 		.await;
 
 	let map = ctx.get_map(&MapIdentifier::Name(map_name))?;
@@ -47,18 +47,18 @@ pub async fn bwr(
 	let course = course.unwrap_or(1);
 
 	let tp =
-		schnose_api::get_wr(map_identifier.clone(), course, mode, true, ctx.gokz_client()).await;
+		global_api::get_wr(map_identifier.clone(), mode, true, course, ctx.gokz_client()).await;
 	let pro =
-		schnose_api::get_wr(map_identifier.clone(), course, mode, false, ctx.gokz_client()).await;
+		global_api::get_wr(map_identifier.clone(), mode, false, course, ctx.gokz_client()).await;
 
 	let tp_time = if let Ok(tp) = tp {
-		format!("{} ({} TPs)\nby {}", fmt_time(tp.time), tp.teleports, tp.player.name)
+		format!("{} ({} TPs)\nby {}", fmt_time(tp.time), tp.teleports, tp.player_name)
 	} else {
 		String::from("😔")
 	};
 
 	let pro_time = if let Ok(pro) = pro {
-		format!("{}\nby {}", fmt_time(pro.time), pro.player.name)
+		format!("{}\nby {}", fmt_time(pro.time), pro.player_name)
 	} else {
 		String::from("😔")
 	};

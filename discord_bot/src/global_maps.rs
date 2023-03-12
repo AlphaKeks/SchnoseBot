@@ -4,7 +4,10 @@
 use {
 	crate::error::Result,
 	chrono::NaiveDateTime,
-	gokz_rs::schnose_api::{self, maps::Course},
+	gokz_rs::{
+		schnose_api::{self, maps::Course},
+		SteamID, Tier,
+	},
 	serde::{Deserialize, Serialize},
 };
 
@@ -13,13 +16,13 @@ use {
 pub struct GlobalMap {
 	pub id: u16,
 	pub name: String,
-	pub tier: u8,
+	pub tier: Tier,
 	pub courses: Vec<Course>,
 	pub kzt: bool,
 	pub skz: bool,
 	pub vnl: bool,
-	pub mapper_names: Vec<String>,
-	pub mapper_ids: Vec<u64>,
+	pub mapper_name: String,
+	pub mapper_steam_id: SteamID,
 	pub validated: bool,
 	pub filesize: u64,
 	pub created_on: NaiveDateTime,
@@ -42,8 +45,7 @@ pub async fn init(gokz_client: &gokz_rs::Client) -> Result<Vec<GlobalMap>> {
 				"https://raw.githubusercontent.com/KZGlobalTeam/map-images/master/images/{}.jpg",
 				&global_map.name
 			);
-			let (created_on, _) = global_map.created_on.rsplit_once('.')?;
-			let (updated_on, _) = global_map.updated_on.rsplit_once('.')?;
+
 			Some(GlobalMap {
 				id: global_map.id,
 				name: global_map.name,
@@ -52,15 +54,12 @@ pub async fn init(gokz_client: &gokz_rs::Client) -> Result<Vec<GlobalMap>> {
 				kzt,
 				skz,
 				vnl,
-				mapper_names: vec![global_map.mapper_name],
-				mapper_ids: vec![global_map
-					.mapper_steam_id64
-					.parse()
-					.ok()?],
+				mapper_name: global_map.mapper_name,
+				mapper_steam_id: global_map.mapper_steam_id,
 				validated: global_map.validated,
-				filesize: global_map.filesize.parse().ok()?,
-				created_on: NaiveDateTime::parse_from_str(created_on, "%Y-%m-%d %H:%M:%S").ok()?,
-				updated_on: NaiveDateTime::parse_from_str(updated_on, "%Y-%m-%d %H:%M:%S").ok()?,
+				filesize: global_map.filesize,
+				created_on: global_map.created_on,
+				updated_on: global_map.updated_on,
 				url,
 				thumbnail,
 			})

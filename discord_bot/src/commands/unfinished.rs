@@ -5,7 +5,7 @@ use {
 		error::{Error, Result},
 		Context, State,
 	},
-	gokz_rs::{prelude::*, schnose_api},
+	gokz_rs::{global_api, schnose_api, Mode, Tier},
 	log::trace,
 };
 
@@ -33,7 +33,7 @@ pub async fn unfinished(
 	ctx.defer().await?;
 
 	let db_entry = ctx
-		.find_by_id(*ctx.author().id.as_u64())
+		.find_user_by_id(*ctx.author().id.as_u64())
 		.await;
 
 	let mode = match mode {
@@ -59,13 +59,14 @@ pub async fn unfinished(
 		}
 	};
 
-	let (description, amount) =
-		schnose_api::get_unfinished(player.clone(), mode, runtype, tier.map(Tier::from), ctx.gokz_client())
+	let (description, amount) = global_api::get_unfinished(player.clone(), mode, runtype, tier.map(Tier::from), ctx.gokz_client())
 			.await
-			.map(|map_names| {
-				let Some(map_names) = map_names else {
+			.map(|maps| {
+				let Some(maps) = maps else {
 					return (String::from("You have no more maps to complete! Congrats 🥳"), String::from("0 uncompleted maps"));
 				};
+
+				let map_names = maps.into_iter().map(|map| map.name).collect::<Vec<_>>();
 
 				let description = if map_names.len() <= 10 {
 					map_names.join("\n")

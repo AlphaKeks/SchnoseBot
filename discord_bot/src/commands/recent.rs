@@ -6,8 +6,7 @@ use {
 		gokz::fmt_time,
 		Context, State,
 	},
-	chrono::NaiveDateTime,
-	gokz_rs::{prelude::*, schnose_api},
+	gokz_rs::{global_api, schnose_api, MapIdentifier},
 	log::trace,
 	poise::serenity_prelude::CreateEmbed,
 };
@@ -41,19 +40,17 @@ pub async fn recent(
 		}
 	};
 
-	let recent_records = schnose_api::get_records(player, 10, ctx.gokz_client()).await?;
+	let recent_records = schnose_api::get_recent(player, 10, ctx.gokz_client()).await?;
 
 	let mut embeds = Vec::new();
 	let max_records = recent_records.len();
 
 	for (i, record) in recent_records.into_iter().enumerate() {
-		let place = schnose_api::get_place(record.id, ctx.gokz_client())
+		let place = global_api::get_place(record.id, ctx.gokz_client())
 			.await
 			.map(|place| format!("[#{place}]"))?;
 
 		let map = ctx.get_map(&MapIdentifier::Name(record.map_name))?;
-
-		let mode = record.mode.parse::<Mode>()?;
 
 		let n_teleports = if record.teleports > 0 {
 			format!(" ({} TPs)", record.teleports)
@@ -61,19 +58,20 @@ pub async fn recent(
 			String::new()
 		};
 
-		let discord_timestamp = NaiveDateTime::parse_from_str(
-			&record.created_on, "%Y-%m-%dT%H:%M:%S",
-		)
-		.map_or_else(|_| String::new(), |parsed_time| format!("<t:{}:R>", parsed_time.timestamp()));
+		let discord_timestamp = format!("<t:{}:R>", record.created_on.timestamp());
 
 		let mut embed = CreateEmbed::default();
 		embed
 			.color(ctx.color())
 			.title(format!("[PB] {} on {} (T{})", record.player.name, &map.name, &map.tier))
-			.url(format!("{}?{}=", &map.url, mode.short().to_lowercase()))
+			.url(format!("{}?{}=", &map.url, record.mode.short().to_lowercase()))
 			.thumbnail(&map.thumbnail)
 			.field(
-				format!("{} {}", mode.short(), if record.teleports > 0 { "TP" } else { "PRO" }),
+				format!(
+					"{} {}",
+					record.mode.short(),
+					if record.teleports > 0 { "TP" } else { "PRO" }
+				),
 				format!(
 					"> {} {}{}\n> {}",
 					fmt_time(record.time),
@@ -84,7 +82,7 @@ pub async fn recent(
 				true,
 			)
 			.footer(|f| {
-				f.text(format!("Mode: {} | Page: {} / {}", mode, i + 1, max_records))
+				f.text(format!("Mode: {} | Page: {} / {}", record.mode, i + 1, max_records))
 					.icon_url(ctx.icon())
 			});
 

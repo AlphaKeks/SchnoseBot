@@ -9,7 +9,7 @@ use {
 		gokz::fmt_time,
 		Context, State,
 	},
-	gokz_rs::{prelude::*, schnose_api},
+	gokz_rs::{global_api, MapIdentifier, Mode},
 	log::trace,
 	poise::serenity_prelude::CreateEmbed,
 };
@@ -35,7 +35,7 @@ pub async fn maptop(
 	ctx.defer().await?;
 
 	let db_entry = ctx
-		.find_by_id(*ctx.author().id.as_u64())
+		.find_user_by_id(*ctx.author().id.as_u64())
 		.await;
 
 	let map = ctx.get_map(&MapIdentifier::Name(map_name))?;
@@ -49,14 +49,8 @@ pub async fn maptop(
 	};
 	let runtype = matches!(runtype, Some(RuntypeChoice::TP));
 
-	let maptop = schnose_api::get_maptop(
-		map_identifier.clone(),
-		Some(0),
-		Some(mode),
-		Some(runtype),
-		ctx.gokz_client(),
-	)
-	.await?;
+	let maptop =
+		global_api::get_maptop(map_identifier.clone(), mode, runtype, 0, ctx.gokz_client()).await?;
 	let max_pages = (maptop.len() as f64 / 12f64).ceil() as u8;
 
 	let mut embeds = Vec::new();
@@ -80,7 +74,7 @@ pub async fn maptop(
 
 		for record in records {
 			temp_embed.field(
-				format!("{} [#{}]", record.player.name, place),
+				format!("{} [#{}]", record.player_name, place),
 				fmt_time(record.time),
 				true,
 			);

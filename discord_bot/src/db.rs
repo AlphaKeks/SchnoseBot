@@ -1,7 +1,7 @@
 //! `MySQL` module for the bot's database.
 
 use {
-	gokz_rs::prelude::*,
+	gokz_rs::{Mode, SteamID},
 	serde::{Deserialize, Serialize},
 	sqlx::FromRow,
 };

@@ -7,7 +7,7 @@ use {
 
 pub async fn get_steam_avatar(
 	steam_api_key: &str,
-	steam_id64: &str,
+	steam_id64: u64,
 	client: &gokz_rs::Client,
 ) -> Eyre<String> {
 	let response = client

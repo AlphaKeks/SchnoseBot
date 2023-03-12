@@ -6,7 +6,7 @@ use {
 		gokz::fmt_time,
 		Context, State,
 	},
-	gokz_rs::{prelude::*, schnose_api},
+	gokz_rs::{global_api, MapIdentifier, Mode},
 	log::trace,
 };
 
@@ -33,7 +33,7 @@ pub async fn pb(
 	ctx.defer().await?;
 
 	let db_entry = ctx
-		.find_by_id(*ctx.author().id.as_u64())
+		.find_user_by_id(*ctx.author().id.as_u64())
 		.await;
 
 	let map = ctx.get_map(&MapIdentifier::Name(map_name))?;
@@ -60,37 +60,49 @@ pub async fn pb(
 		}
 	};
 
-	let tp = schnose_api::get_pb(
+	let tp = global_api::get_pb(
 		player.clone(),
 		map_identifier.clone(),
-		0,
 		mode,
 		true,
+		0,
 		ctx.gokz_client(),
 	)
 	.await;
-	let pro =
-		schnose_api::get_pb(player, map_identifier.clone(), 0, mode, false, ctx.gokz_client())
-			.await;
+	let pro = global_api::get_pb(
+		player.clone(),
+		map_identifier.clone(),
+		mode,
+		false,
+		0,
+		ctx.gokz_client(),
+	)
+	.await;
+
+	let mut player_name = String::from("unknown");
 
 	let tp_time = if let Ok(tp) = &tp {
-		let place = schnose_api::get_place(tp.id, ctx.gokz_client())
+		player_name = tp.player_name.clone();
+
+		let place = global_api::get_place(tp.id, ctx.gokz_client())
 			.await
 			.map(|place| format!("[#{place}]"))
 			.unwrap_or_default();
 
-		format!("{} {}\nby {}", fmt_time(tp.time), place, tp.player.name)
+		format!("{} {}\nby {}", fmt_time(tp.time), place, tp.player_name)
 	} else {
 		String::from("😔")
 	};
 
 	let pro_time = if let Ok(pro) = &pro {
-		let place = schnose_api::get_place(pro.id, ctx.gokz_client())
+		player_name = pro.player_name.clone();
+
+		let place = global_api::get_place(pro.id, ctx.gokz_client())
 			.await
 			.map(|place| format!("[#{place}]"))
 			.unwrap_or_default();
 
-		format!("{} {}\nby {}", fmt_time(pro.time), place, pro.player.name)
+		format!("{} {}\nby {}", fmt_time(pro.time), place, pro.player_name)
 	} else {
 		String::from("😔")
 	};
@@ -100,10 +112,7 @@ pub async fn pb(
 			e.color(ctx.color())
 				.title(format!(
 					"[PB] {} on {} (T{})",
-					tp.map_or(
-						pro.map_or_else(|_| String::from("unknown"), |pro| pro.player.name),
-						|tp| tp.player.name
-					),
+					player_name,
 					&map_identifier.to_string(),
 					&map.tier
 				))

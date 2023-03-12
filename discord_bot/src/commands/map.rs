@@ -4,7 +4,7 @@ use {
 		error::{Error, Result},
 		Context, State,
 	},
-	gokz_rs::prelude::*,
+	gokz_rs::MapIdentifier,
 	log::trace,
 };
 
@@ -24,14 +24,11 @@ pub async fn map(
 
 	let map = ctx.get_map(&MapIdentifier::Name(map_name))?;
 
-	let mappers = map
-		.mapper_names
-		.iter()
-		.zip(map.mapper_ids)
-		.fold(Vec::new(), |mut names, (name, id)| {
-			names.push(format!("[{name}](https://steamcommunity.com/profiles/{id})"));
-			names
-		});
+	let mapper = format!(
+		"[{}](https://steamcommunity.com/profiles/{})",
+		map.mapper_name,
+		map.mapper_steam_id.as_id64()
+	);
 
 	let kzt_filter = if map.courses[0].kzt { "✅" } else { "❌" };
 	let skz_filter = if map.courses[0].skz { "✅" } else { "❌" };
@@ -53,7 +50,7 @@ pub async fn map(
 🢂 Filters:
 				",
 					&map.tier,
-					mappers.join(", "),
+					mapper,
 					&map.courses.len(),
 					&map.updated_on
 						.format("%d/%m/%Y")

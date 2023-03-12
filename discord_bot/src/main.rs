@@ -3,7 +3,8 @@
 //! You can use this bot to communicate with the
 //! [GlobalAPI](https://portal.global-api.com/dashboard) in a convenient way. For example checking
 //! world records, personal bests or looking up detailed information about maps. The Bot also uses
-//! [KZ:GO](https://kzgo.eu/) and it's API for some extra info.
+//! [KZ:GO](https://kzgo.eu/) and it's API as well as [SchnoseAPI](https://schnose.xyz/api) for some
+//! extra info.
 
 #![warn(missing_debug_implementations, missing_docs, rust_2018_idioms)]
 #![warn(clippy::style, clippy::perf, clippy::complexity, clippy::correctness)]
@@ -21,7 +22,7 @@ use {
 	crate::global_maps::GlobalMap,
 	clap::{Parser, ValueEnum},
 	color_eyre::Result as Eyre,
-	gokz_rs::prelude::*,
+	gokz_rs::{MapIdentifier, Mode, SteamID},
 	log::{debug, info},
 	poise::{
 		async_trait,
@@ -327,10 +328,10 @@ pub trait State {
 	fn color(&self) -> (u8, u8, u8);
 	fn icon(&self) -> &str;
 	fn schnose(&self) -> &str;
-	async fn find_by_id(&self, user_id: u64) -> Result<db::User, error::Error>;
-	async fn find_by_name(&self, user_name: &str) -> Result<db::User, error::Error>;
-	async fn find_by_steam_id(&self, steam_id: &SteamID) -> Result<db::User, error::Error>;
-	async fn find_by_mode(&self, mode: Mode) -> Result<db::User, error::Error>;
+	async fn find_user_by_id(&self, user_id: u64) -> Result<db::User, error::Error>;
+	async fn find_user_by_name(&self, user_name: &str) -> Result<db::User, error::Error>;
+	async fn find_user_by_steam_id(&self, steam_id: &SteamID) -> Result<db::User, error::Error>;
+	async fn find_user_by_mode(&self, mode: Mode) -> Result<db::User, error::Error>;
 }
 
 #[rustfmt::skip] // until `fn_single_line` is stable I don't want this to get formatted.
@@ -384,7 +385,7 @@ impl State for Context<'_> {
 	fn icon(&self) -> &str { &self.data().icon }
 	fn schnose(&self) -> &str { &self.data().schnose }
 
-	async fn find_by_id(&self, user_id: u64) -> Result<db::User, error::Error> {
+	async fn find_user_by_id(&self, user_id: u64) -> Result<db::User, error::Error> {
 		Ok(sqlx::query_as::<_, db::UserSchema>(&format!(
 			"SELECT * FROM {} WHERE discord_id = {}",
 			&self.config().mysql_table,
@@ -395,7 +396,7 @@ impl State for Context<'_> {
 		.into())
 	}
 
-	async fn find_by_name(&self, user_name: &str) -> Result<db::User, error::Error> {
+	async fn find_user_by_name(&self, user_name: &str) -> Result<db::User, error::Error> {
 		Ok(sqlx::query_as::<_, db::UserSchema>(&format!(
 			r#"SELECT * FROM {} WHERE user_name = "{}""#,
 			&self.config().mysql_table,
@@ -406,7 +407,7 @@ impl State for Context<'_> {
 		.into())
 	}
 
-	async fn find_by_steam_id(&self, steam_id: &SteamID) -> Result<db::User, error::Error> {
+	async fn find_user_by_steam_id(&self, steam_id: &SteamID) -> Result<db::User, error::Error> {
 		Ok(sqlx::query_as::<_, db::UserSchema>(&format!(
 			r#"SELECT * FROM {} WHERE steam_id = "{}""#,
 			&self.config().mysql_table,
@@ -417,7 +418,7 @@ impl State for Context<'_> {
 		.into())
 	}
 
-	async fn find_by_mode(&self, mode: Mode) -> Result<db::User, error::Error> {
+	async fn find_user_by_mode(&self, mode: Mode) -> Result<db::User, error::Error> {
 		Ok(sqlx::query_as::<_, db::UserSchema>(&format!(
 			r#"SELECT * FROM {} WHERE mode = "{}""#,
 			&self.config().mysql_table,

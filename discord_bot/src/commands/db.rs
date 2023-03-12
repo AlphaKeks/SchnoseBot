@@ -29,7 +29,7 @@ pub async fn db(
 	}
 
 	let User { name, discord_id, steam_id, mode } = ctx
-		.find_by_id(*ctx.author().id.as_u64())
+		.find_user_by_id(*ctx.author().id.as_u64())
 		.await?;
 
 	let steam_id = steam_id
