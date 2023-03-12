@@ -26,7 +26,7 @@ use {
 	log::{debug, info},
 	poise::{
 		async_trait,
-		serenity_prelude::{GatewayIntents, GuildId, UserId},
+		serenity_prelude::{Activity, GatewayIntents, GuildId, UserId},
 		Event, Framework, FrameworkOptions, PrefixFrameworkOptions,
 	},
 	serde::Deserialize,
@@ -91,11 +91,20 @@ async fn main() -> Eyre<()> {
 				// commands::unfinished(), // FIXME
 				commands::wr(),
 			],
-			event_handler: |_, event, _, _| {
+			event_handler: |ctx, event, _, _| {
 				Box::pin(async move {
 					debug!("Received event `{}`", event.name());
 					if let Event::Ready { data_about_bot } = event {
 						info!("Connected to Discord as {}!", data_about_bot.user.tag());
+						let mut old_idx = global_maps::BASED_MAPS.len();
+						loop {
+							let idx = old_idx % global_maps::BASED_MAPS.len();
+							let map = global_maps::BASED_MAPS[idx];
+							ctx.set_activity(Activity::playing(map))
+								.await;
+							old_idx += 1;
+							tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
+						}
 					}
 					Ok(())
 				})

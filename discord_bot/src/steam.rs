@@ -1,4 +1,5 @@
 //! Steam WebAPI functions.
+#![allow(unused)]
 
 use {
 	color_eyre::{eyre::eyre, Result as Eyre},
