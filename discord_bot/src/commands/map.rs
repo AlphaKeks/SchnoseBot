@@ -42,27 +42,22 @@ pub async fn map(
 				.thumbnail(&map.thumbnail)
 				.description(format!(
 					"
-🢂 API Tier: {}
+🢂 Tier: {} ({})
 🢂 Mapper(s): {}
 🢂 Bonuses: {}
 🢂 Last Updated: {}
 
 🢂 Filters:
 				",
-					&map.tier,
+					map.tier as u8,
+					map.tier,
 					mapper,
-					&map.courses.len(),
-					&map.updated_on
-						.format("%d/%m/%Y")
-						.to_string()
+					map.courses.len() - 1,
+					map.updated_on.format("%d/%m/%Y")
 				))
 				.field("KZT", kzt_filter, true)
 				.field("SKZ", skz_filter, true)
 				.field("VNL", vnl_filter, true)
-				.footer(|f| {
-					f.text("<3 to kzgo.eu")
-						.icon_url(ctx.icon())
-				})
 		})
 	})
 	.await?;
