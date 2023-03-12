@@ -64,7 +64,7 @@ pub async fn recent(
 		embed
 			.color(ctx.color())
 			.title(format!(
-				"[PB] {} on {}{} (T{})",
+				"{} on {}{} (T{})",
 				record.player.name,
 				&map.name,
 				if record.course.stage > 0 {
