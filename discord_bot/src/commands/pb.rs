@@ -3,7 +3,7 @@ use {
 	crate::{
 		custom_types::Target,
 		error::{Error, Result},
-		gokz::fmt_time,
+		gokz::{fmt_time, format_replay_links},
 		Context, State,
 	},
 	gokz_rs::{global_api, MapIdentifier, Mode},
@@ -81,7 +81,7 @@ pub async fn pb(
 
 	let mut player_name = String::from("unknown");
 
-	let tp_time = if let Ok(tp) = &tp {
+	let (tp_time, tp_links) = if let Ok(tp) = &tp {
 		player_name = tp.player_name.clone();
 
 		let place = global_api::get_place(tp.id, ctx.gokz_client())
@@ -89,12 +89,15 @@ pub async fn pb(
 			.map(|place| format!("[#{place}]"))
 			.unwrap_or_default();
 
-		format!("{} {}\nby {}", fmt_time(tp.time), place, tp.player_name)
+		(
+			format!("{} {}\nby {}", fmt_time(tp.time), place, tp.player_name),
+			Some((tp.replay_view_link(), tp.replay_download_link())),
+		)
 	} else {
-		String::from("😔")
+		(String::from("😔"), None)
 	};
 
-	let pro_time = if let Ok(pro) = &pro {
+	let (pro_time, pro_links) = if let Ok(pro) = &pro {
 		player_name = pro.player_name.clone();
 
 		let place = global_api::get_place(pro.id, ctx.gokz_client())
@@ -102,9 +105,12 @@ pub async fn pb(
 			.map(|place| format!("[#{place}]"))
 			.unwrap_or_default();
 
-		format!("{} {}\nby {}", fmt_time(pro.time), place, pro.player_name)
+		(
+			format!("{} {}\nby {}", fmt_time(pro.time), place, pro.player_name),
+			Some((pro.replay_view_link(), pro.replay_download_link())),
+		)
 	} else {
-		String::from("😔")
+		(String::from("😔"), None)
 	};
 
 	ctx.send(|replay| {
@@ -114,10 +120,11 @@ pub async fn pb(
 					"[PB] {} on {} (T{})",
 					player_name,
 					&map_identifier.to_string(),
-					&map.tier
+					map.tier as u8
 				))
 				.url(format!("{}?{}=", &map.url, mode.short().to_lowercase()))
 				.thumbnail(&map.thumbnail)
+				.description(format_replay_links(tp_links, pro_links).unwrap_or_default())
 				.field("TP", tp_time, true)
 				.field("PRO", pro_time, true)
 				.footer(|f| {

@@ -62,17 +62,18 @@ pub async fn profile(
 		mode,
 		true,
 		0,
-		99999,
+		9999,
 		ctx.gokz_client(),
 	)
 	.await
 	.unwrap_or_default();
+
 	let pro = global_api::get_player_records(
 		player_identifier.clone(),
 		mode,
 		false,
 		0,
-		99999,
+		9999,
 		ctx.gokz_client(),
 	)
 	.await
@@ -81,8 +82,6 @@ pub async fn profile(
 	if tp.is_empty() && pro.is_empty() {
 		return Err(Error::NoRecords);
 	}
-
-	let len = tp.len().max(pro.len());
 
 	let mut tp_points = 0;
 	let mut pro_points = 0;
@@ -94,19 +93,20 @@ pub async fn profile(
 		Mode::SimpleKZ => (player.records.skz.tp, player.records.skz.pro),
 		Mode::Vanilla => (player.records.vnl.tp, player.records.vnl.pro),
 	};
-	//                                   ???????????
-	let mut tp_maps: HashMap<String, u8, RandomState> = HashMap::from_iter(
+	let mut tp_maps: HashMap<u16, u8, RandomState> = HashMap::from_iter(
 		ctx.global_maps()
 			.iter()
-			.map(|map| (map.name.clone(), map.tier as u8)),
+			.map(|map| (map.id, map.tier as u8)),
 	);
 	let mut pro_maps = tp_maps.clone();
 
+	let len = tp.len().max(pro.len());
 	for i in 0..len {
 		if tp.len() > i {
-			let map_name = &tp[i].map_name;
-			if let Some(tier) = tp_maps.remove(map_name) {
+			let map_id = tp[i].map_id;
+			if let Some(tier) = tp_maps.remove(&map_id) {
 				let points = tp[i].points;
+
 				tp_points += points;
 				completion_count[0].0 += 1;
 				completion_count[tier as usize].0 += 1;
@@ -118,9 +118,10 @@ pub async fn profile(
 		}
 
 		if pro.len() > i {
-			let map_name = &pro[i].map_name;
-			if let Some(tier) = pro_maps.remove(map_name) {
+			let map_id = pro[i].map_id;
+			if let Some(tier) = pro_maps.remove(&map_id) {
 				let points = pro[i].points;
+
 				pro_points += points;
 				completion_count[0].1 += 1;
 				completion_count[tier as usize].1 += 1;
@@ -158,8 +159,8 @@ pub async fn profile(
 
 	for (i, percentage) in completion_percentages
 		.iter()
-		.enumerate()
 		.skip(1)
+		.enumerate()
 	{
 		let amount = (percentage.0 / 10f64) as u32;
 
@@ -202,29 +203,28 @@ pub async fn profile(
 
 	let description = format!(
 		r#"
-🏆 **World Records**: {} (TP) | {} (PRO)
-🟡 **Total TP runs**: {}
-🔵 **Total Pro runs**: {}
-────────────────────────────
-                      TP                                               PRO
-        `{}/{} ({:.2}%)`             `{}/{} ({:.2}%)`
-T1     ⌠ {} ⌡          ⌠ {} ⌡
-T2   ⌠ {} ⌡          ⌠ {} ⌡
-T3   ⌠ {} ⌡          ⌠ {} ⌡
-T4   ⌠ {} ⌡          ⌠ {} ⌡
-T5   ⌠ {} ⌡          ⌠ {} ⌡
-T6   ⌠ {} ⌡          ⌠ {} ⌡
-T7   ⌠ {} ⌡          ⌠ {} ⌡
+🏆 **TP**: {}
+🏆 **PRO**: {}
+──────────────────────────────────────────
+```
+        [TP]                 [PRO]
+  {}/{} ({:.2}%)      {}/{} ({:.2}%)
+T1 ⌠ {} ⌡        ⌠ {} ⌡
+T2 ⌠ {} ⌡        ⌠ {} ⌡
+T3 ⌠ {} ⌡        ⌠ {} ⌡
+T4 ⌠ {} ⌡        ⌠ {} ⌡
+T5 ⌠ {} ⌡        ⌠ {} ⌡
+T6 ⌠ {} ⌡        ⌠ {} ⌡
+T7 ⌠ {} ⌡        ⌠ {} ⌡
 
-Points: **{}**
-────────────────────────────
-Rank: **{}**
+Total TP runs:  {}
+Total PRO runs: {}
+```──────────────────────────────────────────
+Points: **{} ({})**
 Preferred Mode: {}
-        "#,
+		"#,
 		tp_wrs,
 		pro_wrs,
-		total_tp_records,
-		total_pro_records,
 		completion_count[0].0,
 		completion_stats.tp[0],
 		completion_percentages[0].0,
@@ -245,6 +245,8 @@ Preferred Mode: {}
 		bars[1][5],
 		bars[0][6],
 		bars[1][6],
+		total_tp_records,
+		total_pro_records,
 		total_points.to_formatted_string(&Locale::en),
 		rank,
 		fav_mode
@@ -264,7 +266,7 @@ Preferred Mode: {}
 	ctx.send(|reply| {
 		reply.embed(|e| {
 			e.color(ctx.color())
-				.title(format!("{} - {} Profile", &player.name, mode.short()))
+				.title(format!("[{}] {}", mode.short(), &player.name))
 				.url(format!(
 					"https://kzgo.eu/players/{}?{}=",
 					&player.steam_id,

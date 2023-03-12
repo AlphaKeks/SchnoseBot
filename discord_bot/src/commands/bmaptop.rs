@@ -72,7 +72,7 @@ pub async fn bmaptop(
 				if runtype { "TP" } else { "PRO" },
 				map_identifier,
 				course,
-				&map.tier
+				map.tier as u8
 			))
 			.url(format!("{}?{}=&bonus={}", &map.url, mode.short().to_lowercase(), course))
 			.thumbnail(&map.thumbnail)

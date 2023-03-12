@@ -66,7 +66,7 @@ pub async fn maptop(
 				"[Top 100 {}] {} (T{})",
 				if runtype { "TP" } else { "PRO" },
 				map_identifier,
-				&map.tier
+				map.tier as u8
 			))
 			.url(format!("{}?{}=", &map.url, mode.short().to_lowercase()))
 			.thumbnail(&map.thumbnail)

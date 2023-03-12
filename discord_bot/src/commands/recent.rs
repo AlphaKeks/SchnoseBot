@@ -63,7 +63,17 @@ pub async fn recent(
 		let mut embed = CreateEmbed::default();
 		embed
 			.color(ctx.color())
-			.title(format!("[PB] {} on {} (T{})", record.player.name, &map.name, &map.tier))
+			.title(format!(
+				"[PB] {} on {}{} (T{})",
+				record.player.name,
+				&map.name,
+				if record.course.stage > 0 {
+					format!(" B{}", record.course.stage)
+				} else {
+					String::new()
+				},
+				map.tier as u8
+			))
 			.url(format!("{}?{}=", &map.url, record.mode.short().to_lowercase()))
 			.thumbnail(&map.thumbnail)
 			.field(

@@ -22,7 +22,7 @@ pub async fn recompile(ctx: Context<'_>, clean: Option<String>) -> Result<()> {
 		.say("Preparing for compilation...")
 		.await?;
 
-	let old_content = if matches!(dbg!(clean).as_deref(), Some("clean")) {
+	let old_content = if matches!(clean.as_deref(), Some("clean")) {
 		let old_content = &msg_handle.message().await?.content;
 		let new_content = format!("{old_content}\nCleaning build directory...");
 		msg_handle
