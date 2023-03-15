@@ -50,7 +50,24 @@ pub async fn recent(
 			.await
 			.map(|place| format!("[#{place}]"))?;
 
-		let map = ctx.get_map(&MapIdentifier::Name(record.map_name))?;
+		let (map_name, map_tier, map_url, map_thumbnail) = ctx
+			.get_map(&MapIdentifier::Name(record.map_name.clone()))
+			.map(|map| {
+				(
+					map.name,
+					(map.tier as u8).to_string(),
+					format!("{}?{}=", &map.url, record.mode.short().to_lowercase()),
+					map.thumbnail,
+				)
+			})
+			.unwrap_or_else(|_| {
+				(
+					record.map_name.clone(),
+					String::from("?"),
+					String::new(),
+					String::from("https://kzgo.eu/kz_default.png"),
+				)
+			});
 
 		let n_teleports = if record.teleports > 0 {
 			format!(" ({} TPs)", record.teleports)
@@ -66,16 +83,16 @@ pub async fn recent(
 			.title(format!(
 				"{} on {}{} (T{})",
 				record.player.name,
-				&map.name,
+				&map_name,
 				if record.course.stage > 0 {
 					format!(" B{}", record.course.stage)
 				} else {
 					String::new()
 				},
-				map.tier as u8
+				map_tier
 			))
-			.url(format!("{}?{}=", &map.url, record.mode.short().to_lowercase()))
-			.thumbnail(&map.thumbnail)
+			.url(map_url)
+			.thumbnail(&map_thumbnail)
 			.field(
 				format!(
 					"{} {}",
