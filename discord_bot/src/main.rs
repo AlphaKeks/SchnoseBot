@@ -19,7 +19,10 @@ mod process;
 mod steam;
 
 use {
-	crate::global_maps::GlobalMap,
+	crate::{
+		error::{Error, Result},
+		global_maps::GlobalMap,
+	},
 	clap::{Parser, ValueEnum},
 	color_eyre::Result as Eyre,
 	gokz_rs::{MapIdentifier, Mode, SteamID},
@@ -92,18 +95,19 @@ async fn main() -> Eyre<()> {
 				commands::wr(),
 			],
 			event_handler: |ctx, event, _, _| {
+				static N_BASED_MAPS: usize = global_maps::BASED_MAPS.len();
 				Box::pin(async move {
 					debug!("Received event `{}`", event.name());
 					if let Event::Ready { data_about_bot } = event {
 						info!("Connected to Discord as {}!", data_about_bot.user.tag());
-						let mut old_idx = global_maps::BASED_MAPS.len();
+						let mut old_idx = N_BASED_MAPS;
 						loop {
-							let idx = old_idx % global_maps::BASED_MAPS.len();
+							let idx = old_idx % N_BASED_MAPS;
 							let map = global_maps::BASED_MAPS[idx];
 							ctx.set_activity(Activity::playing(map))
 								.await;
 							old_idx += 1;
-							tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
+							tokio::time::sleep(tokio::time::Duration::from_secs(300)).await;
 						}
 					}
 					Ok(())
@@ -254,14 +258,10 @@ pub enum RegisterMode {
 
 impl std::fmt::Display for RegisterMode {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(
-			f,
-			"{}",
-			match self {
-				Self::Dev => "Dev",
-				Self::Prod => "Prod",
-			}
-		)
+		f.write_str(match self {
+			Self::Dev => "Dev",
+			Self::Prod => "Prod",
+		})
 	}
 }
 
@@ -322,7 +322,7 @@ impl GlobalState {
 }
 
 /// Global `Context` type which gets passed to slash commands.
-pub type Context<'ctx> = poise::Context<'ctx, GlobalState, crate::error::Error>;
+pub type Context<'ctx> = poise::Context<'ctx, GlobalState, Error>;
 
 /// Convenience trait to access the Global State more easily. Should be self explanatory.
 #[allow(missing_docs)]
@@ -332,15 +332,15 @@ pub trait State {
 	fn database(&self) -> &Pool<MySql>;
 	fn gokz_client(&self) -> &gokz_rs::Client;
 	fn global_maps(&self) -> &'static Vec<GlobalMap>;
-	fn get_map(&self, map_identifier: &MapIdentifier) -> Result<GlobalMap, error::Error>;
-	fn get_map_name(&self, map_name: &str) -> Result<String, error::Error>;
+	fn get_map(&self, map_identifier: &MapIdentifier) -> Result<GlobalMap>;
+	fn get_map_name(&self, map_name: &str) -> Result<String>;
 	fn color(&self) -> (u8, u8, u8);
 	fn icon(&self) -> &str;
 	fn schnose(&self) -> &str;
-	async fn find_user_by_id(&self, user_id: u64) -> Result<db::User, error::Error>;
-	async fn find_user_by_name(&self, user_name: &str) -> Result<db::User, error::Error>;
-	async fn find_user_by_steam_id(&self, steam_id: &SteamID) -> Result<db::User, error::Error>;
-	async fn find_user_by_mode(&self, mode: Mode) -> Result<db::User, error::Error>;
+	async fn find_user_by_id(&self, user_id: u64) -> Result<db::User>;
+	async fn find_user_by_name(&self, user_name: &str) -> Result<db::User>;
+	async fn find_user_by_steam_id(&self, steam_id: &SteamID) -> Result<db::User>;
+	async fn find_user_by_mode(&self, mode: Mode) -> Result<db::User>;
 }
 
 #[rustfmt::skip] // until `fn_single_line` is stable I don't want this to get formatted.
@@ -351,15 +351,13 @@ impl State for Context<'_> {
 	fn gokz_client(&self) -> &gokz_rs::Client { &self.data().gokz_client }
 	fn global_maps(&self) -> &'static Vec<GlobalMap> { self.data().global_maps }
 
-	fn get_map(&self, map_identifier: &MapIdentifier) -> Result<GlobalMap, error::Error> {
+	fn get_map(&self, map_identifier: &MapIdentifier) -> Result<GlobalMap> {
 		let mut iter = self.global_maps().iter();
 		match map_identifier {
 			MapIdentifier::ID(map_id) => iter
 				.find_map(|map| if map.id == *map_id { Some(map.to_owned()) } else { None })
-				.ok_or(error::Error::MapNotGlobal),
-			MapIdentifier::Name(map_name) => self
-				.global_maps()
-				.iter()
+				.ok_or(Error::MapNotGlobal),
+			MapIdentifier::Name(map_name) => iter
 				.find_map(|map| {
 					if map
 						.name
@@ -370,11 +368,11 @@ impl State for Context<'_> {
 						None
 					}
 				})
-				.ok_or(error::Error::MapNotGlobal),
+				.ok_or(Error::MapNotGlobal),
 		}
 	}
 
-	fn get_map_name(&self, map_name: &str) -> Result<String, error::Error> {
+	fn get_map_name(&self, map_name: &str) -> Result<String> {
 		self.global_maps()
 			.iter()
 			.find_map(|map| {
@@ -387,14 +385,14 @@ impl State for Context<'_> {
 					None
 				}
 			})
-			.ok_or(error::Error::MapNotGlobal)
+			.ok_or(Error::MapNotGlobal)
 	}
 
 	fn color(&self) -> (u8, u8, u8) { self.data().color }
 	fn icon(&self) -> &str { &self.data().icon }
 	fn schnose(&self) -> &str { &self.data().schnose }
 
-	async fn find_user_by_id(&self, user_id: u64) -> Result<db::User, error::Error> {
+	async fn find_user_by_id(&self, user_id: u64) -> Result<db::User> {
 		Ok(sqlx::query_as::<_, db::UserSchema>(&format!(
 			"SELECT * FROM {} WHERE discord_id = {}",
 			&self.config().mysql_table,
@@ -405,7 +403,7 @@ impl State for Context<'_> {
 		.into())
 	}
 
-	async fn find_user_by_name(&self, user_name: &str) -> Result<db::User, error::Error> {
+	async fn find_user_by_name(&self, user_name: &str) -> Result<db::User> {
 		Ok(sqlx::query_as::<_, db::UserSchema>(&format!(
 			r#"SELECT * FROM {} WHERE user_name = "{}""#,
 			&self.config().mysql_table,
@@ -416,7 +414,7 @@ impl State for Context<'_> {
 		.into())
 	}
 
-	async fn find_user_by_steam_id(&self, steam_id: &SteamID) -> Result<db::User, error::Error> {
+	async fn find_user_by_steam_id(&self, steam_id: &SteamID) -> Result<db::User> {
 		Ok(sqlx::query_as::<_, db::UserSchema>(&format!(
 			r#"SELECT * FROM {} WHERE steam_id = "{}""#,
 			&self.config().mysql_table,
@@ -427,7 +425,7 @@ impl State for Context<'_> {
 		.into())
 	}
 
-	async fn find_user_by_mode(&self, mode: Mode) -> Result<db::User, error::Error> {
+	async fn find_user_by_mode(&self, mode: Mode) -> Result<db::User> {
 		Ok(sqlx::query_as::<_, db::UserSchema>(&format!(
 			r#"SELECT * FROM {} WHERE mode = "{}""#,
 			&self.config().mysql_table,

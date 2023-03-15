@@ -24,10 +24,8 @@ pub fn format_replay_links(
 	let tp_links = match tp_links {
 		None => None,
 		Some(links) => {
-			if links.0.is_some() || links.1.is_some() {
-				// Both of those are `Some` based on the same condition, so we only need to check
-				// one of them.
-				Some((links.0.unwrap(), links.1.unwrap()))
+			if let (Some(view_link), Some(download_link)) = links {
+				Some((view_link, download_link))
 			} else {
 				None
 			}
@@ -37,10 +35,8 @@ pub fn format_replay_links(
 	let pro_links = match pro_links {
 		None => None,
 		Some(links) => {
-			if links.0.is_some() || links.1.is_some() {
-				// Both of those are `Some` based on the same condition, so we only need to check
-				// one of them.
-				Some((links.0.unwrap(), links.1.unwrap()))
+			if let (Some(view_link), Some(download_link)) = links {
+				Some((view_link, download_link))
 			} else {
 				None
 			}

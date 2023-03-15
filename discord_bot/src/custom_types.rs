@@ -28,7 +28,7 @@ pub enum Target {
 impl std::str::FromStr for Target {
 	type Err = Error;
 
-	fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+	fn from_str(s: &str) -> Result<Self> {
 		if let Ok(steam_id) = SteamID::new(s) {
 			return Ok(Self::SteamID(steam_id));
 		}
