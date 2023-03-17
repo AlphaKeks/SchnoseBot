@@ -405,7 +405,7 @@ impl State for Context<'_> {
 
 	async fn find_user_by_name(&self, user_name: &str) -> Result<db::User> {
 		Ok(sqlx::query_as::<_, db::UserSchema>(&format!(
-			r#"SELECT * FROM {} WHERE user_name = "{}""#,
+			r#"SELECT * FROM {} WHERE name = "{}""#,
 			&self.config().mysql_table,
 			user_name
 		))
