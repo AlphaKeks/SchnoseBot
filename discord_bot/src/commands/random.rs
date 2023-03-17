@@ -32,7 +32,7 @@ pub async fn random(
 
 	let GlobalMap { name, tier, .. } = &global_maps[rng];
 
-	ctx.say(format!("🎲 {name} (T{tier})"))
+	ctx.say(format!("🎲 {name} ({tier})"))
 		.await?;
 
 	Ok(())
