@@ -82,7 +82,7 @@ async fn main() -> Eyre<()> {
 				commands::nocrouch(),
 				commands::pb(),
 				commands::ping(),
-				commands::profile(), // FIXME
+				commands::profile(),
 				commands::pull(),
 				commands::random(),
 				commands::recent(),
