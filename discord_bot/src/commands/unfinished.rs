@@ -103,6 +103,11 @@ pub async fn unfinished(
 			if runtype { "TP" } else { "PRO" },
 			tier.map_or_else(String::new, |tier| format!("[T{}]", tier as u8))
 		))
+		.url(format!(
+			"https://kzgo.eu/players/{}?{}=",
+			player.steam_id,
+			mode.short().to_lowercase()
+		))
 		.thumbnail(avatar)
 		.description("Congrats! You have no maps left to finish 🥳")
 		.footer(|f| {
