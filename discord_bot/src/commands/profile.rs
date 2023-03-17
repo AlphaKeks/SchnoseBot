@@ -5,8 +5,7 @@ use {
 	crate::{
 		custom_types::Target,
 		error::{Error, Result},
-		steam::get_steam_avatar,
-		Context, State,
+		steam, Context, State,
 	},
 	gokz_rs::{global_api, kzgo_api, schnose_api, Mode, PlayerIdentifier, Rank},
 	log::trace,
@@ -251,15 +250,15 @@ Preferred Mode: {}
 		fav_mode
 	);
 
-	let avatar = if let Ok(avatar) =
-		get_steam_avatar(&ctx.config().steam_token, player.steam_id.as_id64(), ctx.gokz_client())
-			.await
-	{
-		avatar
+	let avatar = if let Ok(user) = kzgo_api::get_avatar(player.steam_id, ctx.gokz_client()).await {
+		user.avatar_url
 	} else {
-		kzgo_api::get_avatar(player.steam_id, ctx.gokz_client())
-			.await?
-			.avatar_url
+		steam::get_steam_avatar(
+			&ctx.config().steam_token,
+			player.steam_id.as_id64(),
+			ctx.gokz_client(),
+		)
+		.await?
 	};
 
 	ctx.send(|reply| {

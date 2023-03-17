@@ -141,6 +141,12 @@ impl From<sqlx::Error> for Error {
 	}
 }
 
+impl From<color_eyre::Report> for Error {
+	fn from(value: color_eyre::Report) -> Self {
+		Self::Custom(value.to_string())
+	}
+}
+
 impl Error {
 	pub async fn handle_command(error: poise::FrameworkError<'_, crate::GlobalState, Error>) {
 		error!("Slash Command failed. {error:?}");

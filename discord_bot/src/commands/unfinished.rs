@@ -1,15 +1,16 @@
-#![allow(unused)] // FIXME
-
 use {
-	super::choices::{ModeChoice, RuntypeChoice, TierChoice},
+	super::{
+		choices::{ModeChoice, RuntypeChoice, TierChoice},
+		pagination::paginate,
+	},
 	crate::{
 		custom_types::Target,
 		error::{Error, Result},
-		Context, State,
+		steam, Context, State,
 	},
-	gokz_rs::{global_api, schnose_api, Mode, Tier},
+	gokz_rs::{global_api, kzgo_api, schnose_api, Mode, Tier},
 	log::trace,
-	std::fmt::Write,
+	poise::serenity_prelude::CreateEmbed,
 };
 
 /// Check which maps you still need to finish.
@@ -64,51 +65,105 @@ pub async fn unfinished(
 
 	let player = schnose_api::get_player(player_identifier.clone(), ctx.gokz_client()).await?;
 
-	let (amount, description) = 'ret: {
-		let Some(unfinished) = global_api::get_unfinished(player_identifier, mode, runtype, tier.map(Tier::from), ctx.gokz_client()).await? else {
-			break 'ret (0, String::from("Congrats! You have no maps left to finish 🥳"));
-		};
-
-		let amount = unfinished.len();
-
-		if amount <= 10 {
-			let description = unfinished
-				.into_iter()
-				.map(|map| map.name)
-				.collect::<Vec<_>>()
-				.join("\n");
-			break 'ret (amount, description);
-		}
-
-		let mut description = unfinished
-			.into_iter()
-			.take(10)
-			.map(|map| map.name)
+	let unfinished = global_api::get_unfinished(
+		player_identifier,
+		mode,
+		runtype,
+		tier.map(Tier::from),
+		ctx.gokz_client(),
+	)
+	.await?
+	.map(|maps| {
+		maps.into_iter()
+			.map(|map| {
+				if tier.is_some() {
+					return map.name;
+				}
+				format!("{} (T{})", map.name, map.difficulty as u8)
+			})
 			.collect::<Vec<_>>()
-			.join("\n");
-		write!(&mut description, "\n...{} more", amount - 10);
+	});
 
-		(amount, description)
+	let avatar = if let Ok(user) = kzgo_api::get_avatar(player.steam_id, ctx.gokz_client()).await {
+		user.avatar_url
+	} else {
+		steam::get_steam_avatar(
+			&ctx.config().steam_token,
+			player.steam_id.as_id64(),
+			ctx.gokz_client(),
+		)
+		.await?
 	};
 
-	ctx.send(|reply| {
-		reply.embed(|e| {
-			e.color(ctx.color())
-				.title(format!(
-					"{} - {} {} {}",
-					amount,
+	let mut template = CreateEmbed::default()
+		.color(ctx.color())
+		.title(format!(
+			"{} {} {}",
+			mode.short(),
+			if runtype { "TP" } else { "PRO" },
+			tier.map_or_else(String::new, |tier| format!("[T{}]", tier as u8))
+		))
+		.thumbnail(avatar)
+		.description("Congrats! You have no maps left to finish 🥳")
+		.footer(|f| {
+			f.text(format!("Player: {}", player.name))
+				.icon_url(ctx.icon())
+		})
+		.to_owned();
+
+	match unfinished {
+		None => {
+			ctx.send(|reply| {
+				reply.embed(|e| {
+					*e = template;
+					e
+				})
+			})
+			.await?;
+		}
+		Some(maps) if maps.len() <= 10 => {
+			let description = maps.join("\n");
+
+			ctx.send(|reply| {
+				reply.embed(|e| {
+					template.description(description);
+					*e = template;
+					e
+				})
+			})
+			.await?;
+		}
+		Some(maps) => {
+			let mut embeds = Vec::new();
+			let chunk_size = 10;
+			let len = maps.len();
+			let max_pages = (maps.len() as f64 / 12f64).ceil() as u8;
+			for (page_idx, map_names) in maps.chunks(chunk_size).enumerate() {
+				let mut temp = template.clone();
+				temp.title(format!(
+					"{} maps - {} {} {}",
+					len,
 					mode.short(),
 					if runtype { "TP" } else { "PRO" },
 					tier.map_or_else(String::new, |tier| format!("[T{}]", tier as u8))
 				))
-				.description(description)
+				.description(map_names.join("\n"))
 				.footer(|f| {
-					f.text(format!("Player: {}", player.name))
-						.icon_url(ctx.icon())
-				})
-		})
-	})
-	.await?;
+					f.text(format!(
+						"Player: {} | Page {} / {}",
+						&player.name,
+						page_idx + 1,
+						max_pages
+					))
+					.icon_url(ctx.icon())
+				});
+
+				embeds.push(temp);
+			}
+
+			paginate(&ctx, embeds).await?;
+		}
+	};
 
 	Ok(())
 }
