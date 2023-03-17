@@ -142,7 +142,7 @@ pub async fn unfinished(
 			let mut embeds = Vec::new();
 			let chunk_size = 10;
 			let len = maps.len();
-			let max_pages = (maps.len() as f64 / 12f64).ceil() as u8;
+			let max_pages = (maps.len() as f64 / chunk_size as f64).ceil() as u8;
 			for (page_idx, map_names) in maps.chunks(chunk_size).enumerate() {
 				let mut temp = template.clone();
 				temp.title(format!(

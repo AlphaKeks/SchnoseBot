@@ -51,7 +51,6 @@ pub async fn maptop(
 
 	let maptop =
 		global_api::get_maptop(map_identifier.clone(), mode, runtype, 0, ctx.gokz_client()).await?;
-	let max_pages = (maptop.len() as f64 / 12f64).ceil() as u8;
 
 	let mut embeds = Vec::new();
 	let mut temp_embed = CreateEmbed::default()
@@ -60,6 +59,7 @@ pub async fn maptop(
 
 	let chunk_size = 12;
 	let mut place = 1;
+	let max_pages = (maptop.len() as f64 / chunk_size as f64).ceil() as u8;
 	for (page_idx, records) in maptop.chunks(chunk_size).enumerate() {
 		temp_embed
 			.title(format!(
