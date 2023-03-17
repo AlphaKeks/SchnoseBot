@@ -91,7 +91,7 @@ async fn main() -> Eyre<()> {
 				commands::restart(),
 				commands::setsteam(),
 				commands::top(),
-				// commands::unfinished(), // FIXME
+				commands::unfinished(),
 				commands::wr(),
 			],
 			event_handler: |ctx, event, _, _| {

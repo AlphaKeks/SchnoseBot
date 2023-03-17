@@ -11,12 +11,10 @@ use {
 	poise::serenity_prelude::CreateEmbed,
 };
 
-/// Get a player's most recent PB. (Main course only)
+/// Get a player's 10 most recent runs.
 ///
-/// Due to limitations with the [GlobalAPI](https://portal.global-api.com/dashboard) this only \
-/// works for non-bonus PB runs. It will fetch all of your PBs and then filter them by date to \
-/// give you the most recent one. If the API has a global replay stored for your run, the bot will \
-/// attach some links for you to view and/or download the replay.
+/// If the GlobalAPI has a global replay stored for your runs, the bot will attach some links for \
+/// you to view and/or download the replay.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn recent(
 	ctx: Context<'_>,

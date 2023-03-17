@@ -9,6 +9,7 @@ use {
 	},
 	gokz_rs::{global_api, schnose_api, Mode, Tier},
 	log::trace,
+	std::fmt::Write,
 };
 
 /// Check which maps you still need to finish.
@@ -47,7 +48,7 @@ pub async fn unfinished(
 			.ok_or(Error::MissingMode)?,
 	};
 	let runtype = matches!(runtype, Some(RuntypeChoice::TP));
-	let player = match player {
+	let player_identifier = match player {
 		Some(target) => {
 			target
 				.parse::<Target>()?
@@ -61,28 +62,53 @@ pub async fn unfinished(
 		}
 	};
 
-	todo!("FIXME");
+	let player = schnose_api::get_player(player_identifier.clone(), ctx.gokz_client()).await?;
 
-	// let player = schnose_api::get_player(player, ctx.gokz_client()).await?;
-	//
-	// ctx.send(|reply| {
-	// 	reply.embed(|e| {
-	// 		e.color(ctx.color())
-	// 			.title(format!(
-	// 				"{} - {} {} {}",
-	// 				amount,
-	// 				mode.short(),
-	// 				if runtype { "TP" } else { "PRO" },
-	// 				tier.map_or_else(String::new, |tier| format!("[T{}]", tier as u8))
-	// 			))
-	// 			.description(description)
-	// 			.footer(|f| {
-	// 				f.text(format!("Player: {}", player.name))
-	// 					.icon_url(ctx.icon())
-	// 			})
-	// 	})
-	// })
-	// .await?;
-	//
-	// Ok(())
+	let (amount, description) = 'ret: {
+		let Some(unfinished) = global_api::get_unfinished(player_identifier, mode, runtype, tier.map(Tier::from), ctx.gokz_client()).await? else {
+			break 'ret (0, String::from("Congrats! You have no maps left to finish 🥳"));
+		};
+
+		let amount = unfinished.len();
+
+		if amount <= 10 {
+			let description = unfinished
+				.into_iter()
+				.map(|map| map.name)
+				.collect::<Vec<_>>()
+				.join("\n");
+			break 'ret (amount, description);
+		}
+
+		let mut description = unfinished
+			.into_iter()
+			.take(10)
+			.map(|map| map.name)
+			.collect::<Vec<_>>()
+			.join("\n");
+		write!(&mut description, "\n...{} more", amount - 10);
+
+		(amount, description)
+	};
+
+	ctx.send(|reply| {
+		reply.embed(|e| {
+			e.color(ctx.color())
+				.title(format!(
+					"{} - {} {} {}",
+					amount,
+					mode.short(),
+					if runtype { "TP" } else { "PRO" },
+					tier.map_or_else(String::new, |tier| format!("[T{}]", tier as u8))
+				))
+				.description(description)
+				.footer(|f| {
+					f.text(format!("Player: {}", player.name))
+						.icon_url(ctx.icon())
+				})
+		})
+	})
+	.await?;
+
+	Ok(())
 }
