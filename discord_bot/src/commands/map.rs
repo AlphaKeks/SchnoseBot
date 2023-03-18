@@ -30,9 +30,9 @@ pub async fn map(
 		map.mapper_name
 	};
 
-	let kzt_filter = if map.courses[0].kzt { "✅" } else { "❌" };
-	let skz_filter = if map.courses[0].skz { "✅" } else { "❌" };
-	let vnl_filter = if map.courses[0].vnl { "✅" } else { "❌" };
+	let kzt_filter = if map.kzt { "✅" } else { "❌" };
+	let skz_filter = if map.skz { "✅" } else { "❌" };
+	let vnl_filter = if map.vnl { "✅" } else { "❌" };
 
 	ctx.send(|reply| {
 		reply.embed(|e| {

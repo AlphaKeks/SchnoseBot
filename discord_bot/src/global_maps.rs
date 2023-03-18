@@ -5,8 +5,9 @@ use {
 	crate::error::Result,
 	chrono::NaiveDateTime,
 	gokz_rs::{
+		global_api,
 		schnose_api::{self, maps::Course},
-		SteamID, Tier,
+		Mode, SteamID, Tier,
 	},
 	serde::{Deserialize, Serialize},
 };
@@ -41,35 +42,46 @@ pub struct GlobalMap {
 
 /// Gets called once at the start to fetch and process all maps.
 pub async fn init(gokz_client: &gokz_rs::Client) -> Result<Vec<GlobalMap>> {
-	Ok(schnose_api::get_global_maps(gokz_client)
-		.await?
-		.into_iter()
-		.map(|global_map| {
-			let kzt = global_map.courses[0].kzt;
-			let skz = global_map.courses[0].skz;
-			let vnl = global_map.courses[0].vnl;
-			let url = format!("https://kzgo.eu/maps/{}", &global_map.name);
-			let thumbnail = format!(
-				"https://raw.githubusercontent.com/KZGlobalTeam/map-images/master/images/{}.jpg",
-				&global_map.name
-			);
+	let mut maps = Vec::new();
+	let mut filters = global_api::record_filters::get_filters(
+		global_api::record_filters::index::Params {
+			tickrates: Some(128),
+			stages: Some(0),
+			limit: Some(99999),
+			..Default::default()
+		},
+		gokz_client,
+	)
+	.await?
+	.into_iter();
 
-			GlobalMap {
-				id: global_map.id,
-				name: global_map.name,
-				tier: global_map.tier,
-				courses: global_map.courses,
-				kzt,
-				skz,
-				vnl,
-				mapper_name: global_map.mapper_name,
-				mapper_steam_id: global_map.mapper_steam_id,
-				filesize: global_map.filesize,
-				created_on: global_map.created_on,
-				updated_on: global_map.updated_on,
-				url,
-				thumbnail,
-			}
-		})
-		.collect())
+	for global_map in schnose_api::get_global_maps(gokz_client).await? {
+		let url = format!("https://kzgo.eu/maps/{}", &global_map.name);
+		let thumbnail = format!(
+			"https://raw.githubusercontent.com/KZGlobalTeam/map-images/master/images/{}.jpg",
+			&global_map.name
+		);
+
+		maps.push(GlobalMap {
+			id: global_map.id,
+			name: global_map.name,
+			tier: global_map.tier,
+			courses: global_map.courses,
+			kzt: filters
+				.any(|filter| filter.map_id == global_map.id && filter.mode == Mode::KZTimer),
+			skz: filters
+				.any(|filter| filter.map_id == global_map.id && filter.mode == Mode::SimpleKZ),
+			vnl: filters
+				.any(|filter| filter.map_id == global_map.id && filter.mode == Mode::Vanilla),
+			mapper_name: global_map.mapper_name,
+			mapper_steam_id: global_map.mapper_steam_id,
+			filesize: global_map.filesize,
+			created_on: global_map.created_on,
+			updated_on: global_map.updated_on,
+			url,
+			thumbnail,
+		});
+	}
+
+	Ok(maps)
 }
