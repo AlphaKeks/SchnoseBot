@@ -108,7 +108,17 @@ pub async fn recent(
 		embeds.push(embed)
 	}
 
-	paginate(&ctx, embeds).await?;
+	if embeds.len() == 1 {
+		ctx.send(|reply| {
+			reply.embed(|e| {
+				*e = embeds.remove(0);
+				e
+			})
+		})
+		.await?;
+	} else {
+		paginate(&ctx, embeds).await?;
+	}
 
 	Ok(())
 }
