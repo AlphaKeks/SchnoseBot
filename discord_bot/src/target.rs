@@ -1,11 +1,11 @@
-//! Custom types which I couldn't find a better place for.
+//! Custom type for the `player` parameter on many commands.
 
 use {
 	crate::{
 		error::{Error, Result},
 		Context, State,
 	},
-	gokz_rs::{prelude::*, schnose_api},
+	gokz_rs::{schnose_api, PlayerIdentifier, SteamID},
 	regex::Regex,
 };
 
@@ -28,7 +28,7 @@ pub enum Target {
 impl std::str::FromStr for Target {
 	type Err = Error;
 
-	fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+	fn from_str(s: &str) -> Result<Self> {
 		if let Ok(steam_id) = SteamID::new(s) {
 			return Ok(Self::SteamID(steam_id));
 		}
@@ -51,45 +51,52 @@ impl std::str::FromStr for Target {
 }
 
 impl Target {
+	pub async fn parse_input(input: Option<String>, ctx: &Context<'_>) -> Result<PlayerIdentifier> {
+		if let Some(input) = input {
+			input.parse::<Self>()?
+		} else {
+			Self::None(*ctx.author().id.as_u64())
+		}
+		.into_player(ctx)
+		.await
+	}
+
 	pub async fn into_player(self, ctx: &Context<'_>) -> Result<PlayerIdentifier> {
 		match self {
 			Self::None(user_id) => {
-				if let Ok(user) = ctx.find_by_id(user_id).await {
+				if let Ok(user) = ctx.find_user_by_id(user_id).await {
 					if let Some(steam_id) = user.steam_id {
-						Ok(PlayerIdentifier::SteamID(steam_id))
+						Ok(steam_id.into())
 					} else {
-						Ok(PlayerIdentifier::Name(user.name))
+						Ok(user.name.into())
 					}
 				} else {
-					Ok(PlayerIdentifier::Name(ctx.author().name.clone()))
+					Ok(ctx.author().name.clone().into())
 				}
 			}
 			Self::Mention(user_id) => ctx
-				.find_by_id(user_id)
+				.find_user_by_id(user_id)
 				.await
 				.map(|user| {
 					if let Some(steam_id) = user.steam_id {
-						Ok(PlayerIdentifier::SteamID(steam_id))
+						Ok(steam_id.into())
 					} else {
-						Ok(PlayerIdentifier::Name(user.name))
+						Ok(user.name.into())
 					}
 				})?,
 			Self::SteamID(steam_id) => Ok(PlayerIdentifier::SteamID(steam_id)),
-			Self::Name(ref name) => {
-				if let Ok(user) = ctx.find_by_name(name).await {
+			Self::Name(name) => {
+				if let Ok(user) = ctx.find_user_by_name(&name).await {
 					if let Some(steam_id) = user.steam_id {
-						Ok(PlayerIdentifier::SteamID(steam_id))
+						Ok(steam_id.into())
 					} else {
-						Ok(PlayerIdentifier::Name(user.name))
+						Ok(user.name.into())
 					}
 				} else {
-					let player = schnose_api::get_player(
-						PlayerIdentifier::Name(name.to_owned()),
-						ctx.gokz_client(),
-					)
-					.await?;
-
-					Ok(PlayerIdentifier::SteamID(SteamID::new(&player.steam_id)?))
+					Ok(schnose_api::get_player(PlayerIdentifier::Name(name), ctx.gokz_client())
+						.await
+						.map(|player| player.steam_id)?
+						.into())
 				}
 			}
 		}

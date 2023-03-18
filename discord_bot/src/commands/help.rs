@@ -14,7 +14,7 @@ use {
 /// so if you have anything, feel free to reach out via:
 /// 1. `/report`
 /// 2. DM to <@291585142164815873>
-/// 3. an Issue on [GitHub](https://github.com/AlphaKeks/SchnoseBot/issues)
+/// 3. an [issue on GitHub](https://github.com/AlphaKeks/SchnoseBot/issues)
 ///
 /// This bot features most commands you already know from ingame such as
 /// - `/pb`

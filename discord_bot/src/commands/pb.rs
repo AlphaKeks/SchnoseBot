@@ -1,12 +1,12 @@
 use {
 	super::{autocompletion::autocomplete_map, choices::ModeChoice},
 	crate::{
-		custom_types::Target,
 		error::{Error, Result},
-		gokz::fmt_time,
+		gokz::{fmt_time, format_replay_links},
+		target::Target,
 		Context, State,
 	},
-	gokz_rs::{prelude::*, schnose_api},
+	gokz_rs::{global_api, MapIdentifier},
 	log::trace,
 };
 
@@ -33,66 +33,71 @@ pub async fn pb(
 	ctx.defer().await?;
 
 	let db_entry = ctx
-		.find_by_id(*ctx.author().id.as_u64())
+		.find_user_by_id(*ctx.author().id.as_u64())
 		.await;
 
 	let map = ctx.get_map(&MapIdentifier::Name(map_name))?;
 	let map_identifier = MapIdentifier::Name(map.name);
-	let mode = match mode {
-		Some(choice) => Mode::from(choice),
-		None => db_entry
-			.as_ref()
-			.map_err(|_| Error::MissingMode)?
-			.mode
-			.ok_or(Error::MissingMode)?,
-	};
-	let player = match player {
-		Some(target) => {
-			target
-				.parse::<Target>()?
-				.into_player(&ctx)
-				.await?
-		}
-		None => {
-			Target::None(*ctx.author().id.as_u64())
-				.into_player(&ctx)
-				.await?
-		}
-	};
+	let mode = ModeChoice::parse_input(mode, &db_entry)?;
+	let player = Target::parse_input(player, &ctx).await?;
 
-	let tp = schnose_api::get_pb(
+	let tp = global_api::get_pb(
 		player.clone(),
 		map_identifier.clone(),
-		0,
 		mode,
 		true,
+		0,
 		ctx.gokz_client(),
 	)
 	.await;
-	let pro =
-		schnose_api::get_pb(player, map_identifier.clone(), 0, mode, false, ctx.gokz_client())
-			.await;
+	let pro = global_api::get_pb(
+		player.clone(),
+		map_identifier.clone(),
+		mode,
+		false,
+		0,
+		ctx.gokz_client(),
+	)
+	.await;
 
-	let tp_time = if let Ok(tp) = &tp {
-		let place = schnose_api::get_place(tp.id, ctx.gokz_client())
+	let mut player_name = String::from("unknown");
+
+	let (tp_time, tp_links) = if let Ok(tp) = &tp {
+		player_name = tp.player_name.clone();
+
+		let place = global_api::get_place(tp.id, ctx.gokz_client())
 			.await
 			.map(|place| format!("[#{place}]"))
 			.unwrap_or_default();
 
-		format!("{} {}\nby {}", fmt_time(tp.time), place, tp.player.name)
+		(
+			format!(
+				"{} {} ({} TP{})",
+				fmt_time(tp.time),
+				place,
+				tp.teleports,
+				if tp.teleports > 1 { "s" } else { "" }
+			),
+			Some((tp.replay_view_link(), tp.replay_download_link())),
+		)
 	} else {
-		String::from("😔")
+		(String::from("😔"), None)
 	};
 
-	let pro_time = if let Ok(pro) = &pro {
-		let place = schnose_api::get_place(pro.id, ctx.gokz_client())
+	let (pro_time, pro_links) = if let Ok(pro) = &pro {
+		player_name = pro.player_name.clone();
+
+		let place = global_api::get_place(pro.id, ctx.gokz_client())
 			.await
 			.map(|place| format!("[#{place}]"))
 			.unwrap_or_default();
 
-		format!("{} {}\nby {}", fmt_time(pro.time), place, pro.player.name)
+		(
+			format!("{} {}", fmt_time(pro.time), place),
+			Some((pro.replay_view_link(), pro.replay_download_link())),
+		)
 	} else {
-		String::from("😔")
+		(String::from("😔"), None)
 	};
 
 	ctx.send(|replay| {
@@ -100,15 +105,13 @@ pub async fn pb(
 			e.color(ctx.color())
 				.title(format!(
 					"[PB] {} on {} (T{})",
-					tp.map_or(
-						pro.map_or_else(|_| String::from("unknown"), |pro| pro.player.name),
-						|tp| tp.player.name
-					),
+					player_name,
 					&map_identifier.to_string(),
-					&map.tier
+					map.tier as u8
 				))
 				.url(format!("{}?{}=", &map.url, mode.short().to_lowercase()))
 				.thumbnail(&map.thumbnail)
+				.description(format_replay_links(tp_links, pro_links).unwrap_or_default())
 				.field("TP", tp_time, true)
 				.field("PRO", pro_time, true)
 				.footer(|f| {

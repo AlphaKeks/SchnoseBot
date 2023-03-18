@@ -1,35 +1,40 @@
 //! Discord Bot for CS:GO KZ.
 //!
-//! You can use this bot to communicate with the
-//! [GlobalAPI](https://portal.global-api.com/dashboard) in a convenient way. For example checking
-//! world records, personal bests or looking up detailed information about maps. The Bot also uses
-//! [KZ:GO](https://kzgo.eu/) and it's API for some extra info.
+//! You can use this bot for running commands you already know from GOKZ, but in Discord!
+//! The bot uses a `MySql` database to store user information such as their [`SteamID`] and favorite
+//! [`Mode`]. To fetch information about players, maps, etc. it uses the [`gokz_rs`] crate. If you
+//! have any suggestions or bug reports, feel free to submit an
+//! [issue on GitHub](https://github.com/AlphaKeks/SchnoseBot/issues)!
 
 #![warn(missing_debug_implementations, missing_docs, rust_2018_idioms)]
 #![warn(clippy::style, clippy::perf, clippy::complexity, clippy::correctness)]
 
 mod commands;
-mod custom_types;
 mod db;
 mod error;
 mod global_maps;
 mod gokz;
 mod process;
 mod steam;
+mod target;
 
 use {
-	crate::global_maps::GlobalMap,
+	crate::{
+		error::{Error, Result},
+		global_maps::GlobalMap,
+	},
 	clap::{Parser, ValueEnum},
 	color_eyre::Result as Eyre,
-	gokz_rs::prelude::*,
+	fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher},
+	gokz_rs::{MapIdentifier, Mode, SteamID},
 	log::{debug, info},
 	poise::{
 		async_trait,
-		serenity_prelude::{GatewayIntents, GuildId, UserId},
-		Event, Framework, FrameworkOptions, PrefixFrameworkOptions,
+		serenity_prelude::{Activity, GatewayIntents, GuildId, UserId},
+		Command, Event, Framework, FrameworkOptions, PrefixFrameworkOptions,
 	},
 	serde::Deserialize,
-	sqlx::{mysql::MySqlPoolOptions, MySql, Pool},
+	sqlx::{mysql::MySqlPoolOptions, MySql, Pool, QueryBuilder},
 	std::{collections::HashSet, path::PathBuf},
 };
 
@@ -53,11 +58,11 @@ async fn main() -> Eyre<()> {
 	);
 	env_logger::init();
 
-	let state = GlobalState::new(config).await;
+	let global_state = GlobalState::new(config).await;
 
 	let framework = Framework::builder()
 		.options(FrameworkOptions {
-			owners: HashSet::from_iter([UserId(state.config.owner_id)]),
+			owners: HashSet::from_iter([UserId(global_state.config.owner_id)]),
 			prefix_options: PrefixFrameworkOptions {
 				prefix: Some(String::from("~")),
 				ignore_bots: true,
@@ -67,7 +72,7 @@ async fn main() -> Eyre<()> {
 				commands::apistatus(),
 				commands::bmaptop(),
 				commands::bpb(),
-				// commands::btop(),
+				commands::btop(),
 				commands::bwr(),
 				commands::db(),
 				commands::help(),
@@ -86,22 +91,33 @@ async fn main() -> Eyre<()> {
 				commands::report(),
 				commands::restart(),
 				commands::setsteam(),
-				// commands::top(),
+				commands::top(),
 				commands::unfinished(),
 				commands::wr(),
 			],
-			event_handler: |_, event, _, _| {
+			event_handler: |ctx, event, _, _| {
 				Box::pin(async move {
 					debug!("Received event `{}`", event.name());
 					if let Event::Ready { data_about_bot } = event {
 						info!("Connected to Discord as {}!", data_about_bot.user.tag());
+
+						// Change status every 5 minutes to a different map name
+						let mut old_idx = global_maps::BASED_MAPS.len();
+						loop {
+							let idx = old_idx % global_maps::BASED_MAPS.len();
+							let map = global_maps::BASED_MAPS[idx];
+							ctx.set_activity(Activity::playing(map))
+								.await;
+							old_idx += 1;
+							tokio::time::sleep(tokio::time::Duration::from_secs(300)).await;
+						}
 					}
 					Ok(())
 				})
 			},
 			..Default::default()
 		})
-		.token(&state.config.discord_token)
+		.token(&global_state.config.discord_token)
 		.intents(
 			GatewayIntents::GUILDS
 				| GatewayIntents::GUILD_MEMBERS
@@ -111,9 +127,10 @@ async fn main() -> Eyre<()> {
 		.setup(move |ctx, _, framework| {
 			Box::pin(async move {
 				let commands = &framework.options().commands;
-				match &state.config.mode {
+				let mode = &global_state.config.mode;
+				match mode {
 					RegisterMode::Dev => {
-						let dev_guild = GuildId(state.config.dev_guild);
+						let dev_guild = GuildId(global_state.config.dev_guild);
 						poise::builtins::register_in_guild(ctx, commands, dev_guild).await?;
 					}
 					RegisterMode::Prod => {
@@ -121,14 +138,11 @@ async fn main() -> Eyre<()> {
 					}
 				}
 
-				for command in commands {
-					info!(
-						"[{}] Successfully registered command `/{}`.",
-						&state.config.mode, &command.name
-					);
+				for Command { name, .. } in commands {
+					info!("[{mode}] Successfully registered command `/{name}`.");
 				}
 
-				Ok(state)
+				Ok(global_state)
 			})
 		});
 
@@ -244,14 +258,10 @@ pub enum RegisterMode {
 
 impl std::fmt::Display for RegisterMode {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(
-			f,
-			"{}",
-			match self {
-				Self::Dev => "Dev",
-				Self::Prod => "Prod",
-			}
-		)
+		f.write_str(match self {
+			Self::Dev => "Dev",
+			Self::Prod => "Prod",
+		})
 	}
 }
 
@@ -270,6 +280,9 @@ pub struct GlobalState {
 
 	/// Cache of all global maps.
 	pub global_maps: &'static Vec<GlobalMap>,
+
+	/// Cache of all global maps.
+	pub global_map_names: &'static Vec<&'static str>,
 
 	/// #7480c2
 	pub color: (u8, u8, u8),
@@ -291,17 +304,24 @@ impl GlobalState {
 			.expect("Failed to establish database connection.");
 
 		let gokz_client = gokz_rs::Client::new();
-		let global_maps = Box::leak(Box::new(
+		let global_maps: &'static Vec<GlobalMap> = Box::leak(Box::new(
 			global_maps::init(&gokz_client)
 				.await
 				.expect("Failed to fetch global maps."),
+		));
+		let global_map_names: &'static Vec<&'static str> = Box::leak(Box::new(
+			global_maps
+				.iter()
+				.map(|map| map.name.as_str())
+				.collect::<Vec<&str>>(),
 		));
 
 		Self {
 			config,
 			database,
 			gokz_client,
-			global_maps,
+			global_maps: Box::leak(Box::new(global_maps)),
+			global_map_names,
 			color: (116, 128, 194),
 			icon: String::from(
 				"https://media.discordapp.net/attachments/981130651094900756/1068608508645347408/schnose.png"
@@ -312,9 +332,10 @@ impl GlobalState {
 }
 
 /// Global `Context` type which gets passed to slash commands.
-pub type Context<'ctx> = poise::Context<'ctx, GlobalState, crate::error::Error>;
+pub type Context<'ctx> = poise::Context<'ctx, GlobalState, Error>;
 
-/// Convenience trait to access the Global State more easily. Should be self explanatory.
+/// Convenience trait for getter functions on [`Context`] since it's not my own type and I haven't
+/// figured out how to replace it yet.
 #[allow(missing_docs)]
 #[async_trait]
 pub trait State {
@@ -322,109 +343,146 @@ pub trait State {
 	fn database(&self) -> &Pool<MySql>;
 	fn gokz_client(&self) -> &gokz_rs::Client;
 	fn global_maps(&self) -> &'static Vec<GlobalMap>;
-	fn get_map(&self, map_identifier: &MapIdentifier) -> Result<GlobalMap, error::Error>;
-	fn get_map_name(&self, map_name: &str) -> Result<String, error::Error>;
+	fn global_map_names(&self) -> &'static Vec<&'static str>;
+	fn get_map(&self, map_identifier: &MapIdentifier) -> Result<GlobalMap>;
+
+	fn get_map_name(&self, map_name: &str) -> Result<String> {
+		self.get_map(&MapIdentifier::Name(map_name.to_owned()))
+			.map(|map| map.name)
+	}
+
 	fn color(&self) -> (u8, u8, u8);
 	fn icon(&self) -> &str;
 	fn schnose(&self) -> &str;
-	async fn find_by_id(&self, user_id: u64) -> Result<db::User, error::Error>;
-	async fn find_by_name(&self, user_name: &str) -> Result<db::User, error::Error>;
-	async fn find_by_steam_id(&self, steam_id: &SteamID) -> Result<db::User, error::Error>;
-	async fn find_by_mode(&self, mode: Mode) -> Result<db::User, error::Error>;
+	async fn find_user_by_id(&self, user_id: u64) -> Result<db::User>;
+	async fn find_user_by_name(&self, user_name: &str) -> Result<db::User>;
+	async fn find_user_by_steam_id(&self, steam_id: &SteamID) -> Result<db::User>;
+	async fn find_user_by_mode(&self, mode: Mode) -> Result<db::User>;
 }
 
-#[rustfmt::skip] // until `fn_single_line` is stable I don't want this to get formatted.
 #[async_trait]
 impl State for Context<'_> {
-	fn config(&self) -> &Config { &self.data().config }
-	fn database(&self) -> &Pool<MySql> { &self.data().database }
-	fn gokz_client(&self) -> &gokz_rs::Client { &self.data().gokz_client }
-	fn global_maps(&self) -> &'static Vec<GlobalMap> { self.data().global_maps }
+	fn config(&self) -> &Config {
+		&self.data().config
+	}
 
-	fn get_map(&self, map_identifier: &MapIdentifier) -> Result<GlobalMap, error::Error> {
-		let mut iter = self.global_maps().iter();
+	fn database(&self) -> &Pool<MySql> {
+		&self.data().database
+	}
+
+	fn gokz_client(&self) -> &gokz_rs::Client {
+		&self.data().gokz_client
+	}
+
+	fn global_maps(&self) -> &'static Vec<GlobalMap> {
+		self.data().global_maps
+	}
+
+	fn global_map_names(&self) -> &'static Vec<&'static str> {
+		self.data().global_map_names
+	}
+
+	fn get_map(&self, map_identifier: &MapIdentifier) -> Result<GlobalMap> {
 		match map_identifier {
-			MapIdentifier::ID(map_id) => iter
-				.find_map(|map| if map.id == *map_id { Some(map.to_owned()) } else { None })
-				.ok_or(error::Error::MapNotGlobal),
-			MapIdentifier::Name(map_name) => self
+			MapIdentifier::ID(map_id) => self
 				.global_maps()
 				.iter()
-				.find_map(|map| {
-					if map
-						.name
-						.contains(&map_name.to_lowercase())
-					{
-						Some(map.to_owned())
-					} else {
+				.find_map(|map| if map.id == *map_id { Some(map.to_owned()) } else { None })
+				.ok_or(Error::MapNotGlobal),
+			MapIdentifier::Name(map_name) => {
+				let fzf = SkimMatcherV2::default();
+				let map_name = map_name.to_lowercase();
+				let mut maps = self
+					.global_maps()
+					.iter()
+					.filter_map(move |map| {
+						let score = fzf.fuzzy_match(&map.name, &map_name)?;
+						if score > 50 || map_name.is_empty() {
+							return Some(map.to_owned());
+						}
 						None
-					}
-				})
-				.ok_or(error::Error::MapNotGlobal),
+					})
+					.collect::<Vec<_>>();
+
+				maps.sort_unstable_by(|a, b| b.name.cmp(&a.name));
+
+				if maps.is_empty() {
+					Err(Error::MapNotGlobal)
+				} else {
+					Ok(maps.remove(maps.len() - 1))
+				}
+			}
 		}
 	}
 
-	fn get_map_name(&self, map_name: &str) -> Result<String, error::Error> {
-		self.global_maps()
-			.iter()
-			.find_map(|map| {
-				if map
-					.name
-					.contains(&map_name.to_lowercase())
-				{
-					Some(map.name.clone())
-				} else {
-					None
-				}
-			})
-			.ok_or(error::Error::MapNotGlobal)
+	fn color(&self) -> (u8, u8, u8) {
+		self.data().color
+	}
+	fn icon(&self) -> &str {
+		&self.data().icon
 	}
 
-	fn color(&self) -> (u8, u8, u8) { self.data().color }
-	fn icon(&self) -> &str { &self.data().icon }
-	fn schnose(&self) -> &str { &self.data().schnose }
-
-	async fn find_by_id(&self, user_id: u64) -> Result<db::User, error::Error> {
-		Ok(sqlx::query_as::<_, db::UserSchema>(&format!(
-			"SELECT * FROM {} WHERE discord_id = {}",
-			&self.config().mysql_table,
-			user_id,
-		))
-		.fetch_one(self.database())
-		.await?
-		.into())
+	fn schnose(&self) -> &str {
+		&self.data().schnose
 	}
 
-	async fn find_by_name(&self, user_name: &str) -> Result<db::User, error::Error> {
-		Ok(sqlx::query_as::<_, db::UserSchema>(&format!(
-			r#"SELECT * FROM {} WHERE user_name = "{}""#,
-			&self.config().mysql_table,
-			user_name
-		))
-		.fetch_one(self.database())
-		.await?
-		.into())
+	async fn find_user_by_id(&self, user_id: u64) -> Result<db::User> {
+		let mut query = QueryBuilder::new(format!(
+			r#"SELECT * FROM {} WHERE discord_id = "#,
+			self.config().mysql_table
+		));
+
+		query.push_bind(user_id);
+
+		Ok(query
+			.build_query_as::<db::UserSchema>()
+			.fetch_one(self.database())
+			.await?
+			.into())
 	}
 
-	async fn find_by_steam_id(&self, steam_id: &SteamID) -> Result<db::User, error::Error> {
-		Ok(sqlx::query_as::<_, db::UserSchema>(&format!(
-			r#"SELECT * FROM {} WHERE steam_id = "{}""#,
-			&self.config().mysql_table,
-			steam_id
-		))
-		.fetch_one(self.database())
-		.await?
-		.into())
+	async fn find_user_by_name(&self, user_name: &str) -> Result<db::User> {
+		let mut query = QueryBuilder::new(format!(
+			r#"SELECT * FROM {} WHERE name LIKE "%"#,
+			self.config().mysql_table
+		));
+
+		query.push_bind(user_name).push(r#"%""#);
+
+		Ok(query
+			.build_query_as::<db::UserSchema>()
+			.fetch_one(self.database())
+			.await?
+			.into())
 	}
 
-	async fn find_by_mode(&self, mode: Mode) -> Result<db::User, error::Error> {
-		Ok(sqlx::query_as::<_, db::UserSchema>(&format!(
-			r#"SELECT * FROM {} WHERE mode = "{}""#,
-			&self.config().mysql_table,
-			mode as u8
-		))
-		.fetch_one(self.database())
-		.await?
-		.into())
+	async fn find_user_by_steam_id(&self, steam_id: &SteamID) -> Result<db::User> {
+		let mut query = QueryBuilder::new(format!(
+			r#"SELECT * FROM {} WHERE steam_id = "#,
+			self.config().mysql_table
+		));
+
+		query.push_bind(steam_id.to_string());
+
+		Ok(query
+			.build_query_as::<db::UserSchema>()
+			.fetch_one(self.database())
+			.await?
+			.into())
+	}
+
+	async fn find_user_by_mode(&self, mode: Mode) -> Result<db::User> {
+		let mut query = QueryBuilder::new(format!(
+			r#"SELECT * FROM {} WHERE mode = "#,
+			self.config().mysql_table
+		));
+
+		query.push_bind(mode as u8);
+
+		Ok(query
+			.build_query_as::<db::UserSchema>()
+			.fetch_one(self.database())
+			.await?
+			.into())
 	}
 }

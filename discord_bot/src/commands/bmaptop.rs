@@ -9,7 +9,7 @@ use {
 		gokz::fmt_time,
 		Context, State,
 	},
-	gokz_rs::{prelude::*, schnose_api},
+	gokz_rs::{global_api, MapIdentifier},
 	log::trace,
 	poise::serenity_prelude::CreateEmbed,
 };
@@ -38,30 +38,18 @@ pub async fn bmaptop(
 	ctx.defer().await?;
 
 	let db_entry = ctx
-		.find_by_id(*ctx.author().id.as_u64())
+		.find_user_by_id(*ctx.author().id.as_u64())
 		.await;
 
 	let map = ctx.get_map(&MapIdentifier::Name(map_name))?;
 	let map_identifier = MapIdentifier::Name(map.name);
-	let mode = match mode {
-		Some(choice) => Mode::from(choice),
-		None => db_entry
-			.map_err(|_| Error::MissingMode)?
-			.mode
-			.ok_or(Error::MissingMode)?,
-	};
+	let mode = ModeChoice::parse_input(mode, &db_entry)?;
 	let runtype = matches!(runtype, Some(RuntypeChoice::TP));
 	let course = course.unwrap_or(1);
 
-	let maptop = schnose_api::get_maptop(
-		map_identifier.clone(),
-		Some(course),
-		Some(mode),
-		Some(runtype),
-		ctx.gokz_client(),
-	)
-	.await?;
-	let max_pages = (maptop.len() as f64 / 12f64).ceil() as u8;
+	let maptop =
+		global_api::get_maptop(map_identifier.clone(), mode, runtype, course, ctx.gokz_client())
+			.await?;
 
 	let mut embeds = Vec::new();
 	let mut temp_embed = CreateEmbed::default()
@@ -70,6 +58,7 @@ pub async fn bmaptop(
 
 	let chunk_size = 12;
 	let mut place = 1;
+	let max_pages = (maptop.len() as f64 / chunk_size as f64).ceil() as u8;
 	for (page_idx, records) in maptop.chunks(chunk_size).enumerate() {
 		temp_embed
 			.title(format!(
@@ -77,7 +66,7 @@ pub async fn bmaptop(
 				if runtype { "TP" } else { "PRO" },
 				map_identifier,
 				course,
-				&map.tier
+				map.tier as u8
 			))
 			.url(format!("{}?{}=&bonus={}", &map.url, mode.short().to_lowercase(), course))
 			.thumbnail(&map.thumbnail)
@@ -85,8 +74,20 @@ pub async fn bmaptop(
 
 		for record in records {
 			temp_embed.field(
-				format!("{} [#{}]", record.player.name, place),
-				fmt_time(record.time),
+				format!("{} [#{}]", record.player_name, place),
+				format!(
+					"{}{}",
+					fmt_time(record.time),
+					if record.teleports > 0 {
+						format!(
+							" ({} TP{})",
+							record.teleports,
+							if record.teleports > 1 { "s" } else { "" }
+						)
+					} else {
+						String::new()
+					}
+				),
 				true,
 			);
 			place += 1;
@@ -98,7 +99,17 @@ pub async fn bmaptop(
 			.to_owned();
 	}
 
-	paginate(&ctx, embeds).await?;
+	if embeds.len() == 1 {
+		ctx.send(|reply| {
+			reply.embed(|e| {
+				*e = embeds.remove(0);
+				e
+			})
+		})
+		.await?;
+	} else {
+		paginate(&ctx, embeds).await?;
+	}
 
 	Ok(())
 }

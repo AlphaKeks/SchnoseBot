@@ -67,13 +67,11 @@ pub enum Error {
 
 impl std::fmt::Display for Error {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(
-			f,
-			"{}",
+		f.write_str(
 			match self {
 				Error::Unknown => "Some unknown error occurred.",
 				Error::Custom(msg) => msg,
-				Error::MapNotGlobal => "The map you specified is not global.",
+				Error::MapNotGlobal => "Map is not global.",
 				Error::DatabaseAccess => "Failed to access the database.",
 				Error::DatabaseUpdate => "Failed to update an entry in the database.",
 				Error::NoDatabaseEntries => "No database entries found.",
@@ -138,6 +136,12 @@ impl From<sqlx::Error> for Error {
 			}
 			_ => Self::DatabaseAccess,
 		}
+	}
+}
+
+impl From<color_eyre::Report> for Error {
+	fn from(value: color_eyre::Report) -> Self {
+		Self::Custom(value.to_string())
 	}
 }
 

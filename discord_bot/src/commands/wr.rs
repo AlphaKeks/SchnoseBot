@@ -2,10 +2,10 @@ use {
 	super::{autocompletion::autocomplete_map, choices::ModeChoice},
 	crate::{
 		error::{Error, Result},
-		gokz::fmt_time,
+		gokz::{fmt_time, format_replay_links},
 		Context, State,
 	},
-	gokz_rs::{prelude::*, schnose_api},
+	gokz_rs::{global_api, MapIdentifier},
 	log::trace,
 };
 
@@ -29,40 +29,61 @@ pub async fn wr(
 	ctx.defer().await?;
 
 	let db_entry = ctx
-		.find_by_id(*ctx.author().id.as_u64())
+		.find_user_by_id(*ctx.author().id.as_u64())
 		.await;
 
 	let map = ctx.get_map(&MapIdentifier::Name(map_name))?;
 	let map_identifier = MapIdentifier::Name(map.name);
-	let mode = match mode {
-		Some(choice) => Mode::from(choice),
-		None => db_entry
-			.map_err(|_| Error::MissingMode)?
-			.mode
-			.ok_or(Error::MissingMode)?,
+	let mode = ModeChoice::parse_input(mode, &db_entry)?;
+
+	let tp = global_api::get_wr(map_identifier.clone(), mode, true, 0, ctx.gokz_client()).await;
+	let pro = global_api::get_wr(map_identifier.clone(), mode, false, 0, ctx.gokz_client()).await;
+
+	let (tp_time, tp_links) = if let Ok(tp) = tp {
+		let player_name = format!(
+			"[{}](https://kzgo.eu/players/{}?{}=)",
+			tp.player_name,
+			tp.steam_id,
+			mode.short().to_lowercase()
+		);
+
+		(
+			format!(
+				"{} ({} TP{})\n> {}",
+				fmt_time(tp.time),
+				tp.teleports,
+				if tp.teleports > 1 { "s" } else { "" },
+				player_name
+			),
+			Some((tp.replay_view_link(), tp.replay_download_link())),
+		)
+	} else {
+		(String::from("😔"), None)
 	};
 
-	let tp = schnose_api::get_wr(map_identifier.clone(), 0, mode, true, ctx.gokz_client()).await;
-	let pro = schnose_api::get_wr(map_identifier.clone(), 0, mode, false, ctx.gokz_client()).await;
+	let (pro_time, pro_links) = if let Ok(pro) = pro {
+		let player_name = format!(
+			"[{}](https://kzgo.eu/players/{}?{}=)",
+			pro.player_name,
+			pro.steam_id,
+			mode.short().to_lowercase()
+		);
 
-	let tp_time = if let Ok(tp) = tp {
-		format!("{} ({} TPs)\nby {}", fmt_time(tp.time), tp.teleports, tp.player.name)
+		(
+			format!("{}\n> {}", fmt_time(pro.time), player_name),
+			Some((pro.replay_view_link(), pro.replay_download_link())),
+		)
 	} else {
-		String::from("😔")
-	};
-
-	let pro_time = if let Ok(pro) = pro {
-		format!("{}\nby {}", fmt_time(pro.time), pro.player.name)
-	} else {
-		String::from("😔")
+		(String::from("😔"), None)
 	};
 
 	ctx.send(|replay| {
 		replay.embed(|e| {
 			e.color(ctx.color())
-				.title(format!("[WR] {} (T{})", &map_identifier.to_string(), &map.tier))
+				.title(format!("[WR] {} (T{})", &map_identifier.to_string(), map.tier as u8))
 				.url(format!("{}?{}=", &map.url, mode.short().to_lowercase()))
 				.thumbnail(&map.thumbnail)
+				.description(format_replay_links(tp_links, pro_links).unwrap_or_default())
 				.field("TP", tp_time, true)
 				.field("PRO", pro_time, true)
 				.footer(|f| {

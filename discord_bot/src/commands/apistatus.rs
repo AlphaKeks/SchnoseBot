@@ -13,7 +13,7 @@ use {
 /// function properly. Sometimes it has downtimes though, and the bot commands might not work. You \
 /// can either check the API's uptime via this command or on \
 /// [this website](https://health.global-api.com/endpoints/_globalapi).
-/// (The bot uses that website internally as well.)
+/// (That is where the bot gets its information from as well.)
 #[poise::command(prefix_command, slash_command, on_error = "Error::handle_command")]
 pub async fn apistatus(ctx: Context<'_>) -> Result<()> {
 	trace!("[/apistatus ({})]", ctx.author().tag());

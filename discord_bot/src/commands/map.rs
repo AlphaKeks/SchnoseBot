@@ -4,15 +4,14 @@ use {
 		error::{Error, Result},
 		Context, State,
 	},
-	gokz_rs::prelude::*,
+	gokz_rs::MapIdentifier,
 	log::trace,
 };
 
 /// Get detailed information on a map.
 ///
-/// This command will combine information from both the \
-/// [GlobalAPI](https://portal.global-api.com/dashboard) and [KZ:GO](https://kzgo.eu) to give you \
-/// a compact summary of a given map's most important information.
+/// This includes the map's tier, mapper and filters. If you find any of this information to be
+/// incorrect, feel free to report it.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn map(
 	ctx: Context<'_>,
@@ -24,18 +23,15 @@ pub async fn map(
 
 	let map = ctx.get_map(&MapIdentifier::Name(map_name))?;
 
-	let mappers = map
-		.mapper_names
-		.iter()
-		.zip(map.mapper_ids)
-		.fold(Vec::new(), |mut names, (name, id)| {
-			names.push(format!("[{name}](https://steamcommunity.com/profiles/{id})"));
-			names
-		});
+	let mapper = if let Some(steam_id) = map.mapper_steam_id {
+		format!("[{}](https://steamcommunity.com/profiles/{})", map.mapper_name, steam_id.as_id64())
+	} else {
+		map.mapper_name
+	};
 
-	let kzt_filter = if map.courses[0].kzt { "✅" } else { "❌" };
-	let skz_filter = if map.courses[0].skz { "✅" } else { "❌" };
-	let vnl_filter = if map.courses[0].vnl { "✅" } else { "❌" };
+	let kzt_filter = if map.kzt { "✅" } else { "❌" };
+	let skz_filter = if map.skz { "✅" } else { "❌" };
+	let vnl_filter = if map.vnl { "✅" } else { "❌" };
 
 	ctx.send(|reply| {
 		reply.embed(|e| {
@@ -45,27 +41,22 @@ pub async fn map(
 				.thumbnail(&map.thumbnail)
 				.description(format!(
 					"
-🢂 API Tier: {}
+🢂 Tier: {} ({})
 🢂 Mapper(s): {}
 🢂 Bonuses: {}
 🢂 Last Updated: {}
 
 🢂 Filters:
 				",
-					&map.tier,
-					mappers.join(", "),
-					&map.courses.len(),
-					&map.updated_on
-						.format("%d/%m/%Y")
-						.to_string()
+					map.tier as u8,
+					map.tier,
+					mapper,
+					map.courses.len() - 1,
+					map.updated_on.format("%d/%m/%Y")
 				))
 				.field("KZT", kzt_filter, true)
 				.field("SKZ", skz_filter, true)
 				.field("VNL", vnl_filter, true)
-				.footer(|f| {
-					f.text("<3 to kzgo.eu")
-						.icon_url(ctx.icon())
-				})
 		})
 	})
 	.await?;

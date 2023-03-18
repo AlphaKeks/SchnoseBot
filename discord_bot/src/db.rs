@@ -1,13 +1,12 @@
 //! `MySQL` module for the bot's database.
 
 use {
-	gokz_rs::prelude::*,
-	serde::{Deserialize, Serialize},
+	gokz_rs::{Mode, SteamID},
 	sqlx::FromRow,
 };
 
-/// `MySQL` representation of a user row in the database.
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+/// `MySQL` schema for a user row.
+#[derive(Debug, Clone, FromRow)]
 pub struct UserSchema {
 	pub name: String,
 	pub discord_id: u64,
@@ -16,7 +15,7 @@ pub struct UserSchema {
 }
 
 /// Parsed version of [`UserSchema`].
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct User {
 	pub name: String,
 	pub discord_id: u64,
@@ -29,20 +28,12 @@ impl From<UserSchema> for User {
 		Self {
 			name: value.name,
 			discord_id: value.discord_id,
-			steam_id: {
-				if let Some(steam_id) = value.steam_id {
-					SteamID::new(&steam_id).ok()
-				} else {
-					None
-				}
-			},
-			mode: {
-				if let Some(mode_id) = value.mode {
-					Mode::try_from(mode_id).ok()
-				} else {
-					None
-				}
-			},
+			steam_id: value
+				.steam_id
+				.and_then(|steam_id| SteamID::new(&steam_id).ok()),
+			mode: value
+				.mode
+				.and_then(|mode| Mode::try_from(mode).ok()),
 		}
 	}
 }

@@ -25,14 +25,14 @@ pub async fn random(
 	let global_maps = ctx
 		.global_maps()
 		.iter()
-		.filter(|map| tier.map_or(true, |tier| map.tier == tier as u8))
+		.filter(|map| tier.map_or(true, |tier| map.tier as u8 == tier as u8))
 		.collect::<Vec<_>>();
 
 	let rng = rand::thread_rng().gen_range(0..global_maps.len());
 
 	let GlobalMap { name, tier, .. } = &global_maps[rng];
 
-	ctx.say(format!("🎲 {name} (T{tier})"))
+	ctx.say(format!("🎲 {name} ({tier})"))
 		.await?;
 
 	Ok(())

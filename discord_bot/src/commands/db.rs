@@ -10,10 +10,9 @@ use {
 
 /// Check your database entries.
 ///
-/// This command will query the bot's database for all the information it has about you \
-/// (not a lot). By default the bot's response will be ephemeral \
-/// (only you will be able to see it), but you can tell it to send a normal message as well via \
-/// the `public` argument.
+/// This command will query the bot's database for all the information it has about you. By \
+/// default the bot's response will be ephemeral (only you will be able to see it), but you can \
+/// tell it to send a normal message as well via the `public` argument.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn db(
 	ctx: Context<'_>,
@@ -29,7 +28,7 @@ pub async fn db(
 	}
 
 	let User { name, discord_id, steam_id, mode } = ctx
-		.find_by_id(*ctx.author().id.as_u64())
+		.find_user_by_id(*ctx.author().id.as_u64())
 		.await?;
 
 	let steam_id = steam_id

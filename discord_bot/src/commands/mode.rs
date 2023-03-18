@@ -4,7 +4,7 @@ use {
 		error::{Error, Result},
 		Context, State,
 	},
-	gokz_rs::prelude::*,
+	gokz_rs::Mode,
 	log::trace,
 };
 
@@ -35,7 +35,7 @@ pub async fn mode(
 
 	let table = &ctx.config().mysql_table;
 
-	let updated = match ctx.find_by_id(id).await {
+	let updated = match ctx.find_user_by_id(id).await {
 		// User already has a database entry => modify current one
 		Ok(user) => {
 			// :tf:

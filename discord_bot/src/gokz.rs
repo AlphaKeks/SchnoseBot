@@ -1,76 +1,5 @@
 //! Some extra utilities in addition to [`gokz_rs`] to make working with the `GlobalAPI` easier.
 
-use {
-	gokz_rs::global_api::{self, records::Record},
-	serde::{Deserialize, Serialize},
-};
-
-pub trait GokzRecord: Sized {
-	fn replay_link(&self) -> Option<String>;
-	fn view_link(&self) -> Option<String>;
-	fn formatted_replay_links(tp: Option<&Self>, pro: Option<&Self>) -> Option<String>;
-	fn formatted_view_links(tp: Option<&Self>, pro: Option<&Self>) -> Option<String>;
-}
-
-impl GokzRecord for Record {
-	fn replay_link(&self) -> Option<String> {
-		if self.replay_id != 0 {
-			Some(global_api::get_replay_by_id(self.replay_id))
-		} else {
-			None
-		}
-	}
-
-	fn view_link(&self) -> Option<String> {
-		if self.replay_id != 0 {
-			Some(format!(
-				"http://gokzmaptest.site.nfoservers.com/GlobalReplays/?replay={}",
-				self.replay_id
-			))
-		} else {
-			None
-		}
-	}
-
-	fn formatted_replay_links(tp: Option<&Self>, pro: Option<&Self>) -> Option<String> {
-		let tp_link = match tp {
-			Some(tp) => Self::replay_link(tp),
-			None => None,
-		};
-
-		let pro_link = match pro {
-			Some(pro) => Self::replay_link(pro),
-			None => None,
-		};
-
-		match (tp_link, pro_link) {
-			(Some(tp), Some(pro)) => Some(format!("Download Replays: [TP]({tp}) | [PRO]({pro})",)),
-			(Some(tp), None) => Some(format!("Download Replay: [TP]({tp})")),
-			(None, Some(pro)) => Some(format!("Download Replay: [PRO]({pro})")),
-			(None, None) => None,
-		}
-	}
-
-	fn formatted_view_links(tp: Option<&Self>, pro: Option<&Self>) -> Option<String> {
-		let tp_link = match tp {
-			Some(tp) => Self::view_link(tp),
-			None => None,
-		};
-
-		let pro_link = match pro {
-			Some(pro) => Self::view_link(pro),
-			None => None,
-		};
-
-		match (tp_link, pro_link) {
-			(Some(tp), Some(pro)) => Some(format!("Watch Replays: [TP]({tp}) | [PRO]({pro})",)),
-			(Some(tp), None) => Some(format!("Watch Replay: [TP]({tp})")),
-			(None, Some(pro)) => Some(format!("Watch Replay: [PRO]({pro})")),
-			(None, None) => None,
-		}
-	}
-}
-
 pub fn fmt_time(time: f64) -> String {
 	let seconds = time as u32;
 	let hours = ((seconds / 3600) % 24) as u8;
@@ -88,13 +17,44 @@ pub fn fmt_time(time: f64) -> String {
 	s
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct WorldRecordResponse {
-	pub steamid64: String,
-	pub steam_id: String,
-	pub count: u32,
-	pub player_name: String,
-}
+pub fn format_replay_links(
+	tp_links: Option<(Option<String>, Option<String>)>,
+	pro_links: Option<(Option<String>, Option<String>)>,
+) -> Option<String> {
+	let tp_links = match tp_links {
+		None => None,
+		Some(links) => {
+			if let (Some(view_link), Some(download_link)) = links {
+				Some((view_link, download_link))
+			} else {
+				None
+			}
+		}
+	};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct WorldRecordLeaderboard(pub Vec<WorldRecordResponse>);
+	let pro_links = match pro_links {
+		None => None,
+		Some(links) => {
+			if let (Some(view_link), Some(download_link)) = links {
+				Some((view_link, download_link))
+			} else {
+				None
+			}
+		}
+	};
+
+	match (tp_links, pro_links) {
+		(Some((tp_view, tp_download)), Some((pro_view, pro_download))) => {
+			Some(format!("TP Replay: [View Online]({tp_view}) | [Download]({tp_download})\nPRO Replay: [View Online]({pro_view}) | [Download]({pro_download})"))
+		}
+		(Some((tp_view, tp_download)), None) => {
+			Some(format!("TP Replay: [View Online]({tp_view}) | [Download]({tp_download})"))
+		}
+		(None, Some((pro_view, pro_download))) => {
+			Some(format!("PRO Replay: [View Online]({pro_view}) | [Download]({pro_download})"))
+		}
+		(None, None) => {
+			None
+		}
+	}
+}

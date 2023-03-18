@@ -1,6 +1,6 @@
 [package]
 name = "discord_bot"
-version = "0.14.0"
+version = "0.15.0"
 edition = "2021"
 
 authors = ["AlphaKeks <alphakeks@dawn.sh>"]
@@ -30,9 +30,14 @@ chrono = { workspace = true }
 regex = { workspace = true }
 num-format = { workspace = true }
 rand = { workspace = true }
+fuzzy-matcher = "0.3"
 
 # GOKZ
-gokz_rs = { workspace = true }
+gokz_rs = { git = "https://github.com/AlphaKeks/gokz.rs", branch = "rewrite_fr", features = [
+	"global_api",
+	"kzgo_api",
+	"schnose_api",
+] }
 
 # async
 tokio = { workspace = true }

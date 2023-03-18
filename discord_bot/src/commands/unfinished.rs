@@ -1,12 +1,17 @@
 use {
-	super::choices::{ModeChoice, RuntypeChoice, TierChoice},
+	super::{
+		choices::{ModeChoice, RuntypeChoice, TierChoice},
+		pagination::paginate,
+	},
 	crate::{
-		custom_types::Target,
 		error::{Error, Result},
+		steam,
+		target::Target,
 		Context, State,
 	},
-	gokz_rs::{prelude::*, schnose_api},
+	gokz_rs::{global_api, kzgo_api, schnose_api, Tier},
 	log::trace,
+	poise::serenity_prelude::CreateEmbed,
 };
 
 /// Check which maps you still need to finish.
@@ -33,76 +38,119 @@ pub async fn unfinished(
 	ctx.defer().await?;
 
 	let db_entry = ctx
-		.find_by_id(*ctx.author().id.as_u64())
+		.find_user_by_id(*ctx.author().id.as_u64())
 		.await;
 
-	let mode = match mode {
-		Some(choice) => Mode::from(choice),
-		None => db_entry
-			.as_ref()
-			.map_err(|_| Error::MissingMode)?
-			.mode
-			.ok_or(Error::MissingMode)?,
-	};
+	let mode = ModeChoice::parse_input(mode, &db_entry)?;
 	let runtype = matches!(runtype, Some(RuntypeChoice::TP));
-	let player = match player {
-		Some(target) => {
-			target
-				.parse::<Target>()?
-				.into_player(&ctx)
-				.await?
-		}
-		None => {
-			Target::None(*ctx.author().id.as_u64())
-				.into_player(&ctx)
-				.await?
-		}
+	let player_identifier = Target::parse_input(player, &ctx).await?;
+
+	let player = schnose_api::get_player(player_identifier.clone(), ctx.gokz_client()).await?;
+
+	let unfinished = global_api::get_unfinished(
+		player_identifier,
+		mode,
+		runtype,
+		tier.map(Tier::from),
+		ctx.gokz_client(),
+	)
+	.await?
+	.map(|maps| {
+		maps.into_iter()
+			.map(|map| {
+				if tier.is_some() {
+					return map.name;
+				}
+				format!("{} (T{})", map.name, map.difficulty as u8)
+			})
+			.collect::<Vec<_>>()
+	});
+
+	let avatar = if let Ok(user) = kzgo_api::get_avatar(player.steam_id, ctx.gokz_client()).await {
+		user.avatar_url
+	} else {
+		steam::get_steam_avatar(
+			&ctx.config().steam_token,
+			player.steam_id.as_id64(),
+			ctx.gokz_client(),
+		)
+		.await?
 	};
 
-	let (description, amount) =
-		schnose_api::get_unfinished(player.clone(), mode, runtype, tier.map(Tier::from), ctx.gokz_client())
-			.await
-			.map(|map_names| {
-				let Some(map_names) = map_names else {
-					return (String::from("You have no more maps to complete! Congrats 🥳"), String::from("0 uncompleted maps"));
-				};
+	let mut template = CreateEmbed::default()
+		.color(ctx.color())
+		.title(format!(
+			"{} {} {}",
+			mode.short(),
+			if runtype { "TP" } else { "PRO" },
+			tier.map_or_else(String::new, |tier| format!("[T{}]", tier as u8))
+		))
+		.url(format!(
+			"https://kzgo.eu/players/{}?{}=",
+			player.steam_id,
+			mode.short().to_lowercase()
+		))
+		.thumbnail(avatar)
+		.description("Congrats! You have no maps left to finish 🥳")
+		.footer(|f| {
+			f.text(format!("Player: {}", player.name))
+				.icon_url(ctx.icon())
+		})
+		.to_owned();
 
-				let description = if map_names.len() <= 10 {
-					map_names.join("\n")
-				} else {
-					format!("{}\n...{} more", map_names[0..10].join("\n"), map_names.len() - 10)
-				};
+	match unfinished {
+		None => {
+			ctx.send(|reply| {
+				reply.embed(|e| {
+					*e = template;
+					e
+				})
+			})
+			.await?;
+		}
+		Some(maps) if maps.len() <= 10 => {
+			let description = maps.join("\n");
 
-				// I love and hate this at the same time.
-				let amount = format!(
-					"{} uncompleted map{}",
-					map_names.len(),
-					if map_names.len() == 1 { "" } else { "s" }
-				);
-
-				(description, amount)
-			})?;
-
-	let player = schnose_api::get_player(player, ctx.gokz_client()).await?;
-
-	ctx.send(|reply| {
-		reply.embed(|e| {
-			e.color(ctx.color())
-				.title(format!(
-					"{} - {} {} {}",
-					amount,
+			ctx.send(|reply| {
+				reply.embed(|e| {
+					template.description(description);
+					*e = template;
+					e
+				})
+			})
+			.await?;
+		}
+		Some(maps) => {
+			let mut embeds = Vec::new();
+			let chunk_size = 10;
+			let len = maps.len();
+			let max_pages = (maps.len() as f64 / chunk_size as f64).ceil() as u8;
+			for (page_idx, map_names) in maps.chunks(chunk_size).enumerate() {
+				let mut temp = template.clone();
+				temp.title(format!(
+					"{} maps - {} {} {}",
+					len,
 					mode.short(),
 					if runtype { "TP" } else { "PRO" },
 					tier.map_or_else(String::new, |tier| format!("[T{}]", tier as u8))
 				))
-				.description(description)
+				.description(map_names.join("\n"))
 				.footer(|f| {
-					f.text(format!("Player: {}", player.name))
-						.icon_url(ctx.icon())
-				})
-		})
-	})
-	.await?;
+					f.text(format!(
+						"Player: {} | Page {} / {}",
+						&player.name,
+						page_idx + 1,
+						max_pages
+					))
+					.icon_url(ctx.icon())
+				});
+
+				embeds.push(temp);
+			}
+
+			paginate(&ctx, embeds).await?;
+		}
+	};
 
 	Ok(())
 }

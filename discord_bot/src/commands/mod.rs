@@ -7,8 +7,8 @@ pub use bmaptop::bmaptop;
 mod bpb;
 pub use bpb::bpb;
 
-// mod btop;
-// pub use btop::btop;
+mod btop;
+pub use btop::btop;
 
 mod bwr;
 pub use bwr::bwr;
@@ -64,8 +64,8 @@ pub use restart::restart;
 mod setsteam;
 pub use setsteam::setsteam;
 
-// mod top;
-// pub use top::top;
+mod top;
+pub use top::top;
 
 mod unfinished;
 pub use unfinished::unfinished;
@@ -76,26 +76,44 @@ pub use wr::wr;
 mod autocompletion {
 	use {
 		crate::{Context, State},
-		futures::StreamExt,
+		fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher},
 	};
 
-	/// Provides autocompletion for map names on certain commands using the
+	/// Provides autocompletion for map names on certain commands using some fuzzy finding algorithm
+	/// I found on the interent. :)
 	pub async fn autocomplete_map<'a>(
 		ctx: Context<'a>,
 		input: &'a str,
 	) -> impl futures::Stream<Item = String> + 'a {
-		futures::stream::iter(ctx.global_maps()).filter_map(move |map| async {
-			if map.name.contains(&input.to_lowercase()) {
-				Some(map.name.clone())
-			} else {
+		let fzf = SkimMatcherV2::default();
+		let input = input.to_lowercase();
+		let mut map_names = ctx
+			.global_map_names()
+			.iter()
+			.filter_map(move |name| {
+				let score = fzf.fuzzy_match(name, &input)?;
+				if score > 50 || input.is_empty() {
+					return Some(String::from(*name));
+				}
 				None
-			}
-		})
+			})
+			.collect::<Vec<_>>();
+
+		map_names.sort_unstable();
+
+		futures::stream::iter(map_names)
 	}
 }
 
 mod choices {
-	use {crate::error, gokz_rs::prelude::*, poise::ChoiceParameter};
+	use {
+		crate::{
+			db,
+			error::{Error, Result},
+		},
+		gokz_rs::{Mode, Tier},
+		poise::ChoiceParameter,
+	};
 
 	#[derive(Debug, Clone, Copy, ChoiceParameter)]
 	pub enum ModeChoice {
@@ -117,6 +135,20 @@ mod choices {
 		}
 	}
 
+	impl ModeChoice {
+		pub fn parse_input(choice: Option<Self>, db_entry: &Result<db::User>) -> Result<Mode> {
+			if let Some(mode) = choice {
+				Ok(mode.into())
+			} else {
+				db_entry
+					.as_ref()
+					.map_err(|_| Error::MissingMode)?
+					.mode
+					.ok_or(Error::MissingMode)
+			}
+		}
+	}
+
 	#[derive(Debug, Clone, Copy, ChoiceParameter)]
 	pub enum DBModeChoice {
 		#[name = "None"]
@@ -130,11 +162,11 @@ mod choices {
 	}
 
 	impl TryFrom<DBModeChoice> for Mode {
-		type Error = error::Error;
+		type Error = Error;
 
-		fn try_from(value: DBModeChoice) -> Result<Self, Self::Error> {
+		fn try_from(value: DBModeChoice) -> Result<Self> {
 			match value {
-				DBModeChoice::None => Err(error::Error::MissingMode),
+				DBModeChoice::None => Err(Error::MissingMode),
 				DBModeChoice::KZTimer => Ok(Self::KZTimer),
 				DBModeChoice::SimpleKZ => Ok(Self::SimpleKZ),
 				DBModeChoice::Vanilla => Ok(Self::Vanilla),
