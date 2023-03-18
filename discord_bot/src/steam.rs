@@ -2,6 +2,7 @@
 #![allow(unused)]
 
 use {
+	crate::Error,
 	color_eyre::{eyre::eyre, Result as Eyre},
 	serde::{Deserialize, Serialize},
 };
@@ -16,7 +17,10 @@ pub async fn get_steam_avatar(
 		.send()
 		.await?;
 
-	let mut json = response.json::<Response>().await?;
+	let mut json = response
+		.json::<Response>()
+		.await
+		.map_err(|_| Error::ParseJSON)?;
 	let steam_user = if json.response.players.is_empty() {
 		return Err(eyre!("empty response from steam"));
 	} else {
