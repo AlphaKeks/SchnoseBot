@@ -10,13 +10,13 @@
 #![warn(clippy::style, clippy::perf, clippy::complexity, clippy::correctness)]
 
 mod commands;
-mod custom_types;
 mod db;
 mod error;
 mod global_maps;
 mod gokz;
 mod process;
 mod steam;
+mod target;
 
 use {
 	crate::{

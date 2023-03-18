@@ -1,7 +1,7 @@
 use {
 	super::pagination::paginate,
 	crate::{
-		custom_types::Target,
+		target::Target,
 		error::{Error, Result},
 		gokz::fmt_time,
 		Context, State,

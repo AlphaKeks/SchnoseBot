@@ -1,7 +1,7 @@
 use {
 	super::{autocompletion::autocomplete_map, choices::ModeChoice},
 	crate::{
-		custom_types::Target,
+		target::Target,
 		error::{Error, Result},
 		gokz::{fmt_time, format_replay_links},
 		Context, State,

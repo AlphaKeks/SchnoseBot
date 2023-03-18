@@ -4,7 +4,7 @@ use {
 		pagination::paginate,
 	},
 	crate::{
-		custom_types::Target,
+		target::Target,
 		error::{Error, Result},
 		steam, Context, State,
 	},

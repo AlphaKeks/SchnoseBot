@@ -1,9 +1,10 @@
 use {
 	super::choices::ModeChoice,
 	crate::{
-		custom_types::Target,
 		error::{Error, Result},
-		steam, Context, State,
+		steam,
+		target::Target,
+		Context, State,
 	},
 	gokz_rs::{global_api, kzgo_api, schnose_api, Mode, PlayerIdentifier, Rank},
 	log::trace,
