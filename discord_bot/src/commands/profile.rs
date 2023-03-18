@@ -1,5 +1,3 @@
-//! FIXME
-
 use {
 	super::choices::ModeChoice,
 	crate::{
@@ -13,12 +11,7 @@ use {
 	std::collections::{hash_map::RandomState, HashMap},
 };
 
-/// Similar to how a player profile is displayed on KZ:GO. (I tried my best...)
-///
-/// This command will fetch a bunch of information about you and is meant to somewhat replicate \
-/// the profile view of [KZ:GO](https://kzgo.eu). It will show some bars representing your \
-/// completion % for each tier as well as your amount of world records, total points, rank and \
-/// preferred mode.
+/// Completion and WR count, as well as points and other useful stats about a player.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn profile(
 	ctx: Context<'_>,
@@ -215,7 +208,7 @@ T5 ⌠ {} ⌡        ⌠ {} ⌡
 T6 ⌠ {} ⌡        ⌠ {} ⌡
 T7 ⌠ {} ⌡        ⌠ {} ⌡
 
-Total TP runs:  {}
+Total TP  runs: {}
 Total PRO runs: {}
 ```──────────────────────────────────────────
 Points: **{} ({})**
@@ -228,7 +221,7 @@ Preferred Mode: {}
 		completion_percentages[0].0,
 		completion_count[0].1,
 		completion_stats.pro[0],
-		completion_percentages[1].0,
+		completion_percentages[0].1,
 		bars[0][0],
 		bars[1][0],
 		bars[0][1],
