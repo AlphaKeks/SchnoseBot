@@ -22,8 +22,11 @@ tokio = { version = "1", features = ["full"] }
 futures = "0.3"
 
 # GOKZ
-# gokz_rs = "0.14"
-gokz_rs = { git = "https://github.com/AlphaKeks/gokz.rs", branch = "rewrite" }
+gokz_rs = { version = "0.16", features = [
+	"global_api",
+	"kzgo_api",
+	"schnose_api",
+] }
 
 # SQL
 sqlx = { version = "0.6", features = ["runtime-tokio-rustls", "mysql"] }

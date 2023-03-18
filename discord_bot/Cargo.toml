@@ -33,11 +33,7 @@ rand = { workspace = true }
 fuzzy-matcher = "0.3"
 
 # GOKZ
-gokz_rs = { version = "0.16", features = [
-	"global_api",
-	"kzgo_api",
-	"schnose_api",
-] }
+gokz_rs = { workspace = true }
 
 # async
 tokio = { workspace = true }
