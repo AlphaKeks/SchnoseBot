@@ -43,17 +43,16 @@ pub struct GlobalMap {
 /// Gets called once at the start to fetch and process all maps.
 pub async fn init(gokz_client: &gokz_rs::Client) -> Result<Vec<GlobalMap>> {
 	let mut maps = Vec::new();
-	let mut filters = global_api::record_filters::get_filters(
+	let filters = global_api::record_filters::get_filters(
 		global_api::record_filters::index::Params {
 			tickrates: Some(128),
 			stages: Some(0),
-			limit: Some(99999),
+			limit: Some(9999),
 			..Default::default()
 		},
 		gokz_client,
 	)
-	.await?
-	.into_iter();
+	.await?;
 
 	for global_map in schnose_api::get_global_maps(gokz_client).await? {
 		let url = format!("https://kzgo.eu/maps/{}", &global_map.name);
@@ -68,10 +67,13 @@ pub async fn init(gokz_client: &gokz_rs::Client) -> Result<Vec<GlobalMap>> {
 			tier: global_map.tier,
 			courses: global_map.courses,
 			kzt: filters
+				.iter()
 				.any(|filter| filter.map_id == global_map.id && filter.mode == Mode::KZTimer),
 			skz: filters
+				.iter()
 				.any(|filter| filter.map_id == global_map.id && filter.mode == Mode::SimpleKZ),
 			vnl: filters
+				.iter()
 				.any(|filter| filter.map_id == global_map.id && filter.mode == Mode::Vanilla),
 			mapper_name: global_map.mapper_name,
 			mapper_steam_id: global_map.mapper_steam_id,
@@ -82,6 +84,8 @@ pub async fn init(gokz_client: &gokz_rs::Client) -> Result<Vec<GlobalMap>> {
 			thumbnail,
 		});
 	}
+
+	maps.sort_unstable_by(|a, b| a.name.cmp(&b.name));
 
 	Ok(maps)
 }
