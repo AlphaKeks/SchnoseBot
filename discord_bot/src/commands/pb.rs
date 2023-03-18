@@ -39,10 +39,10 @@ pub async fn pb(
 	let map = ctx.get_map(&MapIdentifier::Name(map_name))?;
 	let map_identifier = MapIdentifier::Name(map.name);
 	let mode = ModeChoice::parse_input(mode, &db_entry)?;
-	let player = Target::parse_input(player, &ctx).await?;
+	let player_identifier = Target::parse_input(player, &ctx).await?;
 
 	let tp = global_api::get_pb(
-		player.clone(),
+		player_identifier.clone(),
 		map_identifier.clone(),
 		mode,
 		true,
@@ -51,7 +51,7 @@ pub async fn pb(
 	)
 	.await;
 	let pro = global_api::get_pb(
-		player.clone(),
+		player_identifier.clone(),
 		map_identifier.clone(),
 		mode,
 		false,

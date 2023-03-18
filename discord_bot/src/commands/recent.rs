@@ -24,9 +24,9 @@ pub async fn recent(
 	trace!("> `player`: {player:?}");
 	ctx.defer().await?;
 
-	let player = Target::parse_input(player, &ctx).await?;
+	let player_identifier = Target::parse_input(player, &ctx).await?;
 
-	let recent_records = schnose_api::get_recent(player, 10, ctx.gokz_client()).await?;
+	let recent_records = schnose_api::get_recent(player_identifier, 10, ctx.gokz_client()).await?;
 
 	let mut embeds = Vec::new();
 	let max_records = recent_records.len();
