@@ -30,6 +30,7 @@ chrono = { workspace = true }
 regex = { workspace = true }
 num-format = { workspace = true }
 rand = { workspace = true }
+fuzzy-matcher = "0.3"
 
 # GOKZ
 gokz_rs = { git = "https://github.com/AlphaKeks/gokz.rs", branch = "rewrite_fr", features = [

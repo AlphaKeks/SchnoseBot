@@ -76,21 +76,31 @@ pub use wr::wr;
 mod autocompletion {
 	use {
 		crate::{Context, State},
-		futures::StreamExt,
+		fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher},
 	};
 
-	/// Provides autocompletion for map names on certain commands using the
+	/// Provides autocompletion for map names on certain commands using some fuzzy finding algorithm
+	/// I found on the interent. :)
 	pub async fn autocomplete_map<'a>(
 		ctx: Context<'a>,
 		input: &'a str,
 	) -> impl futures::Stream<Item = String> + 'a {
-		futures::stream::iter(ctx.global_maps()).filter_map(move |map| async {
-			if map.name.contains(&input.to_lowercase()) {
-				Some(map.name.clone())
-			} else {
+		let fzf = SkimMatcherV2::default();
+		let input = input.to_lowercase();
+		let mut map_names = ctx
+			.global_map_names()
+			.iter()
+			.filter_map(move |name| {
+				let score = fzf.fuzzy_match(name, &input)?;
+				if score > 50 || input.is_empty() {
+					return Some(String::from(*name));
+				}
 				None
-			}
-		})
+			})
+			.collect::<Vec<_>>();
+		map_names.sort_unstable_by(|a, b| b.cmp(a));
+
+		futures::stream::iter(map_names)
 	}
 }
 

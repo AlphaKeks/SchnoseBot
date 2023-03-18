@@ -281,6 +281,9 @@ pub struct GlobalState {
 	/// Cache of all global maps.
 	pub global_maps: &'static Vec<GlobalMap>,
 
+	/// Cache of all global maps.
+	pub global_map_names: &'static Vec<&'static str>,
+
 	/// #7480c2
 	pub color: (u8, u8, u8),
 
@@ -301,17 +304,24 @@ impl GlobalState {
 			.expect("Failed to establish database connection.");
 
 		let gokz_client = gokz_rs::Client::new();
-		let global_maps = Box::leak(Box::new(
+		let global_maps: &'static Vec<GlobalMap> = Box::leak(Box::new(
 			global_maps::init(&gokz_client)
 				.await
 				.expect("Failed to fetch global maps."),
+		));
+		let global_map_names: &'static Vec<&'static str> = Box::leak(Box::new(
+			global_maps
+				.iter()
+				.map(|map| map.name.as_str())
+				.collect::<Vec<&str>>(),
 		));
 
 		Self {
 			config,
 			database,
 			gokz_client,
-			global_maps,
+			global_maps: Box::leak(Box::new(global_maps)),
+			global_map_names,
 			color: (116, 128, 194),
 			icon: String::from(
 				"https://media.discordapp.net/attachments/981130651094900756/1068608508645347408/schnose.png"
@@ -332,6 +342,7 @@ pub trait State {
 	fn database(&self) -> &Pool<MySql>;
 	fn gokz_client(&self) -> &gokz_rs::Client;
 	fn global_maps(&self) -> &'static Vec<GlobalMap>;
+	fn global_map_names(&self) -> &'static Vec<&'static str>;
 	fn get_map(&self, map_identifier: &MapIdentifier) -> Result<GlobalMap>;
 	fn get_map_name(&self, map_name: &str) -> Result<String>;
 	fn color(&self) -> (u8, u8, u8);
@@ -350,6 +361,7 @@ impl State for Context<'_> {
 	fn database(&self) -> &Pool<MySql> { &self.data().database }
 	fn gokz_client(&self) -> &gokz_rs::Client { &self.data().gokz_client }
 	fn global_maps(&self) -> &'static Vec<GlobalMap> { self.data().global_maps }
+	fn global_map_names(&self) -> &'static Vec<&'static str> { self.data().global_map_names }
 
 	fn get_map(&self, map_identifier: &MapIdentifier) -> Result<GlobalMap> {
 		let mut iter = self.global_maps().iter();
