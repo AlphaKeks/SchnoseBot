@@ -320,7 +320,7 @@ impl GlobalState {
 			config,
 			database,
 			gokz_client,
-			global_maps: Box::leak(Box::new(global_maps)),
+			global_maps,
 			global_map_names,
 			color: (116, 128, 194),
 			icon: String::from(
