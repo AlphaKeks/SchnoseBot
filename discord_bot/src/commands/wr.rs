@@ -80,7 +80,7 @@ pub async fn wr(
 	ctx.send(|replay| {
 		replay.embed(|e| {
 			e.color(ctx.color())
-				.title(format!("[WR] {} (T{})", &map_identifier.to_string(), map.tier as u8))
+				.title(format!("[WR] {} (T{})", &map_identifier, map.tier as u8))
 				.url(format!("{}?{}=", &map.url, mode.short().to_lowercase()))
 				.thumbnail(&map.thumbnail)
 				.description(format_replay_links(tp_links, pro_links).unwrap_or_default())
