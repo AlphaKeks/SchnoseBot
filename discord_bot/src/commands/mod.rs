@@ -194,7 +194,6 @@ mod choices {
 	}
 
 	#[derive(Debug, Clone, Copy, ChoiceParameter)]
-	#[allow(clippy::upper_case_acronyms)]
 	pub enum BoolChoice {
 		#[name = "Yes"]
 		Yes = 1,
@@ -209,7 +208,6 @@ mod choices {
 	}
 
 	#[derive(Debug, Clone, Copy, ChoiceParameter)]
-	#[allow(clippy::upper_case_acronyms)]
 	pub enum TierChoice {
 		#[name = "VeryEasy"]
 		VeryEasy = 1,

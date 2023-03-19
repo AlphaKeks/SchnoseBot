@@ -52,8 +52,9 @@ pub async fn report(ctx: ApplicationContext<'_, GlobalState, Error>) -> Result<(
 		.await?;
 
 	ctx.send(|reply| {
-		reply.ephemeral(true);
-		reply.content("Thanks for your submission!")
+		reply
+			.ephemeral(true)
+			.content("Thanks for your submission!")
 	})
 	.await?;
 
