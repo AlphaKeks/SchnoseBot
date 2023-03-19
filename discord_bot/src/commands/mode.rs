@@ -27,7 +27,7 @@ pub async fn mode(
 	let mode_id = mode
 		.as_ref()
 		.map(|mode| (*mode as u8).to_string())
-		.unwrap_or_else(|_| String::from("NULL"));
+		.ok();
 
 	let (name, id) = {
 		let author = ctx.author();
