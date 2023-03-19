@@ -281,7 +281,7 @@ pub struct GlobalState {
 	/// Cache of all global maps.
 	pub global_maps: &'static Vec<GlobalMap>,
 
-	/// Cache of all global maps.
+	/// Cache of all global map names.
 	pub global_map_names: &'static Vec<&'static str>,
 
 	/// #7480c2
