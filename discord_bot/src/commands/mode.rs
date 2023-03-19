@@ -6,6 +6,7 @@ use {
 	},
 	gokz_rs::Mode,
 	log::trace,
+	sqlx::QueryBuilder,
 };
 
 /// Set your mode preference.
@@ -45,11 +46,17 @@ pub async fn mode(
 				return Ok(());
 			}
 
-			sqlx::query(
-				&format!(r#"UPDATE {table} SET mode = {mode_id} WHERE discord_id = {id}"#,),
-			)
-			.execute(ctx.database())
-			.await?;
+			let mut query = QueryBuilder::new(format!(r#"UPDATE {table} SET mode = "#));
+
+			query
+				.push_bind(mode_id)
+				.push(" WHERE discord_id = ")
+				.push_bind(id);
+
+			query
+				.build()
+				.execute(ctx.database())
+				.await?;
 
 			true
 		}
@@ -65,11 +72,24 @@ pub async fn mode(
 					return Ok(());
 				}
 
-				sqlx::query(&format!(
-					r#"INSERT INTO {table} (name, discord_id, mode) VALUES("{name}", {id}, {mode_id})"#,
-				))
-				.execute(ctx.database())
-				.await?;
+				let mut query = QueryBuilder::new(format!(
+					r#"
+					INSERT INTO {table}
+					    (name, discord_id, mode)
+					"#
+				));
+
+				query.push_values([(name, id, mode_id)], |mut query, (name, id, mode_id)| {
+					query
+						.push_bind(name)
+						.push_bind(id)
+						.push_bind(mode_id);
+				});
+
+				query
+					.build()
+					.execute(ctx.database())
+					.await?;
 
 				false
 			}

@@ -5,13 +5,14 @@ use {
 	},
 	gokz_rs::SteamID,
 	log::trace,
+	sqlx::QueryBuilder,
 };
 
 /// Save your `SteamID` in the bot's database.
 ///
 /// This command will associate the `SteamID` you specify with your Discord `UserID` for later \
-/// use. This is very helpful on commands such as `/wr` or `/profile` where the bot needs to \
-/// target a specific player.
+/// use. This is very helpful on commands such as `/pb`, `/recent` or `/profile` where the bot \
+/// needs to target a specific player.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn setsteam(
 	ctx: Context<'_>,
@@ -40,11 +41,17 @@ pub async fn setsteam(
 				return Ok(());
 			}
 
-			sqlx::query(&format!(
-				r#"UPDATE {table} SET steam_id = "{steam_id}" WHERE discord_id = {id}"#,
-			))
-			.execute(ctx.database())
-			.await?;
+			let mut query = QueryBuilder::new(format!(r#"UPDATE {table} SET steam_id = "#,));
+
+			query
+				.push_bind(steam_id.to_string())
+				.push(" WHERE discord_id = ")
+				.push_bind(id);
+
+			query
+				.build()
+				.execute(ctx.database())
+				.await?;
 		}
 		// We failed to get the user's database entry. Why?
 		Err(why) => match why {
@@ -52,11 +59,24 @@ pub async fn setsteam(
 			why @ (Error::DatabaseAccess | Error::DatabaseUpdate) => return Err(why),
 			// The user simply has no entry yet => create a new one
 			_ => {
-				sqlx::query(&format!(
-					r#"INSERT INTO {table} (name, discord_id, steam_id) VALUES("{name}", {id}, "{steam_id}")"#,
-				))
-				.execute(ctx.database())
-				.await?;
+				let mut query = QueryBuilder::new(format!(
+					r#"
+					INSERT INTO {table}
+					    (name, discord_id, steam_id)
+					"#
+				));
+
+				query.push_values([(name, id, steam_id)], |mut query, (name, id, steam_id)| {
+					query
+						.push_bind(name)
+						.push_bind(id)
+						.push_bind(steam_id.to_string());
+				});
+
+				query
+					.build()
+					.execute(ctx.database())
+					.await?;
 			}
 		},
 	};
