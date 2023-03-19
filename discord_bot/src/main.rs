@@ -392,25 +392,18 @@ impl State for Context<'_> {
 			MapIdentifier::Name(map_name) => {
 				let fzf = SkimMatcherV2::default();
 				let map_name = map_name.to_lowercase();
-				let mut maps = self
-					.global_maps()
+				self.global_maps()
 					.iter()
 					.filter_map(move |map| {
 						let score = fzf.fuzzy_match(&map.name, &map_name)?;
 						if score > 50 || map_name.is_empty() {
-							return Some(map.to_owned());
+							return Some((score, map.to_owned()));
 						}
 						None
 					})
-					.collect::<Vec<_>>();
-
-				maps.sort_unstable_by(|a, b| b.name.cmp(&a.name));
-
-				if maps.is_empty() {
-					Err(Error::MapNotGlobal)
-				} else {
-					Ok(maps.remove(maps.len() - 1))
-				}
+					.max_by(|(a_score, _), (b_score, _)| a_score.cmp(b_score))
+					.map(|(_, map)| map)
+					.ok_or(Error::MapNotGlobal)
 			}
 		}
 	}

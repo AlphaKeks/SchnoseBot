@@ -79,8 +79,8 @@ mod autocompletion {
 		fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher},
 	};
 
-	/// Provides autocompletion for map names on certain commands using some fuzzy finding algorithm
-	/// I found on the interent. :)
+	// Provides autocompletion for map names on certain commands using some fuzzy finding algorithm
+	// I found on the interent. :)
 	pub async fn autocomplete_map<'a>(
 		ctx: Context<'a>,
 		input: &'a str,
@@ -93,15 +93,19 @@ mod autocompletion {
 			.filter_map(move |name| {
 				let score = fzf.fuzzy_match(name, &input)?;
 				if score > 50 || input.is_empty() {
-					return Some(String::from(*name));
+					return Some((score, String::from(*name)));
 				}
 				None
 			})
 			.collect::<Vec<_>>();
 
-		map_names.sort_unstable();
+		map_names.sort_unstable_by(|(a_score, _), (b_score, _)| b_score.cmp(a_score));
 
-		futures::stream::iter(map_names)
+		futures::stream::iter(
+			map_names
+				.into_iter()
+				.map(|(_, map_name)| map_name),
+		)
 	}
 }
 
