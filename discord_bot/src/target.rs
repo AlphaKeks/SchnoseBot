@@ -102,7 +102,7 @@ impl Target {
 					// server for that member and take their username.
 					let guild = ctx.guild().ok_or(Error::NoGuild {
 						reason: String::from(
-							" if you mention someone who doesn't have any database entries.",
+							" if you mention someone who doesn't have any database entries",
 						),
 					})?;
 
