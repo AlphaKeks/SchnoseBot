@@ -45,7 +45,7 @@ pub async fn bmaptop(
 	let map_identifier = MapIdentifier::Name(map.name);
 	let mode = ModeChoice::parse_input(mode, &db_entry)?;
 	let runtype = matches!(runtype, Some(RuntypeChoice::TP));
-	let course = course.unwrap_or(1);
+	let course = course.unwrap_or(1).max(1);
 
 	let maptop =
 		global_api::get_maptop(map_identifier.clone(), mode, runtype, course, ctx.gokz_client())

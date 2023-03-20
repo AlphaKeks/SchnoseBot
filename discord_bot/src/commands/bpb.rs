@@ -43,7 +43,7 @@ pub async fn bpb(
 	let map_identifier = MapIdentifier::Name(map.name);
 	let mode = ModeChoice::parse_input(mode, &db_entry)?;
 	let player_identifier = Target::parse_input(player, db_entry, &ctx).await?;
-	let course = course.unwrap_or(1);
+	let course = course.unwrap_or(1).max(1);
 
 	let tp = global_api::get_pb(
 		player_identifier.clone(),

@@ -38,7 +38,7 @@ pub async fn bwr(
 	let map = ctx.get_map(&MapIdentifier::Name(map_name))?;
 	let map_identifier = MapIdentifier::Name(map.name);
 	let mode = ModeChoice::parse_input(mode, &db_entry)?;
-	let course = course.unwrap_or(1);
+	let course = course.unwrap_or(1).max(1);
 
 	let tp =
 		global_api::get_wr(map_identifier.clone(), mode, true, course, ctx.gokz_client()).await;
