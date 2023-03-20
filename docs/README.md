@@ -14,7 +14,7 @@ to store preference options for each user so you don't have to specify those opt
 again (see `/setsteam` and `/mode`). If you want to see all available commands in Discord use
 `/help`.
 
-You can invite the bot via [this link](https://discord.schnose.xyz/).
+You can invite the bot via [this link](https://bot.schnose.xyz/).
 
 # Setup
 
