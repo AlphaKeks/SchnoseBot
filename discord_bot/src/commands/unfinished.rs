@@ -16,12 +16,25 @@ use {
 
 /// Check which maps you still need to finish.
 ///
-/// This command will fetch all maps which you haven't yet completed. You can apply the following \
-/// filters to this:
-/// - `mode`: filter by mode (KZT/SKZ/VNL)
-/// - `runtype`: TP/PRO
-/// - `tier`: filter by difficulty
-/// - `player`: `SteamID`, Player Name or @mention
+/// This command will fetch all maps that you haven't finished yet in a particular mode. You may \
+/// specify the following parameters:
+///
+/// - `mode`: `KZTimer` / `SimpleKZ` / `Vanilla`
+///   - If you don't specify this, the bot will search the database for your UserID. If it can't \
+///     find one, or you don't have a mode preference set, the command will fail. To save a mode \
+///     preference in the database, see `/mode`.
+/// - `runtype`: `TP` / `PRO`
+///   - If you don't specify this, the bot will default to `PRO`.
+/// - `tier`: any number from 1-7
+///   - If you don't specify this, the bot will fetch maps for all tiers.
+/// - `player`: this can be any string. The bot will try its best to interpret it as something \
+///   useful. If you want to help it with that, specify one of the following:
+///   - a `SteamID`, e.g. `STEAM_1:1:161178172`, `U:1:322356345` or `76561198282622073`
+///   - a `Mention`, e.g. `@MyBestFriend`
+///   - a player's name, e.g. `AlphaKeks`
+///   - If you don't specify this, the bot will search the database for your UserID. If it can't \
+///     find one, or you don't have a SteamID set, the command will fail. To save a mode \
+///     preference in the database, see `/setsteam`.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn unfinished(
 	ctx: Context<'_>,

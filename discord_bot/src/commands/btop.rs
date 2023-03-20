@@ -14,10 +14,15 @@ use {
 
 /// Top 100 bonus world record holders.
 ///
-/// This command will fetch the top 100 bonus world records holders for TP or PRO. You can specify \
-/// the following parameters:
-/// - `mode`: filter by mode (KZT/SKZ/VNL)
-/// - `runtype`: TP/PRO
+/// This command will fetch the top 100 world record holders for bonuses. You may specify the \
+/// following options:
+///
+/// - `mode`: `KZTimer` / `SimpleKZ` / `Vanilla`
+///   - If you don't specify this, the bot will search the database for your UserID. If it can't \
+///     find one, or you don't have a mode preference set, the command will fail. To save a mode \
+///     preference in the database, see `/mode`.
+/// - `runtype`: `TP` / `PRO`
+///   - If you don't specify this, the bot will default to `PRO`.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn btop(
 	ctx: Context<'_>,

@@ -11,8 +11,8 @@ use {
 
 /// Get a random map name from the global map pool.
 ///
-/// This command will simply choose a random map from the global map pool and filter by tier if \
-/// you specify one.
+/// This command will simply select a random map from the global map pool. You may specify a \
+/// `tier` if you want to.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn random(
 	ctx: Context<'_>,

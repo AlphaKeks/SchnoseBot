@@ -10,8 +10,12 @@ use {
 
 /// Get detailed information on a map.
 ///
-/// This includes the map's tier, mapper and filters. If you find any of this information to be
-/// incorrect, feel free to report it.
+/// This command will fetch a bunch of useful information about a particular map. The information \
+/// is a combination of the \
+/// [GlobalAPI](https://kztimerglobal.com/swagger/index.html?urls.primaryName=V2), \
+/// [n4vyn's](https://github.com/n4vyn) [KZ:GO API](https://kzgo.eu/) and my own \
+/// [SchnoseAPI](https://github.com/AlphaKeks/SchnoseAPI). If anything seems incorrect, feel free \
+/// to report it.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn map(
 	ctx: Context<'_>,

@@ -15,9 +15,10 @@ use {
 
 /// Report issues/bugs with the bot or suggest changes.
 ///
-/// This command will open a `Modal` where you can describe an issue you had with the bot. The \
-/// contents of that `Modal` will be sent to me (AlphaKeks) for review. The more info you provide, \
-/// the better. Timestamps, screenshots, detailed description etc. make it much easier to fix bugs.
+/// This command will open a pop-up where you can submit bug reports / suggestions for the bot (in \
+/// case you don't like GitHub issues). The information you put in there will be sent to a channel \
+/// that can be specified in the bot's config file. If you use my instance of the bot, that \
+/// channel is a private channel on my Discord server that only I and a few admins have access to.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn report(ctx: ApplicationContext<'_, GlobalState, Error>) -> Result<()> {
 	trace!("[/report ({})]", ctx.author().tag());

@@ -12,14 +12,23 @@ use {
 
 /// A player's personal best on a bonus course.
 ///
-/// This command will fetch a given player's personal best on a given bonus course. You can \
-/// specify the following parameters:
-/// - `map_name`: any of [these](https://maps.global-api.com/mapcycles/gokz.txt)
-/// - `mode`: filter by mode (KZT/SKZ/VNL)
-/// - `player`: `SteamID`, Player Name or @mention
-/// - `course`: Which bonus you want to check (i.e. `3` means "bonus 3")
-/// If the API has a global replay stored for your run, the bot will attach some links for you to \
-/// view and/or download the replay.
+/// This command will fetch a player's personal best on a particular bonus. You are required to \
+/// specify a `map_name` and may also specify the following options:
+///
+/// - `mode`: `KZTimer` / `SimpleKZ` / `Vanilla`
+///   - If you don't specify this, the bot will search the database for your UserID. If it can't \
+///     find one, or you don't have a mode preference set, the command will fail. To save a mode \
+///     preference in the database, see `/mode`.
+/// - `player`: this can be any string. The bot will try its best to interpret it as something \
+///   useful. If you want to help it with that, specify one of the following:
+///   - a `SteamID`, e.g. `STEAM_1:1:161178172`, `U:1:322356345` or `76561198282622073`
+///   - a `Mention`, e.g. `@MyBestFriend`
+///   - a player's name, e.g. `AlphaKeks`
+///   - If you don't specify this, the bot will search the database for your UserID. If it can't \
+///     find one, or you don't have a SteamID set, the command will fail. To save a mode \
+///     preference in the database, see `/setsteam`.
+/// - `course`: this can be any integer between 1-255.
+///   - If you either don't specify this, or put in `0`, the bot will default to `1`.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn bpb(
 	ctx: Context<'_>,

@@ -10,9 +10,9 @@ use {
 
 /// Check your database entries.
 ///
-/// This command will query the bot's database for all the information it has about you. By \
-/// default the bot's response will be ephemeral (only you will be able to see it), but you can \
-/// tell it to send a normal message as well via the `public` argument.
+/// This command will show you all the information that the bot has saved about your account in \
+/// its database. You may specify a `public` option that determines whether other people will be \
+/// able to see the bot's response or not.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn db(
 	ctx: Context<'_>,

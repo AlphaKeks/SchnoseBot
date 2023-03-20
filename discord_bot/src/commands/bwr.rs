@@ -11,13 +11,15 @@ use {
 
 /// World record on a given bonus course.
 ///
-/// This command will fetch the world record on a given bonus course. You can specify the \
-/// following parameters:
-/// - `map_name`: any of [these](https://maps.global-api.com/mapcycles/gokz.txt)
-/// - `mode`: filter by mode (KZT/SKZ/VNL)
-/// - `course`: Which bonus you want to check (i.e. `3` means "bonus 3")
-/// If the API has a global replay stored for your run, the bot will attach some links for you to \
-/// view and/or download the replay.
+// This command will fetch the world record on a particular bonus. You are required to specify a \
+// `map_name` and may also specify the following options:
+//
+// - `mode`: `KZTimer` / `SimpleKZ` / `Vanilla`
+//   - If you don't specify this, the bot will search the database for your UserID. If it can't \
+//     find one, or you don't have a mode preference set, the command will fail. To save a mode \
+//     preference in the database, see `/mode`.
+// - `course`: this can be any integer between 1-255.
+//   - If you either don't specify this, or put in `0`, the bot will default to `1`.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn bwr(
 	ctx: Context<'_>,

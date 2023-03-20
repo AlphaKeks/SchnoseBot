@@ -12,7 +12,28 @@ use {
 	std::collections::{hash_map::RandomState, HashMap},
 };
 
-/// Completion and WR count, as well as points and other useful stats about a player.
+/// Points, completion and WR stats for a particular player.
+///
+/// This command will fetch a bunch of information about a player in a specific mode. This \
+/// includes WR count, completion % and points. The data is fetched using the \
+/// [GlobalAPI](https://kztimerglobal.com/swagger/index.html?urls.primaryName=V2), \
+/// [n4vyn's](https://github.com/n4vyn) [KZ:GO API](https://kzgo.eu/) and my own \
+/// [SchnoseAPI](https://github.com/AlphaKeks/SchnoseAPI). If anything is slightly off, I'm sorry. \
+/// Getting 100% accurate data for everything is difficult, but if you know how to improve it, \
+/// feel free to open a PR about it. You may specify the following parameters:
+///
+/// - `player`: this can be any string. The bot will try its best to interpret it as something \
+///   useful. If you want to help it with that, specify one of the following:
+///   - a `SteamID`, e.g. `STEAM_1:1:161178172`, `U:1:322356345` or `76561198282622073`
+///   - a `Mention`, e.g. `@MyBestFriend`
+///   - a player's name, e.g. `AlphaKeks`
+///   - If you don't specify this, the bot will search the database for your UserID. If it can't \
+///     find one, or you don't have a SteamID set, the command will fail. To save a mode \
+///     preference in the database, see `/setsteam`.
+/// - `mode`: `KZTimer` / `SimpleKZ` / `Vanilla`
+///   - If you don't specify this, the bot will search the database for your UserID. If it can't \
+///   find one, or you don't have a mode preference set, the command will fail. To save a mode \
+///   preference in the database, see `/mode`.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn profile(
 	ctx: Context<'_>,

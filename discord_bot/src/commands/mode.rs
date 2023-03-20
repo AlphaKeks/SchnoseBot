@@ -11,9 +11,10 @@ use {
 
 /// Set your mode preference.
 ///
-/// This command will associate the mode you specify with your Discord `UserID` for later use. \
-/// This is very helpful on commands such as `/wr` or `/profile` where the bot only wants to fetch \
-/// information for a specific mode.
+/// This command will save your mode preference in its database for later use. Since many commands \
+/// have a `mode` parameter you probably don't want to specify that over and over again. Instead \
+/// you can use this command and the bot will remember your choice in the future. You can also \
+/// clear your preference if you want to.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn mode(
 	ctx: Context<'_>,

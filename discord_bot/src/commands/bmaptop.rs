@@ -14,14 +14,20 @@ use {
 	poise::serenity_prelude::CreateEmbed,
 };
 
-/// Top 100 records on a bonus course.
+/// Top 100 records on a bonus.
 ///
-/// This command will fetch the top 100 records on a given bonus course. You can specify the \
-/// following parameters:
-/// - `map_name`: any of [these](https://maps.global-api.com/mapcycles/gokz.txt)
-/// - `mode`: filter by mode (KZT/SKZ/VNL)
-/// - `runtype`: TP/PRO
-/// - `course`: Which bonus you want to check (i.e. `3` means "bonus 3")
+/// This command will fetch the top 100 (or less, if there are less than 100 completions) records \
+/// on a particular bonus. You are required to specify a `map_name` and may also specify the \
+/// following options:
+///
+/// - `mode`: `KZTimer` / `SimpleKZ` / `Vanilla`
+///   - If you don't specify this, the bot will search the database for your UserID. If it can't \
+///     find one, or you don't have a mode preference set, the command will fail. To save a mode \
+///     preference in the database, see `/mode`.
+/// - `runtype`: `TP` / `PRO`
+///   - If you don't specify this, the bot will default to `PRO`.
+/// - `course`: this can be any integer between 1-255.
+///   - If you either don't specify this, or put in `0`, the bot will default to `1`.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn bmaptop(
 	ctx: Context<'_>,

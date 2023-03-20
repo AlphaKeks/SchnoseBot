@@ -8,11 +8,11 @@ use {
 	sqlx::QueryBuilder,
 };
 
-/// Save your `SteamID` in the bot's database.
+/// Save your SteamID in the bot's database.
 ///
-/// This command will associate the `SteamID` you specify with your Discord `UserID` for later \
-/// use. This is very helpful on commands such as `/pb`, `/recent` or `/profile` where the bot \
-/// needs to target a specific player.
+/// This command will save your `SteamID` in its database for later use. Since many commands have \
+/// a `player` parameter you probably don't want to specify that over and over again. Instead you \
+/// can use this command and the bot will remember your choice in the future.
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn setsteam(
 	ctx: Context<'_>,
