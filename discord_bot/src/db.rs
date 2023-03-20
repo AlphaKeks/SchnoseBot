@@ -30,7 +30,7 @@ impl From<UserSchema> for User {
 			discord_id: value.discord_id,
 			steam_id: value
 				.steam_id
-				.and_then(|steam_id| SteamID::new(&steam_id).ok()),
+				.and_then(|steam_id| SteamID::new(steam_id).ok()),
 			mode: value
 				.mode
 				.and_then(|mode| Mode::try_from(mode).ok()),

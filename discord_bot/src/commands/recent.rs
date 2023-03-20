@@ -24,7 +24,11 @@ pub async fn recent(
 	trace!("> `player`: {player:?}");
 	ctx.defer().await?;
 
-	let player_identifier = Target::parse_input(player, &ctx).await?;
+	let db_entry = ctx
+		.find_user_by_id(*ctx.author().id.as_u64())
+		.await;
+
+	let player_identifier = Target::parse_input(player, db_entry, &ctx).await?;
 
 	let recent_records = schnose_api::get_recent(player_identifier, 10, ctx.gokz_client()).await?;
 

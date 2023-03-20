@@ -2,10 +2,12 @@
 
 use {
 	crate::{
+		db,
 		error::{Error, Result},
 		Context, State,
 	},
-	gokz_rs::{schnose_api, PlayerIdentifier, SteamID},
+	gokz_rs::{global_api, schnose_api, PlayerIdentifier, SteamID},
+	poise::serenity_prelude::CacheHttp,
 	regex::Regex,
 };
 
@@ -51,20 +53,29 @@ impl std::str::FromStr for Target {
 }
 
 impl Target {
-	pub async fn parse_input(input: Option<String>, ctx: &Context<'_>) -> Result<PlayerIdentifier> {
+	pub async fn parse_input(
+		input: Option<String>,
+		db_entry: Result<db::User>,
+		ctx: &Context<'_>,
+	) -> Result<PlayerIdentifier> {
 		if let Some(input) = input {
 			input.parse::<Self>()?
 		} else {
 			Self::None(*ctx.author().id.as_u64())
 		}
-		.into_player(ctx)
+		.into_player(db_entry, ctx)
 		.await
 	}
 
-	pub async fn into_player(self, ctx: &Context<'_>) -> Result<PlayerIdentifier> {
+	/// Tries to turn the given [`Target`] into a [`PlayerIdentifier`] with best effort.
+	pub async fn into_player(
+		self,
+		db_entry: Result<db::User>,
+		ctx: &Context<'_>,
+	) -> Result<PlayerIdentifier> {
 		match self {
-			Self::None(user_id) => {
-				if let Ok(user) = ctx.find_user_by_id(user_id).await {
+			Self::None(_) => {
+				if let Ok(user) = db_entry {
 					if let Some(steam_id) = user.steam_id {
 						Ok(steam_id.into())
 					} else {
@@ -74,17 +85,35 @@ impl Target {
 					Ok(ctx.author().name.clone().into())
 				}
 			}
-			Self::Mention(user_id) => ctx
-				.find_user_by_id(user_id)
-				.await
-				.map(|user| {
-					if let Some(steam_id) = user.steam_id {
-						Ok(steam_id.into())
-					} else {
-						Ok(user.name.into())
-					}
-				})?,
-			Self::SteamID(steam_id) => Ok(PlayerIdentifier::SteamID(steam_id)),
+			Self::Mention(user_id) => {
+				if let Ok(player_identifier) = ctx
+					.find_user_by_id(user_id)
+					.await
+					.map(|user| {
+						if let Some(steam_id) = user.steam_id {
+							PlayerIdentifier::from(steam_id)
+						} else {
+							PlayerIdentifier::from(user.name)
+						}
+					}) {
+					Ok(player_identifier)
+				} else {
+					// If the user @mention'd somebody who isn't in the database, scan the current
+					// server for that member and take their username.
+					let guild = ctx.guild().ok_or(Error::NoGuild {
+						reason: String::from(
+							" if you mention someone who doesn't have any database entries.",
+						),
+					})?;
+
+					let guild_member = guild
+						.member(ctx.http(), user_id)
+						.await?;
+
+					Ok(guild_member.user.name.into())
+				}
+			}
+			Self::SteamID(steam_id) => Ok(steam_id.into()),
 			Self::Name(name) => {
 				if let Ok(user) = ctx.find_user_by_name(&name).await {
 					if let Some(steam_id) = user.steam_id {
@@ -92,11 +121,16 @@ impl Target {
 					} else {
 						Ok(user.name.into())
 					}
+				} else if let Ok(player) =
+					schnose_api::get_player(name.clone().into(), ctx.gokz_client()).await
+				{
+					Ok(player.steam_id.into())
+				} else if let Ok(player) =
+					global_api::get_player(name.clone().into(), ctx.gokz_client()).await
+				{
+					Ok(player.steam_id.into())
 				} else {
-					Ok(schnose_api::get_player(PlayerIdentifier::Name(name), ctx.gokz_client())
-						.await
-						.map(|player| player.steam_id)?
-						.into())
+					Ok(name.into())
 				}
 			}
 		}

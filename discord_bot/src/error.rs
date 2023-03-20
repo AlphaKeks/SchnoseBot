@@ -63,6 +63,9 @@ pub enum Error {
 
 	/// Failed to compile.
 	Build,
+
+	/// A command that only works on a Guild was called somewhere else.
+	NoGuild { reason: String },
 }
 
 impl std::fmt::Display for Error {
@@ -89,7 +92,8 @@ impl std::fmt::Display for Error {
 				Error::BotRestart => "Failed to restart.",
 				Error::GitPull => "Failed to pull from GitHub.",
 				Error::CleanTargetDir => "Failed to clean build directory.",
-				Error::Build => "Failed to compile."
+				Error::Build => "Failed to compile.",
+				Error::NoGuild { reason } => return f.write_fmt(format_args!("You can only call this command on a server{}.", reason))
 			}
 		)
 	}

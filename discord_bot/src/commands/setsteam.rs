@@ -41,7 +41,7 @@ pub async fn setsteam(
 				return Ok(());
 			}
 
-			let mut query = QueryBuilder::new(format!(r#"UPDATE {table} SET steam_id = "#,));
+			let mut query = QueryBuilder::new(format!(r#"UPDATE {table} SET steam_id = "#));
 
 			query
 				.push_bind(steam_id.to_string())

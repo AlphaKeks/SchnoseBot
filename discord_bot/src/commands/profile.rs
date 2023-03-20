@@ -29,7 +29,7 @@ pub async fn profile(
 		.await;
 
 	let mode = ModeChoice::parse_input(mode, &db_entry)?;
-	let player_identifier = Target::parse_input(player, &ctx).await?;
+	let player_identifier = Target::parse_input(player, db_entry, &ctx).await?;
 
 	let player = schnose_api::get_player(player_identifier.clone(), ctx.gokz_client()).await?;
 
