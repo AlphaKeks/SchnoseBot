@@ -36,7 +36,11 @@ pub async fn top(
 	let mode = ModeChoice::parse_input(mode, &db_entry)?;
 	let runtype = matches!(runtype, Some(RuntypeChoice::TP));
 
-	let top = global_api::get_wr_top(mode, runtype, 0..1, ctx.gokz_client()).await?;
+	let top = global_api::get_wr_top(mode, runtype, 0..1, ctx.gokz_client())
+		.await?
+		.into_iter()
+		.take(100)
+		.collect::<Vec<_>>();
 
 	let max_pages = (top.len() as f64 / 12f64).ceil() as u8;
 
