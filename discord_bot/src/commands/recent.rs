@@ -115,8 +115,14 @@ pub async fn recent(
 				true,
 			)
 			.footer(|f| {
-				f.text(format!("Mode: {} | Page: {} / {}", record.mode, i + 1, max_records))
-					.icon_url(ctx.icon())
+				f.text(format!(
+					"Mode: {} | ID: {} | Page: {} / {}",
+					record.mode,
+					record.id,
+					i + 1,
+					max_records
+				))
+				.icon_url(ctx.icon())
 			});
 
 		embeds.push(embed)
