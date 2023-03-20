@@ -7,13 +7,15 @@ use {
 	log::trace,
 };
 
-/// `GlobalAPI` health report.
+/// GlobalAPI health report.
 ///
-/// Both this bot and GOKZ rely on the [GlobalAPI](https://portal.global-api.com/dashboard) to \
-/// function properly. Sometimes it has downtimes though, and the bot commands might not work. You \
-/// can either check the API's uptime via this command or on \
-/// [this website](https://health.global-api.com/endpoints/_globalapi).
-/// (That is where the bot gets its information from as well.)
+/// Both this bot and GOKZ rely on the \
+/// [GlobalAPI](https://kztimerglobal.com/swagger/index.html?urls.primaryName=V2) to function \
+/// properly. Sometimes it has downtimes though, and the bot commands might not work. This command \
+/// will give you some information about the \
+/// [GlobalAPI](https://kztimerglobal.com/swagger/index.html?urls.primaryName=V2)'s current \
+/// status. It uses [this website](https://health.global-api.com/endpoints/_globalapi) for \
+/// fetching that information and displays different messages depending on the current stats.
 #[poise::command(prefix_command, slash_command, on_error = "Error::handle_command")]
 pub async fn apistatus(ctx: Context<'_>) -> Result<()> {
 	trace!("[/apistatus ({})]", ctx.author().tag());
