@@ -26,20 +26,26 @@ use {
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn btop(
 	ctx: Context<'_>,
-	#[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
-	#[description = "TP/PRO"] runtype: Option<RuntypeChoice>,
+
+	#[description = "KZT/SKZ/VNL"]
+	#[rename = "mode"]
+	mode_choice: Option<ModeChoice>,
+
+	#[description = "TP/PRO"]
+	#[rename = "runtype"]
+	runtype_choice: Option<RuntypeChoice>,
 ) -> Result<()> {
 	trace!("[/btop ({})]", ctx.author().tag());
-	trace!("> `mode`: {mode:?}");
-	trace!("> `runtype`: {runtype:?}");
+	trace!("> `mode_choice`: {mode_choice:?}");
+	trace!("> `runtype_choice`: {runtype_choice:?}");
 	ctx.defer().await?;
 
 	let db_entry = ctx
 		.find_user_by_id(*ctx.author().id.as_u64())
 		.await;
 
-	let mode = ModeChoice::parse_input(mode, &db_entry)?;
-	let runtype = matches!(runtype, Some(RuntypeChoice::TP));
+	let mode = ModeChoice::parse_input(mode_choice, &db_entry)?;
+	let runtype = matches!(runtype_choice, Some(RuntypeChoice::TP));
 
 	let top = global_api::get_wr_top(mode, runtype, 1..101, ctx.gokz_client())
 		.await?

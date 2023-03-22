@@ -16,12 +16,15 @@ use {
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn db(
 	ctx: Context<'_>,
-	#[description = "Send the message so that everybody can see it."] public: Option<BoolChoice>,
+
+	#[description = "Send the message so that everybody can see it."]
+	#[rename = "public"]
+	show_message: Option<BoolChoice>,
 ) -> Result<()> {
 	trace!("[/db ({})]", ctx.author().tag());
-	trace!("> `public`: {public:?}");
+	trace!("> `show_message`: {show_message:?}");
 
-	if matches!(public, Some(BoolChoice::Yes)) {
+	if matches!(show_message, Some(BoolChoice::Yes)) {
 		ctx.defer().await?;
 	} else {
 		ctx.defer_ephemeral().await?;

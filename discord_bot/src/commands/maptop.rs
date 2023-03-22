@@ -17,7 +17,7 @@ use {
 /// Top 100 records on a map.
 ///
 /// This command will fetch the top 100 (or less, if there are less than 100 completions) records \
-/// on a particular map. You are required to specify a `map_name` and may also specify the \
+/// on a particular map. You are required to specify a `map` and may also specify the \
 /// following options:
 ///
 /// - `mode`: `KZTimer` / `SimpleKZ` / `Vanilla`
@@ -29,24 +29,33 @@ use {
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn maptop(
 	ctx: Context<'_>,
-	#[autocomplete = "autocomplete_map"] map_name: String,
-	#[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
-	#[description = "TP/PRO"] runtype: Option<RuntypeChoice>,
+
+	#[autocomplete = "autocomplete_map"]
+	#[rename = "map"]
+	map_choice: String,
+
+	#[description = "KZT/SKZ/VNL"]
+	#[rename = "mode"]
+	mode_choice: Option<ModeChoice>,
+
+	#[description = "TP/PRO"]
+	#[rename = "runtype"]
+	runtype_choice: Option<RuntypeChoice>,
 ) -> Result<()> {
 	trace!("[/maptop ({})]", ctx.author().tag());
-	trace!("> `map_name`: {map_name:?}");
-	trace!("> `mode`: {mode:?}");
-	trace!("> `runtype`: {runtype:?}");
+	trace!("> `map_choice`: {map_choice:?}");
+	trace!("> `mode_choice`: {mode_choice:?}");
+	trace!("> runtype_choice: {runtype_choice:?}");
 	ctx.defer().await?;
 
 	let db_entry = ctx
 		.find_user_by_id(*ctx.author().id.as_u64())
 		.await;
 
-	let map = ctx.get_map(&MapIdentifier::Name(map_name))?;
+	let map = ctx.get_map(&MapIdentifier::Name(map_choice))?;
 	let map_identifier = MapIdentifier::Name(map.name);
-	let mode = ModeChoice::parse_input(mode, &db_entry)?;
-	let runtype = matches!(runtype, Some(RuntypeChoice::TP));
+	let mode = ModeChoice::parse_input(mode_choice, &db_entry)?;
+	let runtype = matches!(runtype_choice, Some(RuntypeChoice::TP));
 
 	let maptop =
 		global_api::get_maptop(map_identifier.clone(), mode, runtype, 0, ctx.gokz_client()).await?;

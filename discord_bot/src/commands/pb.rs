@@ -15,7 +15,7 @@ use {
 /// This command will fetch a player's personal best on a particular map. If there is a global \
 /// replay available for any of your runs, the bot will attach some links for watching it online \
 /// with [GC's replay viewer](https://github.com/GameChaos/GlobalReplays) as well as downloading \
-/// the file. You are required to specify a `map_name` and may also specify the following options:
+/// the file. You are required to specify a `map` and may also specify the following options:
 ///
 /// - `mode`: `KZTimer` / `SimpleKZ` / `Vanilla`
 ///   - If you don't specify this, the bot will search the database for your UserID. If it can't \
@@ -32,24 +32,33 @@ use {
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn pb(
 	ctx: Context<'_>,
-	#[autocomplete = "autocomplete_map"] map_name: String,
-	#[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
-	#[description = "The player you want to target."] player: Option<String>,
+
+	#[autocomplete = "autocomplete_map"]
+	#[rename = "map"]
+	map_choice: String,
+
+	#[description = "KZT/SKZ/VNL"]
+	#[rename = "mode"]
+	mode_choice: Option<ModeChoice>,
+
+	#[description = "The player you want to target."]
+	#[rename = "player"]
+	target: Option<String>,
 ) -> Result<()> {
 	trace!("[/pb ({})]", ctx.author().tag());
-	trace!("> `map_name`: {map_name:?}");
-	trace!("> `mode`: {mode:?}");
-	trace!("> `player`: {player:?}");
+	trace!("> `map_choice`: {map_choice:?}");
+	trace!("> `mode_choice`: {mode_choice:?}");
+	trace!("> `target`: {target:?}");
 	ctx.defer().await?;
 
 	let db_entry = ctx
 		.find_user_by_id(*ctx.author().id.as_u64())
 		.await;
 
-	let map = ctx.get_map(&MapIdentifier::Name(map_name))?;
+	let map = ctx.get_map(&MapIdentifier::Name(map_choice))?;
 	let map_identifier = MapIdentifier::Name(map.name);
-	let mode = ModeChoice::parse_input(mode, &db_entry)?;
-	let player_identifier = Target::parse_input(player, db_entry, &ctx).await?;
+	let mode = ModeChoice::parse_input(mode_choice, &db_entry)?;
+	let player_identifier = Target::parse_input(target, db_entry, &ctx).await?;
 
 	let tp = global_api::get_pb(
 		player_identifier.clone(),

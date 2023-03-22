@@ -16,16 +16,19 @@ use {
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn random(
 	ctx: Context<'_>,
-	#[description = "Filter by map difficulty."] tier: Option<TierChoice>,
+
+	#[description = "Filter by map difficulty."]
+	#[rename = "tier"]
+	tier_choice: Option<TierChoice>,
 ) -> Result<()> {
 	trace!("[/random ({})]", ctx.author().tag());
-	trace!("> `tier`: {tier:?}");
+	trace!("> `tier_choice`: {tier_choice:?}");
 	ctx.defer().await?;
 
 	let global_maps = ctx
 		.global_maps()
 		.iter()
-		.filter(|map| tier.map_or(true, |tier| map.tier as u8 == tier as u8))
+		.filter(|map| tier_choice.map_or(true, |tier| map.tier as u8 == tier as u8))
 		.collect::<Vec<_>>();
 
 	let rng = rand::thread_rng().gen_range(0..global_maps.len());

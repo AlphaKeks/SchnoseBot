@@ -140,8 +140,8 @@ mod choices {
 	}
 
 	impl ModeChoice {
-		pub fn parse_input(choice: Option<Self>, db_entry: &Result<db::User>) -> Result<Mode> {
-			if let Some(mode) = choice {
+		pub fn parse_input(mode_choice: Option<Self>, db_entry: &Result<db::User>) -> Result<Mode> {
+			if let Some(mode) = mode_choice {
 				Ok(mode.into())
 			} else {
 				db_entry

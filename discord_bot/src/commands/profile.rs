@@ -37,20 +37,26 @@ use {
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn profile(
 	ctx: Context<'_>,
-	#[description = "The player you want to look up."] player: Option<String>,
-	#[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
+
+	#[description = "The player you want to look up."]
+	#[rename = "player"]
+	target: Option<String>,
+
+	#[description = "KZT/SKZ/VNL"]
+	#[rename = "mode"]
+	mode_choice: Option<ModeChoice>,
 ) -> Result<()> {
 	trace!("[/profile ({})]", ctx.author().tag());
-	trace!("> `player`: {player:?}");
-	trace!("> `mode`: {mode:?}");
+	trace!("> `target`: {target:?}");
+	trace!("> `mode_choice`: {mode_choice:?}");
 	ctx.defer().await?;
 
 	let db_entry = ctx
 		.find_user_by_id(*ctx.author().id.as_u64())
 		.await;
 
-	let mode = ModeChoice::parse_input(mode, &db_entry)?;
-	let player_identifier = Target::parse_input(player, db_entry, &ctx).await?;
+	let mode = ModeChoice::parse_input(mode_choice, &db_entry)?;
+	let player_identifier = Target::parse_input(target, db_entry, &ctx).await?;
 
 	let player = schnose_api::get_player(player_identifier.clone(), ctx.gokz_client()).await?;
 

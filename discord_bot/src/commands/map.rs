@@ -19,13 +19,16 @@ use {
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn map(
 	ctx: Context<'_>,
-	#[autocomplete = "autocomplete_map"] map_name: String,
+
+	#[autocomplete = "autocomplete_map"]
+	#[rename = "map"]
+	map_choice: String,
 ) -> Result<()> {
 	trace!("[/map ({})]", ctx.author().tag());
-	trace!("> `map_name`: {map_name:?}");
+	trace!("> `map_choice`: {map_choice:?}");
 	ctx.defer().await?;
 
-	let map = ctx.get_map(&MapIdentifier::Name(map_name))?;
+	let map = ctx.get_map(&MapIdentifier::Name(map_choice))?;
 
 	let mapper = if let Some(steam_id) = map.mapper_steam_id {
 		format!("[{}](https://steamcommunity.com/profiles/{})", map.mapper_name, steam_id.as_id64())

@@ -25,8 +25,7 @@ use {
 ///     preference in the database, see `/mode`.
 /// - `runtype`: `TP` / `PRO`
 ///   - If you don't specify this, the bot will default to `PRO`.
-/// - `tier`: any number from 1-7
-///   - If you don't specify this, the bot will fetch maps for all tiers.
+/// - `tier`: If you don't specify this, the bot will fetch maps for all tiers.
 /// - `player`: this can be any string. The bot will try its best to interpret it as something \
 ///   useful. If you want to help it with that, specify one of the following:
 ///   - a `SteamID`, e.g. `STEAM_1:1:161178172`, `U:1:322356345` or `76561198282622073`
@@ -38,25 +37,37 @@ use {
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn unfinished(
 	ctx: Context<'_>,
-	#[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
-	#[description = "TP/PRO"] runtype: Option<RuntypeChoice>,
-	#[description = "Filter by map difficulty."] tier: Option<TierChoice>,
-	#[description = "The player you want to target."] player: Option<String>,
+
+	#[description = "KZT/SKZ/VNL"]
+	#[rename = "mode"]
+	mode_choice: Option<ModeChoice>,
+
+	#[description = "TP/PRO"]
+	#[rename = "runtype"]
+	runtype_choice: Option<RuntypeChoice>,
+
+	#[description = "Filter by map difficulty."]
+	#[rename = "tier"]
+	tier_choice: Option<TierChoice>,
+
+	#[description = "The player you want to target."]
+	#[rename = "player"]
+	target: Option<String>,
 ) -> Result<()> {
 	trace!("[/unfinished ({})]", ctx.author().tag());
-	trace!("> `mode`: {mode:?}");
-	trace!("> `runtype`: {runtype:?}");
-	trace!("> `tier`: {tier:?}");
-	trace!("> `player`: {player:?}");
+	trace!("> `mode_choice`: {mode_choice:?}");
+	trace!("> `runtype_choice`: {runtype_choice:?}");
+	trace!("> `tier_choice`: {tier_choice:?}");
+	trace!("> `target`: {target:?}");
 	ctx.defer().await?;
 
 	let db_entry = ctx
 		.find_user_by_id(*ctx.author().id.as_u64())
 		.await;
 
-	let mode = ModeChoice::parse_input(mode, &db_entry)?;
-	let runtype = matches!(runtype, Some(RuntypeChoice::TP));
-	let player_identifier = Target::parse_input(player, db_entry, &ctx).await?;
+	let mode = ModeChoice::parse_input(mode_choice, &db_entry)?;
+	let runtype = matches!(runtype_choice, Some(RuntypeChoice::TP));
+	let player_identifier = Target::parse_input(target, db_entry, &ctx).await?;
 
 	let player = schnose_api::get_player(player_identifier.clone(), ctx.gokz_client()).await?;
 
@@ -64,14 +75,14 @@ pub async fn unfinished(
 		player_identifier,
 		mode,
 		runtype,
-		tier.map(Tier::from),
+		tier_choice.map(Tier::from),
 		ctx.gokz_client(),
 	)
 	.await?
 	.map(|maps| {
 		maps.into_iter()
 			.map(|map| {
-				if tier.is_some() {
+				if tier_choice.is_some() {
 					return map.name;
 				}
 				format!("{} (T{})", map.name, map.difficulty as u8)
@@ -96,7 +107,7 @@ pub async fn unfinished(
 			"{} {} {}",
 			mode.short(),
 			if runtype { "TP" } else { "PRO" },
-			tier.map_or_else(String::new, |tier| format!("[T{}]", tier as u8))
+			tier_choice.map_or_else(String::new, |tier| format!("[T{}]", tier as u8))
 		))
 		.url(format!(
 			"https://kzgo.eu/players/{}?{}=",
@@ -145,7 +156,7 @@ pub async fn unfinished(
 					len,
 					mode.short(),
 					if runtype { "TP" } else { "PRO" },
-					tier.map_or_else(String::new, |tier| format!("[T{}]", tier as u8))
+					tier_choice.map_or_else(String::new, |tier| format!("[T{}]", tier as u8))
 				))
 				.description(map_names.join("\n"))
 				.footer(|f| {

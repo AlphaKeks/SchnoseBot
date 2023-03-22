@@ -12,7 +12,7 @@ use {
 /// World record on a given map.
 ///
 /// This command will fetch the world record on a particular map. You are required to specify a \
-/// `map_name` and may also specify the following options:
+/// `map` and may also specify the following options:
 ///
 /// - `mode`: `KZTimer` / `SimpleKZ` / `Vanilla`
 ///   - If you don't specify this, the bot will search the database for your UserID. If it can't \
@@ -21,21 +21,27 @@ use {
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn wr(
 	ctx: Context<'_>,
-	#[autocomplete = "autocomplete_map"] map_name: String,
-	#[description = "KZT/SKZ/VNL"] mode: Option<ModeChoice>,
+
+	#[autocomplete = "autocomplete_map"]
+	#[rename = "map"]
+	map_choice: String,
+
+	#[description = "KZT/SKZ/VNL"]
+	#[rename = "mode"]
+	mode_choice: Option<ModeChoice>,
 ) -> Result<()> {
 	trace!("[/wr ({})]", ctx.author().tag());
-	trace!("> `map_name`: {map_name:?}");
-	trace!("> `mode`: {mode:?}");
+	trace!("> `map_choice`: {map_choice:?}");
+	trace!("> `mode_choice`: {mode_choice:?}");
 	ctx.defer().await?;
 
 	let db_entry = ctx
 		.find_user_by_id(*ctx.author().id.as_u64())
 		.await;
 
-	let map = ctx.get_map(&MapIdentifier::Name(map_name))?;
+	let map = ctx.get_map(&MapIdentifier::Name(map_choice))?;
 	let map_identifier = MapIdentifier::Name(map.name);
-	let mode = ModeChoice::parse_input(mode, &db_entry)?;
+	let mode = ModeChoice::parse_input(mode_choice, &db_entry)?;
 
 	let tp = global_api::get_wr(map_identifier.clone(), mode, true, 0, ctx.gokz_client()).await;
 	let pro = global_api::get_wr(map_identifier.clone(), mode, false, 0, ctx.gokz_client()).await;

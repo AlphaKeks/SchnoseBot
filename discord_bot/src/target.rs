@@ -54,11 +54,11 @@ impl std::str::FromStr for Target {
 
 impl Target {
 	pub async fn parse_input(
-		input: Option<String>,
+		target: Option<String>,
 		db_entry: Result<db::User>,
 		ctx: &Context<'_>,
 	) -> Result<PlayerIdentifier> {
-		if let Some(input) = input {
+		if let Some(input) = target {
 			input.parse::<Self>()?
 		} else {
 			Self::None(*ctx.author().id.as_u64())

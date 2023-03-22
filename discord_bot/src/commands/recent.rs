@@ -28,17 +28,20 @@ use {
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn recent(
 	ctx: Context<'_>,
-	#[description = "The player you want to target."] player: Option<String>,
+
+	#[description = "The player you want to target."]
+	#[rename = "player"]
+	target: Option<String>,
 ) -> Result<()> {
 	trace!("[/recent ({})]", ctx.author().tag());
-	trace!("> `player`: {player:?}");
+	trace!("> `target`: {target:?}");
 	ctx.defer().await?;
 
 	let db_entry = ctx
 		.find_user_by_id(*ctx.author().id.as_u64())
 		.await;
 
-	let player_identifier = Target::parse_input(player, db_entry, &ctx).await?;
+	let player_identifier = Target::parse_input(target, db_entry, &ctx).await?;
 
 	let recent_records = schnose_api::get_recent(player_identifier, 10, ctx.gokz_client()).await?;
 

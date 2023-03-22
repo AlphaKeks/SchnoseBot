@@ -18,13 +18,16 @@ use {
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn mode(
 	ctx: Context<'_>,
-	#[description = "KZT/SKZ/VNL"] mode: DBModeChoice,
+
+	#[description = "KZT/SKZ/VNL"]
+	#[rename = "mode"]
+	mode_choice: DBModeChoice,
 ) -> Result<()> {
 	trace!("[/mode ({})]", ctx.author().tag());
-	trace!("> `mode`: {mode:?}");
+	trace!("> `mode_choice`: {mode_choice:?}");
 	ctx.defer().await?;
 
-	let mode = Mode::try_from(mode);
+	let mode = Mode::try_from(mode_choice);
 	let mode_id = mode
 		.as_ref()
 		.map(|mode| (*mode as u8).to_string())
