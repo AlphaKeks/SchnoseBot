@@ -51,8 +51,13 @@ async fn main() -> Eyre<()> {
 	let config_file = std::fs::read_to_string(args.config)?;
 	let config: Config = toml::from_str(&config_file)?;
 
+	let cwd = std::env::var("PWD")?;
+	let file_logger = tracing_appender::rolling::minutely(cwd + "/logs", "schnosebot.log");
+	let (log_writer, _guard) = tracing_appender::non_blocking(file_logger);
+
 	tracing_subscriber::fmt()
 		.compact()
+		.with_writer(log_writer)
 		.with_timer(UtcTime::new(format_description!(
 			"[[[year]-[month]-[day] | [hour]:[minute]:[second]]"
 		)))
