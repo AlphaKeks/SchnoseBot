@@ -4,7 +4,6 @@ use {
 		Context, State,
 	},
 	gokz_rs::SteamID,
-	log::trace,
 	sqlx::QueryBuilder,
 };
 
@@ -13,13 +12,12 @@ use {
 /// This command will save your `SteamID` in its database for later use. Since many commands have \
 /// a `player` parameter you probably don't want to specify that over and over again. Instead you \
 /// can use this command and the bot will remember your choice in the future.
+#[tracing::instrument(skip(ctx), fields(user = ctx.author().tag()))]
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn setsteam(
 	ctx: Context<'_>,
 	#[description = "Your SteamID, e.g. `STEAM_1:1:161178172`"] steam_id: String,
 ) -> Result<()> {
-	trace!("[/setsteam ({})]", ctx.author().tag());
-	trace!("> `steam_id`: {steam_id:?}");
 	ctx.defer().await?;
 
 	let steam_id = SteamID::new(&steam_id)?;

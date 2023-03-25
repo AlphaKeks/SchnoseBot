@@ -5,7 +5,6 @@ use {
 		Context, State,
 	},
 	gokz_rs::Mode,
-	log::trace,
 	sqlx::QueryBuilder,
 };
 
@@ -15,6 +14,7 @@ use {
 /// have a `mode` parameter you probably don't want to specify that over and over again. Instead \
 /// you can use this command and the bot will remember your choice in the future. You can also \
 /// clear your preference if you want to.
+#[tracing::instrument(skip(ctx), fields(user = ctx.author().tag()))]
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn mode(
 	ctx: Context<'_>,
@@ -23,8 +23,6 @@ pub async fn mode(
 	#[rename = "mode"]
 	mode_choice: DBModeChoice,
 ) -> Result<()> {
-	trace!("[/mode ({})]", ctx.author().tag());
-	trace!("> `mode_choice`: {mode_choice:?}");
 	ctx.defer().await?;
 
 	let mode = Mode::try_from(mode_choice);

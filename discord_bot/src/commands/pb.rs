@@ -7,7 +7,6 @@ use {
 		Context, State,
 	},
 	gokz_rs::{global_api, MapIdentifier},
-	log::trace,
 };
 
 /// A player's personal best on a map.
@@ -29,6 +28,7 @@ use {
 ///   - If you don't specify this, the bot will search the database for your UserID. If it can't \
 ///     find one, or you don't have a SteamID set, the command will fail. To save a mode \
 ///     preference in the database, see `/setsteam`.
+#[tracing::instrument(skip(ctx), fields(user = ctx.author().tag()))]
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn pb(
 	ctx: Context<'_>,
@@ -45,10 +45,6 @@ pub async fn pb(
 	#[rename = "player"]
 	target: Option<String>,
 ) -> Result<()> {
-	trace!("[/pb ({})]", ctx.author().tag());
-	trace!("> `map_choice`: {map_choice:?}");
-	trace!("> `mode_choice`: {mode_choice:?}");
-	trace!("> `target`: {target:?}");
 	ctx.defer().await?;
 
 	let db_entry = ctx

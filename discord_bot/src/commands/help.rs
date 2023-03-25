@@ -3,7 +3,6 @@ use {
 		error::{Error, Result},
 		Context, State,
 	},
-	log::trace,
 	poise::serenity_prelude::{CollectComponentInteraction, InteractionResponseType},
 	std::{collections::BTreeMap, time::Duration},
 };
@@ -28,10 +27,9 @@ use {
 /// It's gonna try to guess as best as it can, but to get the best results, you should save your \
 /// `SteamID` and your preferred mode in the bot's database. You can do that with `/setsteam` and \
 /// `/mode`. Those will then be used as fallback options.
+#[tracing::instrument(skip(ctx), fields(user = ctx.author().tag()))]
 #[poise::command(slash_command, ephemeral, on_error = "Error::handle_command")]
 pub async fn help(ctx: Context<'_>) -> Result<()> {
-	trace!("[/help ({})]", ctx.author().tag());
-
 	let commands = ctx
 		.framework()
 		.options()

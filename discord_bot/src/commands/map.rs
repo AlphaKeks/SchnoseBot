@@ -5,7 +5,6 @@ use {
 		Context, State,
 	},
 	gokz_rs::MapIdentifier,
-	log::trace,
 };
 
 /// Get detailed information on a map.
@@ -16,6 +15,7 @@ use {
 /// [n4vyn's](https://github.com/n4vyn) [KZ:GO API](https://kzgo.eu/) and my own \
 /// [SchnoseAPI](https://github.com/AlphaKeks/SchnoseAPI). If anything seems incorrect, feel free \
 /// to report it.
+#[tracing::instrument(skip(ctx), fields(user = ctx.author().tag()))]
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn map(
 	ctx: Context<'_>,
@@ -24,8 +24,6 @@ pub async fn map(
 	#[rename = "map"]
 	map_choice: String,
 ) -> Result<()> {
-	trace!("[/map ({})]", ctx.author().tag());
-	trace!("> `map_choice`: {map_choice:?}");
 	ctx.defer().await?;
 
 	let map = ctx.get_map(&MapIdentifier::Name(map_choice))?;

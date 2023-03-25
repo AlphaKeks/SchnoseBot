@@ -4,7 +4,6 @@ use {
 		Context, State,
 	},
 	gokz_rs::global_api,
-	log::trace,
 };
 
 /// GlobalAPI health report.
@@ -16,9 +15,9 @@ use {
 /// [GlobalAPI](https://kztimerglobal.com/swagger/index.html?urls.primaryName=V2)'s current \
 /// status. It uses [this website](https://health.global-api.com/endpoints/_globalapi) for \
 /// fetching that information and displays different messages depending on the current stats.
+#[tracing::instrument(skip(ctx), fields(user = ctx.author().tag()))]
 #[poise::command(prefix_command, slash_command, on_error = "Error::handle_command")]
 pub async fn apistatus(ctx: Context<'_>) -> Result<()> {
-	trace!("[/apistatus ({})]", ctx.author().tag());
 	ctx.defer().await?;
 
 	let health_report = global_api::checkhealth(ctx.gokz_client()).await?;

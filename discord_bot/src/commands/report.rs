@@ -4,7 +4,6 @@ use {
 		Context, GlobalState, State,
 	},
 	chrono::Utc,
-	log::trace,
 	poise::{
 		execute_modal,
 		serenity_prelude::{CacheHttp, ChannelId},
@@ -19,10 +18,9 @@ use {
 /// case you don't like GitHub issues). The information you put in there will be sent to a channel \
 /// that can be specified in the bot's config file. If you use my instance of the bot, that \
 /// channel is a private channel on my Discord server that only I and a few admins have access to.
+#[tracing::instrument(skip(ctx), fields(user = ctx.author().tag()))]
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn report(ctx: ApplicationContext<'_, GlobalState, Error>) -> Result<()> {
-	trace!("[/report ({})]", ctx.author().tag());
-
 	let Some(modal) = execute_modal(ctx, Some(Report::default()), Some(Duration::from_secs(300))).await? else {
 		// User didn't submit modal in time.
 		return Ok(());

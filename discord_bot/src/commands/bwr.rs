@@ -6,7 +6,6 @@ use {
 		Context, State,
 	},
 	gokz_rs::{global_api, MapIdentifier},
-	log::trace,
 };
 
 /// World record on a given bonus course.
@@ -20,6 +19,7 @@ use {
 //     preference in the database, see `/mode`.
 // - `course`: this can be any integer between 1-255.
 //   - If you either don't specify this, or put in `0`, the bot will default to `1`.
+#[tracing::instrument(skip(ctx), fields(user = ctx.author().tag()))]
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn bwr(
 	ctx: Context<'_>,
@@ -36,10 +36,6 @@ pub async fn bwr(
 	#[rename = "course"]
 	course_choice: Option<u8>,
 ) -> Result<()> {
-	trace!("[/bwr ({})]", ctx.author().tag());
-	trace!("> `map_choice`: {map_choice:?}");
-	trace!("> `mode_choice`: {mode_choice:?}");
-	trace!("> `course_choice`: {course_choice:?}");
 	ctx.defer().await?;
 
 	let db_entry = ctx

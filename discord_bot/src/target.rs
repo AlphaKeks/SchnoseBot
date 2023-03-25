@@ -30,6 +30,7 @@ pub enum Target {
 impl std::str::FromStr for Target {
 	type Err = Error;
 
+	#[tracing::instrument]
 	fn from_str(s: &str) -> Result<Self> {
 		if let Ok(steam_id) = SteamID::new(s) {
 			return Ok(Self::SteamID(steam_id));
@@ -53,6 +54,7 @@ impl std::str::FromStr for Target {
 }
 
 impl Target {
+	#[tracing::instrument]
 	pub async fn parse_input(
 		target: Option<String>,
 		db_entry: Result<db::User>,
@@ -68,6 +70,7 @@ impl Target {
 	}
 
 	/// Tries to turn the given [`Target`] into a [`PlayerIdentifier`] with best effort.
+	#[tracing::instrument]
 	pub async fn into_player(
 		self,
 		db_entry: Result<db::User>,

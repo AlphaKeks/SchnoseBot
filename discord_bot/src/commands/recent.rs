@@ -7,7 +7,6 @@ use {
 		Context, State,
 	},
 	gokz_rs::{global_api, schnose_api, MapIdentifier},
-	log::trace,
 	poise::serenity_prelude::CreateEmbed,
 };
 
@@ -25,6 +24,7 @@ use {
 ///   - If you don't specify this, the bot will search the database for your UserID. If it can't \
 ///     find one, or you don't have a SteamID set, the command will fail. To save a mode \
 ///     preference in the database, see `/setsteam`.
+#[tracing::instrument(skip(ctx), fields(user = ctx.author().tag()))]
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn recent(
 	ctx: Context<'_>,
@@ -33,8 +33,6 @@ pub async fn recent(
 	#[rename = "player"]
 	target: Option<String>,
 ) -> Result<()> {
-	trace!("[/recent ({})]", ctx.author().tag());
-	trace!("> `target`: {target:?}");
 	ctx.defer().await?;
 
 	let db_entry = ctx

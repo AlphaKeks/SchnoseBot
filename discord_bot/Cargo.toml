@@ -1,6 +1,6 @@
 [package]
 name = "discord_bot"
-version = "0.16.2"
+version = "0.16.3"
 edition = "2021"
 
 authors = ["AlphaKeks <alphakeks@dawn.sh>"]
@@ -14,8 +14,8 @@ publish = false
 color-eyre = { workspace = true }
 
 # logging
-log = { workspace = true }
-env_logger = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
 
 # CLI
 clap = { workspace = true }
@@ -27,6 +27,7 @@ toml = { workspace = true }
 
 # util
 chrono = { workspace = true }
+time = { workspace = true }
 regex = { workspace = true }
 num-format = { workspace = true }
 rand = { workspace = true }

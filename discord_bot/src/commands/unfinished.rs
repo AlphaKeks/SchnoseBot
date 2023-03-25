@@ -10,7 +10,6 @@ use {
 		Context, State,
 	},
 	gokz_rs::{global_api, kzgo_api, schnose_api, Tier},
-	log::trace,
 	poise::serenity_prelude::CreateEmbed,
 };
 
@@ -34,6 +33,7 @@ use {
 ///   - If you don't specify this, the bot will search the database for your UserID. If it can't \
 ///     find one, or you don't have a SteamID set, the command will fail. To save a mode \
 ///     preference in the database, see `/setsteam`.
+#[tracing::instrument(skip(ctx), fields(user = ctx.author().tag()))]
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn unfinished(
 	ctx: Context<'_>,
@@ -54,11 +54,6 @@ pub async fn unfinished(
 	#[rename = "player"]
 	target: Option<String>,
 ) -> Result<()> {
-	trace!("[/unfinished ({})]", ctx.author().tag());
-	trace!("> `mode_choice`: {mode_choice:?}");
-	trace!("> `runtype_choice`: {runtype_choice:?}");
-	trace!("> `tier_choice`: {tier_choice:?}");
-	trace!("> `target`: {target:?}");
 	ctx.defer().await?;
 
 	let db_entry = ctx

@@ -8,7 +8,6 @@ use {
 		Context, State,
 	},
 	gokz_rs::global_api,
-	log::trace,
 	poise::serenity_prelude::CreateEmbed,
 };
 
@@ -23,6 +22,7 @@ use {
 ///     preference in the database, see `/mode`.
 /// - `runtype`: `TP` / `PRO`
 ///   - If you don't specify this, the bot will default to `PRO`.
+#[tracing::instrument(skip(ctx), fields(user = ctx.author().tag()))]
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn top(
 	ctx: Context<'_>,
@@ -35,9 +35,6 @@ pub async fn top(
 	#[rename = "runtype"]
 	runtype_choice: Option<RuntypeChoice>,
 ) -> Result<()> {
-	trace!("[/top ({})]", ctx.author().tag());
-	trace!("> `mode_choice`: {mode_choice:?}");
-	trace!("> `runtype_choice`: {runtype_choice:?}");
 	ctx.defer().await?;
 
 	let db_entry = ctx

@@ -41,6 +41,7 @@ pub struct GlobalMap {
 }
 
 /// Gets called once at the start to fetch and process all maps.
+#[tracing::instrument]
 pub async fn init(gokz_client: &gokz_rs::Client) -> Result<Vec<GlobalMap>> {
 	let mut maps = Vec::new();
 	let filters = global_api::record_filters::get_filters(

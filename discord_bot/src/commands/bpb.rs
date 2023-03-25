@@ -7,7 +7,6 @@ use {
 		Context, State,
 	},
 	gokz_rs::{global_api, MapIdentifier},
-	log::trace,
 };
 
 /// A player's personal best on a bonus course.
@@ -29,6 +28,7 @@ use {
 ///     preference in the database, see `/setsteam`.
 /// - `course`: this can be any integer between 1-255.
 ///   - If you either don't specify this, or put in `0`, the bot will default to `1`.
+#[tracing::instrument(skip(ctx), fields(user = ctx.author().tag()))]
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn bpb(
 	ctx: Context<'_>,
@@ -49,11 +49,6 @@ pub async fn bpb(
 	#[rename = "course"]
 	course_choice: Option<u8>,
 ) -> Result<()> {
-	trace!("[/bpb ({})]", ctx.author().tag());
-	trace!("> `map_choice`: {map_choice:?}");
-	trace!("> `mode_choice`: {mode_choice:?}");
-	trace!("> `target`: {target:?}");
-	trace!("> `course_choice`: {course_choice:?}");
 	ctx.defer().await?;
 
 	let db_entry = ctx

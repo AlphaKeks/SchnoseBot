@@ -81,6 +81,7 @@ mod autocompletion {
 
 	// Provides autocompletion for map names on certain commands using some fuzzy finding algorithm
 	// I found on the interent. :)
+	#[tracing::instrument(skip(ctx))]
 	pub async fn autocomplete_map<'a>(
 		ctx: Context<'a>,
 		input: &'a str,
@@ -140,6 +141,7 @@ mod choices {
 	}
 
 	impl ModeChoice {
+		#[tracing::instrument]
 		pub fn parse_input(mode_choice: Option<Self>, db_entry: &Result<db::User>) -> Result<Mode> {
 			if let Some(mode) = mode_choice {
 				Ok(mode.into())
@@ -255,6 +257,7 @@ mod pagination {
 		std::time::Duration,
 	};
 
+	#[tracing::instrument(skip(ctx))]
 	pub async fn paginate(ctx: &Context<'_>, embeds: Vec<CreateEmbed>) -> Result<()> {
 		let ctx_id = ctx.id();
 		let prev_id = format!("{ctx_id}_prev");

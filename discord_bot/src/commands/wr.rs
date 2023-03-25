@@ -6,7 +6,6 @@ use {
 		Context, State,
 	},
 	gokz_rs::{global_api, MapIdentifier},
-	log::trace,
 };
 
 /// World record on a given map.
@@ -18,6 +17,7 @@ use {
 ///   - If you don't specify this, the bot will search the database for your UserID. If it can't \
 ///     find one, or you don't have a mode preference set, the command will fail. To save a mode \
 ///     preference in the database, see `/mode`.
+#[tracing::instrument(skip(ctx), fields(user = ctx.author().tag()))]
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn wr(
 	ctx: Context<'_>,
@@ -30,9 +30,6 @@ pub async fn wr(
 	#[rename = "mode"]
 	mode_choice: Option<ModeChoice>,
 ) -> Result<()> {
-	trace!("[/wr ({})]", ctx.author().tag());
-	trace!("> `map_choice`: {map_choice:?}");
-	trace!("> `mode_choice`: {mode_choice:?}");
 	ctx.defer().await?;
 
 	let db_entry = ctx

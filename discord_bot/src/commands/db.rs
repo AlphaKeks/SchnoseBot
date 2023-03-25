@@ -5,7 +5,6 @@ use {
 		error::{Error, Result},
 		Context, State,
 	},
-	log::trace,
 };
 
 /// Check your database entries.
@@ -13,6 +12,7 @@ use {
 /// This command will show you all the information that the bot has saved about your account in \
 /// its database. You may specify a `public` option that determines whether other people will be \
 /// able to see the bot's response or not.
+#[tracing::instrument(skip(ctx), fields(user = ctx.author().tag()))]
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn db(
 	ctx: Context<'_>,
@@ -21,9 +21,6 @@ pub async fn db(
 	#[rename = "public"]
 	show_message: Option<BoolChoice>,
 ) -> Result<()> {
-	trace!("[/db ({})]", ctx.author().tag());
-	trace!("> `show_message`: {show_message:?}");
-
 	if matches!(show_message, Some(BoolChoice::Yes)) {
 		ctx.defer().await?;
 	} else {

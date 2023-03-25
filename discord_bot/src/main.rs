@@ -27,7 +27,6 @@ use {
 	color_eyre::Result as Eyre,
 	fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher},
 	gokz_rs::{MapIdentifier, Mode, SteamID},
-	log::{debug, info},
 	poise::{
 		async_trait,
 		serenity_prelude::{Activity, GatewayIntents, GuildId, UserId},
@@ -36,6 +35,12 @@ use {
 	serde::Deserialize,
 	sqlx::{mysql::MySqlPoolOptions, MySql, Pool, QueryBuilder},
 	std::{collections::HashSet, path::PathBuf},
+	time::macros::format_description,
+	tracing::{debug, info},
+	tracing_subscriber::{
+		fmt::{format::FmtSpan, time::UtcTime},
+		EnvFilter,
+	},
 };
 
 #[tokio::main]
@@ -46,17 +51,23 @@ async fn main() -> Eyre<()> {
 	let config_file = std::fs::read_to_string(args.config)?;
 	let config: Config = toml::from_str(&config_file)?;
 
-	std::env::set_var(
-		"RUST_LOG",
-		if args.debug {
-			String::from("DEBUG")
-		} else if let Some(level) = &config.log_level {
-			String::from(level)
-		} else {
-			String::from("INFO")
-		},
-	);
-	env_logger::init();
+	tracing_subscriber::fmt()
+		.compact()
+		.with_timer(UtcTime::new(format_description!(
+			"[[[year]-[month]-[day] | [hour]:[minute]:[second]]"
+		)))
+		.with_line_number(true)
+		.with_span_events(FmtSpan::NEW)
+		.with_env_filter({
+			EnvFilter::new(if args.debug {
+				"DEBUG"
+			} else if let Some(ref level) = config.log_level {
+				level.as_str()
+			} else {
+				"discord_bot=INFO,gokz_rs=INFO"
+			})
+		})
+		.init();
 
 	let global_state = GlobalState::new(config).await;
 

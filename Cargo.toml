@@ -6,8 +6,12 @@ members = ["discord_bot"]
 color-eyre = "0.6"
 
 # logging
-log = "0.4"
-env_logger = "0.10"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = [
+	"env-filter",
+	"json",
+	"time",
+] }
 
 # CLI
 clap = { version = "4", features = ["derive"] }
@@ -22,7 +26,7 @@ tokio = { version = "1", features = ["full"] }
 futures = "0.3"
 
 # GOKZ
-gokz_rs = { version = "0.16", features = [
+gokz_rs = { version = "0.17", features = [
 	"global_api",
 	"kzgo_api",
 	"schnose_api",
@@ -33,6 +37,7 @@ sqlx = { version = "0.6", features = ["runtime-tokio-rustls", "mysql"] }
 
 # util
 chrono = "0.4"
+time = { version = "0.3", features = ["macros"] }
 rand = "0.8"
 regex = "1.7"
 num-format = "0.4"

@@ -7,6 +7,7 @@ use {
 	serde_json::Value as JsonValue,
 };
 
+#[tracing::instrument]
 pub async fn get_steam_avatar(
 	steam_api_key: &str,
 	steam_id64: u64,

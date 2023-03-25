@@ -1,6 +1,6 @@
 //! The global [`Error`] and [`Result`] types used across the entire crate.
 
-use log::{error, info, warn};
+use tracing::{error, info, warn};
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -102,6 +102,7 @@ impl std::fmt::Display for Error {
 impl std::error::Error for Error {}
 
 impl From<serenity::Error> for Error {
+	#[tracing::instrument]
 	fn from(value: serenity::Error) -> Self {
 		match value {
 			serenity::Error::Json(why) => {
@@ -121,12 +122,14 @@ impl From<serenity::Error> for Error {
 }
 
 impl From<gokz_rs::Error> for Error {
+	#[tracing::instrument]
 	fn from(value: gokz_rs::Error) -> Self {
 		Self::GOKZ(value.to_string())
 	}
 }
 
 impl From<sqlx::Error> for Error {
+	#[tracing::instrument]
 	fn from(value: sqlx::Error) -> Self {
 		warn!("DB ERROR `{value:?}`");
 		match value {
@@ -144,12 +147,14 @@ impl From<sqlx::Error> for Error {
 }
 
 impl From<color_eyre::Report> for Error {
+	#[tracing::instrument]
 	fn from(value: color_eyre::Report) -> Self {
 		Self::Custom(value.to_string())
 	}
 }
 
 impl Error {
+	#[tracing::instrument]
 	pub async fn handle_command(error: poise::FrameworkError<'_, crate::GlobalState, Error>) {
 		error!("Slash Command failed. {error:?}");
 

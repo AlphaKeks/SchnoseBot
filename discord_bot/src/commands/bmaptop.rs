@@ -10,7 +10,6 @@ use {
 		Context, State,
 	},
 	gokz_rs::{global_api, MapIdentifier},
-	log::trace,
 	poise::serenity_prelude::CreateEmbed,
 };
 
@@ -28,6 +27,7 @@ use {
 ///   - If you don't specify this, the bot will default to `PRO`.
 /// - `course`: this can be any integer between 1-255.
 ///   - If you either don't specify this, or put in `0`, the bot will default to `1`.
+#[tracing::instrument(skip(ctx), fields(user = ctx.author().tag()))]
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn bmaptop(
 	ctx: Context<'_>,
@@ -48,11 +48,6 @@ pub async fn bmaptop(
 	#[rename = "course"]
 	course_choice: Option<u8>,
 ) -> Result<()> {
-	trace!("[/bmaptop ({})]", ctx.author().tag());
-	trace!("> `map_choice`: {map_choice:?}");
-	trace!("> `mode_choice`: {mode_choice:?}");
-	trace!("> `runtype_choice`: {runtype_choice:?}");
-	trace!("> `course_choice`: {course_choice:?}");
 	ctx.defer().await?;
 
 	let db_entry = ctx

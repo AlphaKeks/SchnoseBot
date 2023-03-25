@@ -5,7 +5,6 @@ use {
 		global_maps::GlobalMap,
 		Context, State,
 	},
-	log::trace,
 	rand::Rng,
 };
 
@@ -13,6 +12,7 @@ use {
 ///
 /// This command will simply select a random map from the global map pool. You may specify a \
 /// `tier` if you want to.
+#[tracing::instrument(skip(ctx), fields(user = ctx.author().tag()))]
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn random(
 	ctx: Context<'_>,
@@ -21,8 +21,6 @@ pub async fn random(
 	#[rename = "tier"]
 	tier_choice: Option<TierChoice>,
 ) -> Result<()> {
-	trace!("[/random ({})]", ctx.author().tag());
-	trace!("> `tier_choice`: {tier_choice:?}");
 	ctx.defer().await?;
 
 	let global_maps = ctx

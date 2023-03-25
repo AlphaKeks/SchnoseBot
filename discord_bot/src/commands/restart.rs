@@ -1,12 +1,10 @@
-use {
-	crate::{
-		error::{Error, Result},
-		Context, State,
-	},
-	log::trace,
+use crate::{
+	error::{Error, Result},
+	Context, State,
 };
 
 /// Restart the bot's process.
+#[tracing::instrument(skip(ctx), fields(user = ctx.author().tag()))]
 #[poise::command(
 	prefix_command,
 	on_error = "Error::handle_command",
@@ -14,7 +12,6 @@ use {
 	global_cooldown = 120
 )]
 pub async fn restart(ctx: Context<'_>) -> Result<()> {
-	trace!("[/restart ({})]", ctx.author().tag());
 	ctx.defer().await?;
 
 	let msg_handle = ctx.say("Restarting bot...").await?;

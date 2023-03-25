@@ -7,7 +7,6 @@ use {
 		Context, State,
 	},
 	gokz_rs::{global_api, kzgo_api, schnose_api, Mode, PlayerIdentifier, Rank},
-	log::trace,
 	num_format::{Locale, ToFormattedString},
 	std::collections::{hash_map::RandomState, HashMap},
 };
@@ -34,6 +33,7 @@ use {
 ///   - If you don't specify this, the bot will search the database for your UserID. If it can't \
 ///   find one, or you don't have a mode preference set, the command will fail. To save a mode \
 ///   preference in the database, see `/mode`.
+#[tracing::instrument(skip(ctx), fields(user = ctx.author().tag()))]
 #[poise::command(slash_command, on_error = "Error::handle_command")]
 pub async fn profile(
 	ctx: Context<'_>,
@@ -46,9 +46,6 @@ pub async fn profile(
 	#[rename = "mode"]
 	mode_choice: Option<ModeChoice>,
 ) -> Result<()> {
-	trace!("[/profile ({})]", ctx.author().tag());
-	trace!("> `target`: {target:?}");
-	trace!("> `mode_choice`: {mode_choice:?}");
 	ctx.defer().await?;
 
 	let db_entry = ctx

@@ -7,8 +7,8 @@ use {
 		error::{Error, Result},
 		Config,
 	},
-	log::{error, info, trace},
 	std::process::{Command, Output},
+	tracing::{error, info, trace},
 };
 
 pub fn restart(config: &Config) -> Result<()> {
