@@ -1,4 +1,5 @@
 log_level = "discord_bot=TRACE,gokz_rs=WARN"
+log_dir = "../logs"
 discord_token = ""
 steam_token = ""
 mode = "Dev"
