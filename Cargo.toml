@@ -1,5 +1,5 @@
 [workspace]
-members = ["discord_bot"]
+members = ["discord_bot", "twitch_bot"]
 
 [workspace.dependencies]
 # error handling
