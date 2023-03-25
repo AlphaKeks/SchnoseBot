@@ -51,9 +51,18 @@ async fn main() -> Eyre<()> {
 	let config_file = std::fs::read_to_string(args.config)?;
 	let config: Config = toml::from_str(&config_file)?;
 
-	let cwd = std::env::var("PWD")?;
-	let file_logger = tracing_appender::rolling::minutely(cwd + "/logs", "schnosebot.log");
-	eprintln!("Writing logs to {file_logger:#?}");
+	let log_dir = if let Some(log_dir) = args.log_dir {
+		log_dir
+	} else if let Some(ref log_dir) = config.log_dir {
+		log_dir.to_owned()
+	} else {
+		let cwd = std::env::var("PWD")?;
+		let log_dir = PathBuf::from(cwd);
+		log_dir.join("logs")
+	};
+
+	eprintln!("Writing logs to {log_dir:#?}");
+	let file_logger = tracing_appender::rolling::minutely(&log_dir, "schnosebot.log");
 
 	let (log_writer, _guard) = tracing_appender::non_blocking(file_logger);
 
@@ -196,6 +205,10 @@ struct Args {
 	#[arg(long)]
 	#[clap(default_value = "false")]
 	pub debug: bool,
+
+	/// The directory to save log files in.
+	#[arg(long = "logs")]
+	pub log_dir: Option<PathBuf>,
 }
 
 /// Config file for the bot.
@@ -211,6 +224,9 @@ pub struct Config {
 	/// This value will default to `INFO`.
 	/// The `--debug` flag will always override this value to `DEBUG`.
 	pub log_level: Option<String>,
+
+	/// The directory to store log files. This defaults to `$PWD/logs`.
+	pub log_dir: Option<PathBuf>,
 
 	/// Authentication Token for the Discord API.
 	pub discord_token: String,
