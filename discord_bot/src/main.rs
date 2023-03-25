@@ -53,6 +53,8 @@ async fn main() -> Eyre<()> {
 
 	let cwd = std::env::var("PWD")?;
 	let file_logger = tracing_appender::rolling::minutely(cwd + "/logs", "schnosebot.log");
+	eprintln!("Writing logs to {file_logger:#?}");
+
 	let (log_writer, _guard) = tracing_appender::non_blocking(file_logger);
 
 	tracing_subscriber::fmt()
