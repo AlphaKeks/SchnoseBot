@@ -4,7 +4,7 @@ use {
 	fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher},
 	gokz_rs::MapIdentifier,
 	std::{collections::HashSet, fmt::Display},
-	tracing::{error, warn},
+	tracing::error,
 	twitch_irc::{
 		irc,
 		login::StaticLoginCredentials,
@@ -90,9 +90,13 @@ impl GlobalState {
 		let mut args = None;
 		if let Some((_, message)) = message.split_once('!') {
 			let mut parts = message.split(' ');
-			if let Some(name) = parts.next() {
-				command_name = Some(name.to_owned());
+
+			command_name = match parts.next() {
+				None => return (None, None),
+				Some(name) if name.is_empty() => return (None, None),
+				Some(name) => Some(name.to_owned()),
 			};
+
 			args = match parts
 				.filter_map(|arg| if arg.is_empty() { None } else { Some(arg.to_owned()) })
 				.collect::<Vec<_>>()
@@ -106,14 +110,13 @@ impl GlobalState {
 
 	pub async fn handle_command(&self, message: PrivmsgMessage) -> Eyre<()> {
 		let (command, args) = Self::parse_args(message.message_text);
-		let Some(command) = command else {
+		let Some(command) = dbg!(command) else {
 			// User only types `!`
 			return Ok(());
 		};
 
 		let channel = message.channel_login;
 
-		// let status = global_api::checkhealth(&self.gokz_client).await?;
 		match match command.as_str() {
 			"apistatus" => commands::apistatus(self).await,
 			"map" => match args {

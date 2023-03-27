@@ -32,7 +32,7 @@ use {
 	color_eyre::Result as Eyre,
 	serde::Deserialize,
 	std::path::PathBuf,
-	tracing::{info, warn},
+	tracing::{info, warn, Level},
 	twitch_irc::{
 		login::{CredentialsPair, StaticLoginCredentials},
 		message::ServerMessage,
@@ -49,14 +49,15 @@ async fn main() -> Eyre<()> {
 
 	tracing_subscriber::fmt()
 		.compact()
+		.with_max_level(Level::DEBUG)
 		.init();
 
 	let config_file = std::fs::read_to_string(args.config_path)?;
-	let mut config: Config = toml::from_str(&config_file)?;
+	let config: Config = toml::from_str(&config_file)?;
 
 	let gokz_client = gokz_rs::Client::new();
 
-	if let Err(why) = gokz_client
+	if let Err(_why) = gokz_client
 		.get("https://id.twitch.tv/oauth2/validate")
 		.header("Authorization", format!("OAuth {}", config.access_token))
 		.send()
@@ -111,8 +112,9 @@ async fn main() -> Eyre<()> {
 					warn!("Command failed: {why:?}");
 				}
 			}
-			message => {
-				warn!("{message:#?}");
+			_message => {
+				// warn!("{message:#?}");
+				warn!("got some message");
 			}
 		}
 	}

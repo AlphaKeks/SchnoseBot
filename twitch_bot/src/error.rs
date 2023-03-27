@@ -44,7 +44,7 @@ impl Display for NoArgs {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		// "You provided incorrect arguments. Expected ..."
 		match self {
-			NoArgs::Map => f.write_str("map name"),
+			NoArgs::Map => f.write_str("map name."),
 		}
 	}
 }
