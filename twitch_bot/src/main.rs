@@ -1,20 +1,7 @@
-#![allow(unused)]
-
-use {
-	clap::Parser,
-	color_eyre::{eyre::eyre, Result as Eyre},
-	gokz_rs::{global_api, schnose_api, MapIdentifier},
-	serde::Deserialize,
-	std::{collections::HashSet, path::PathBuf},
-	tracing::{debug, error, info},
-	twitch_irc::{
-		irc,
-		login::{CredentialsPair, StaticLoginCredentials},
-		message::{IRCMessage, ServerMessage},
-		transport::tcp::{TCPTransport, TLS},
-		ClientConfig, SecureTCPTransport, TwitchIRCClient,
-	},
-};
+#![deny(clippy::perf, clippy::correctness)]
+#![warn(
+	clippy::style, missing_debug_implementations, rust_2018_idioms, rustdoc::broken_intra_doc_links
+)]
 
 #[derive(Debug, Parser)]
 struct Args {
@@ -25,47 +12,35 @@ struct Args {
 
 #[derive(Debug, Deserialize)]
 struct Config {
-	oauth_token: String,
-	channel_name: String,
+	client_id: String,
+	client_secret: String,
+	access_token: String,
+	refresh_token: String,
+	channel_names: Vec<String>,
 }
 
-// macro_rules! sendmsg {
-// 	($message:expr, $channel:expr, $client:expr) => {
-// 		$client
-// 			.send_message(irc!("PRIVMSG", $channel, $message))
-// 			.await
-// 	};
-// }
+mod client;
+mod commands;
+mod error;
+mod global_maps;
 
-type TwitchClient = TwitchIRCClient<TCPTransport<TLS>, StaticLoginCredentials>;
+pub use error::{Error, Result};
 
-#[derive(Debug)]
-struct GlobalState {
-	client: TwitchClient,
-	channels: HashSet<String>,
-	gokz_client: gokz_rs::Client,
-}
+use {
+	clap::Parser,
+	client::GlobalState,
+	color_eyre::Result as Eyre,
+	serde::Deserialize,
+	std::path::PathBuf,
+	tracing::{info, warn},
+	twitch_irc::{
+		login::{CredentialsPair, StaticLoginCredentials},
+		message::ServerMessage,
+		ClientConfig, SecureTCPTransport, TwitchIRCClient,
+	},
+};
 
-impl std::ops::Deref for GlobalState {
-	type Target = TwitchClient;
-
-	fn deref(&self) -> &Self::Target {
-		&self.client
-	}
-}
-
-impl GlobalState {
-	pub async fn send(&self, message: impl AsRef<str>, channel: impl AsRef<str>) -> Eyre<()> {
-		let channel = self
-			.channels
-			.get(channel.as_ref())
-			.map(|channel| format!("#{channel}"))
-			.ok_or(eyre!("NO CHANNEL FOUND"))?;
-		self.send_message(irc!("PRIVMSG", channel, message.as_ref()))
-			.await?;
-		Ok(())
-	}
-}
+const BOT_NAME: &str = "schnosebot";
 
 #[tokio::main]
 async fn main() -> Eyre<()> {
@@ -77,94 +52,68 @@ async fn main() -> Eyre<()> {
 		.init();
 
 	let config_file = std::fs::read_to_string(args.config_path)?;
-	let config: Config = toml::from_str(&config_file)?;
+	let mut config: Config = toml::from_str(&config_file)?;
+
+	let gokz_client = gokz_rs::Client::new();
+
+	if let Err(why) = gokz_client
+		.get("https://id.twitch.tv/oauth2/validate")
+		.header("Authorization", format!("OAuth {}", config.access_token))
+		.send()
+		.await
+	{
+		let refresh_token = gokz_client
+			.post("https://id.twitch.tv/oauth2/token")
+			.query(&[
+				"client_id",
+				config.client_id.as_str(),
+				"client_secret",
+				config.client_secret.as_str(),
+				"grant_type",
+				"refresh_token",
+				"refresh_token",
+				config.refresh_token.as_str(),
+			])
+			.send()
+			.await?;
+
+		eprintln!("Response: {refresh_token:#?}");
+		return Ok(());
+	}
 
 	let client_config = ClientConfig::new_simple(StaticLoginCredentials {
 		credentials: CredentialsPair {
-			login: String::from("schnosebot"),
-			token: Some(config.oauth_token),
+			login: String::from(BOT_NAME),
+			token: Some(config.access_token),
 		},
 	});
 
-	let (mut incoming_messages, client) =
+	let (mut stream, twitch_client) =
 		TwitchIRCClient::<SecureTCPTransport, StaticLoginCredentials>::new(client_config);
 
-	client.join(config.channel_name.clone())?;
+	let global_state = GlobalState::new(twitch_client, config.channel_names, gokz_client).await;
 
-	let state = GlobalState {
-		client,
-		channels: HashSet::from_iter([config.channel_name]),
-		gokz_client: gokz_rs::Client::new(),
-	};
-
-	info!("Joined {:?}.", &state.channels);
-	state
-		.send("Hello, world!", "alphakekskz")
-		.await?;
-
-	while let Some(message) = incoming_messages.recv().await {
-		match message {
-			ServerMessage::Privmsg(msg) => {
-				println!("{}: {}", msg.sender.name, msg.message_text);
-
-				if let Some((_, message)) = msg.message_text.split_once('!') {
-					let mut parts = message.split(' ');
-					let Some(command_name) = parts.next() else {
-						continue;
-					};
-					let args: Vec<_> = parts
-						.filter(|arg| !arg.is_empty())
-						.collect();
-
-					if let Err(why) =
-						handle_command(command_name, args, &msg.channel_login, &state).await
-					{
-						error!("Error while handling command: {why}");
-						state
-							.send(why.to_string(), &msg.channel_login)
-							.await?;
-					}
-				}
-			}
-			message => debug!("Received message: {:?}", message),
-		};
+	for channel in &global_state.channels {
+		info!("Joining `{channel}`");
+		global_state
+			.client
+			.join(channel.to_owned())?;
 	}
 
-	Ok(())
-}
-
-async fn handle_command(
-	command: impl AsRef<str>,
-	args: Vec<&str>,
-	channel: impl AsRef<str>,
-	state: &GlobalState,
-) -> Eyre<()> {
-	match command.as_ref() {
-		"map" => {
-			let Some(map_ident) = args.first() else {
-				return Err(eyre!("missing map identifier"));
-			};
-
-			let map_ident = map_ident.parse::<MapIdentifier>()?;
-
-			let map = schnose_api::get_map(&map_ident, &state.gokz_client).await?;
-
-			let message = format!(
-				"[T{}] {} - Mapper: {} - Last Update: {} - Bonuses: {}",
-				map.tier as u8,
-				map.name,
-				map.mapper_name,
-				map.updated_on,
-				map.courses.len() - 1
-			);
-
-			state.send(message, channel).await?;
-		}
-		"wr" => {
-			todo!();
-		}
-		_ => {
-			return Err(eyre!("Unknown command"));
+	while let Some(message) = stream.recv().await {
+		match message {
+			ServerMessage::Privmsg(message) => {
+				info!("{}: {}", message.sender.name, message.message_text);
+				if let Err(why) = global_state
+					.handle_command(message)
+					.await
+				{
+					warn!("Command failed: {why:?}");
+				}
+			}
+			message => {
+				warn!("{message:#?}");
+			}
 		}
 	}
 

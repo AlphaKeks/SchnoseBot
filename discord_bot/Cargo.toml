@@ -32,7 +32,7 @@ time = { workspace = true }
 regex = { workspace = true }
 num-format = { workspace = true }
 rand = { workspace = true }
-fuzzy-matcher = "0.3"
+fuzzy-matcher = { workspace = true }
 
 # GOKZ
 gokz_rs = { workspace = true }
