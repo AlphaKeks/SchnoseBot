@@ -1,6 +1,6 @@
-use crate::{client::GlobalState, global_maps::GlobalMap, Result};
+use crate::{global_maps::GlobalMap, Result};
 
-pub async fn map(state: &GlobalState, mut args: Vec<String>) -> Result<String> {
+pub async fn execute(map: GlobalMap) -> Result<String> {
 	let GlobalMap {
 		id: _,
 		name,
@@ -16,7 +16,7 @@ pub async fn map(state: &GlobalState, mut args: Vec<String>) -> Result<String> {
 		updated_on,
 		url: _,
 		thumbnail: _,
-	} = state.get_map(args.remove(0))?;
+	} = map;
 
 	let tier = tier as u8;
 	let bonuses = courses.len() - 1;

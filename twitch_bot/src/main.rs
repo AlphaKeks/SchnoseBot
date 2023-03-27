@@ -23,6 +23,7 @@ mod client;
 mod commands;
 mod error;
 mod global_maps;
+mod util;
 
 pub use error::{Error, Result};
 
