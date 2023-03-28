@@ -25,6 +25,9 @@ mod error;
 mod global_maps;
 mod util;
 
+#[cfg(test)]
+mod funny_macro;
+
 pub use error::{Error, Result};
 
 use {
