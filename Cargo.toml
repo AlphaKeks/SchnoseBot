@@ -27,7 +27,7 @@ tokio = { version = "1", features = ["full"] }
 futures = "0.3"
 
 # GOKZ
-gokz_rs = { version = "0.17", features = [
+gokz_rs = { version = "0.18", features = [
 	"global_api",
 	"kzgo_api",
 	"schnose_api",
