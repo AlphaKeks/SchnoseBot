@@ -1,5 +1,5 @@
 use {
-	crate::{commands, global_maps::GlobalMap, Error, Result},
+	crate::{commands, funny_macro::parse_args, global_maps::GlobalMap, Error, Result},
 	color_eyre::{eyre::eyre, Result as Eyre},
 	fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher},
 	gokz_rs::{MapIdentifier, Mode, PlayerIdentifier},
@@ -161,65 +161,40 @@ impl Command {
 
 		let message = message.trim().to_owned();
 
-		let Some((_prefix, args)) = message.split_once('!') else {
-			unreachable!("We checked for '!' above.");
-		};
+		let (_prefix, args) = message
+			.split_once('!')
+			.expect("We checked for '!' above.");
 
 		let mut args = args.split(' ').collect::<Vec<_>>();
 
-		let (command_name, args) = if args.len() < 2 {
-			(args.remove(0), None)
-		} else {
-			let (command_name, args) = args.split_at(1);
-			if !args.is_empty() {
-				(command_name[0], Some(args))
-			} else {
-				(command_name[0], None)
-			}
-		};
+		let (command_name, message) = (
+			args[0],
+			args.drain(1..)
+				.collect::<Vec<_>>()
+				.join(" "),
+		);
 
 		match command_name {
 			"apistatus" => Ok(Self::Apistatus),
 			"map" => {
-				let Some(args) = args else {
-					return Err(Error::MissingArgs { missing: String::from("map name") });
-				};
-
-				let map = state.get_map(args[0].to_owned())?;
+				let map = parse_args!(message, MapIdentifier)?;
+				let map = state.get_map(map)?;
 
 				Ok(Self::Map { map })
 			}
 			"wr" => {
-				let Some(args) = args else {
-					return Err(Error::MissingArgs { missing: String::from("map name -> mode (optional)") });
-				};
-
-				let map = state.get_map(args[0].to_owned())?;
-				let mode = match args.get(1) {
-					Some(mode) => mode.parse::<Mode>()?,
-					None => Mode::KZTimer,
-				};
+				let (map, mode) = parse_args!(message, MapIdentifier, "opt" Mode)?;
+				let map = state.get_map(map)?;
+				let mode = mode.unwrap_or(Mode::KZTimer);
 
 				Ok(Self::WR { map, mode })
 			}
 			"pb" => {
-				let Some(args) = args else {
-					return Err(Error::MissingArgs { missing: String::from("map name -> player -> mode (optional)") });
-				};
-
-				let map = state.get_map(args[0].to_owned())?;
-
-				let player = args
-					.get(1)
-					.map(|player| player.parse::<PlayerIdentifier>())
-					.ok_or(Error::IncorrectArgs {
-						expected: String::from("player identifier"),
-					})??;
-
-				let mode = match args.get(2) {
-					Some(mode) => mode.parse::<Mode>()?,
-					None => Mode::KZTimer,
-				};
+				dbg!(&message);
+				let (map, mode, player) =
+					parse_args!(message, MapIdentifier, "opt" Mode, PlayerIdentifier)?;
+				let map = state.get_map(map)?;
+				let mode = mode.unwrap_or(Mode::KZTimer);
 
 				Ok(Self::PB { map, player, mode })
 			}

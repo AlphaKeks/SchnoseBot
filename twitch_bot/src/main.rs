@@ -11,6 +11,7 @@ struct Args {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(unused)]
 struct Config {
 	client_id: String,
 	client_secret: String,
@@ -22,11 +23,9 @@ struct Config {
 mod client;
 mod commands;
 mod error;
+mod funny_macro;
 mod global_maps;
 mod util;
-
-#[cfg(test)]
-mod funny_macro;
 
 pub use error::{Error, Result};
 
@@ -36,7 +35,7 @@ use {
 	color_eyre::Result as Eyre,
 	serde::Deserialize,
 	std::path::PathBuf,
-	tracing::{info, warn, Level},
+	tracing::{debug, info, warn, Level},
 	twitch_irc::{
 		login::{CredentialsPair, StaticLoginCredentials},
 		message::ServerMessage,
@@ -53,7 +52,7 @@ async fn main() -> Eyre<()> {
 
 	tracing_subscriber::fmt()
 		.compact()
-		.with_max_level(Level::DEBUG)
+		.with_max_level(Level::INFO)
 		.init();
 
 	let config_file = std::fs::read_to_string(args.config_path)?;
@@ -61,30 +60,40 @@ async fn main() -> Eyre<()> {
 
 	let gokz_client = gokz_rs::Client::new();
 
-	if let Err(_why) = gokz_client
-		.get("https://id.twitch.tv/oauth2/validate")
-		.header("Authorization", format!("OAuth {}", config.access_token))
-		.send()
-		.await
-	{
-		let refresh_token = gokz_client
-			.post("https://id.twitch.tv/oauth2/token")
-			.query(&[
-				"client_id",
-				config.client_id.as_str(),
-				"client_secret",
-				config.client_secret.as_str(),
-				"grant_type",
-				"refresh_token",
-				"refresh_token",
-				config.refresh_token.as_str(),
-			])
-			.send()
-			.await?;
-
-		eprintln!("Response: {refresh_token:#?}");
-		return Ok(());
-	}
+	// if gokz_client
+	// 	.get("https://id.twitch.tv/oauth2/validate")
+	// 	.header("Authorization", format!("OAuth {}", config.access_token))
+	// 	.send()
+	// 	.await?
+	// 	.error_for_status()
+	// 	.is_err()
+	// {
+	// 	let refresh_token = gokz_client
+	// 		.post("https://id.twitch.tv/oauth2/token")
+	// 		.header("Content-Type", "application/x-www-form-urlencoded")
+	// 		.query(&[
+	// 			("client_id", config.client_id.as_str()),
+	// 			("client_secret", config.client_secret.as_str()),
+	// 			("grant_type", "refresh_token"),
+	// 			("refresh_token", config.refresh_token.as_str()),
+	// 		])
+	// 		.send()
+	// 		.await?
+	// 		.json::<serde_json::Value>()
+	// 		.await?;
+	//
+	// 	dbg!(&refresh_token);
+	//
+	// 	config.refresh_token = refresh_token
+	// 		.get("refresh_token")
+	// 		.expect("No refresh_token field found")
+	// 		.to_string();
+	//
+	// 	config.access_token = refresh_token
+	// 		.get("access_token")
+	// 		.expect("No refresh_token field found")
+	// 		.to_string();
+	// }
 
 	let client_config = ClientConfig::new_simple(StaticLoginCredentials {
 		credentials: CredentialsPair {
@@ -116,9 +125,9 @@ async fn main() -> Eyre<()> {
 					warn!("Command failed: {why:?}");
 				}
 			}
-			_message => {
-				// warn!("{message:#?}");
+			message => {
 				warn!("got some message");
+				debug!("{message:?}");
 			}
 		}
 	}
