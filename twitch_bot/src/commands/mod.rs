@@ -1,7 +1,5 @@
 pub mod apistatus;
-
+pub mod bwr;
 pub mod map;
-
-pub mod wr;
-
 pub mod pb;
+pub mod wr;
