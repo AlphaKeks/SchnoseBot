@@ -107,6 +107,7 @@ impl GlobalState {
 					Command::Map { .. } => true,
 					Command::WR { .. } => true,
 					Command::PB { .. } => true,
+					Command::Player { .. } => true,
 				};
 
 				match command.execute(self).await {
@@ -164,6 +165,9 @@ pub enum Command {
 		map: GlobalMap,
 		player: PlayerIdentifier,
 		mode: Mode,
+	},
+	Player {
+		player: PlayerIdentifier,
 	},
 }
 
@@ -229,6 +233,11 @@ impl Command {
 
 				Ok(Self::PB { map, player, mode })
 			}
+			"player" => {
+				let player = parse_args!(message, PlayerIdentifier)?;
+
+				Ok(Self::Player { player })
+			}
 			cmd => Err(Error::UnknownCommand(cmd.to_owned())),
 		}
 	}
@@ -245,6 +254,7 @@ impl Command {
 			Self::Map { map } => commands::map::execute(map).await,
 			Self::WR { map, mode } => commands::wr::execute(state, map, mode).await,
 			Self::PB { map, player, mode } => commands::pb::execute(state, map, player, mode).await,
+			Self::Player { player } => commands::player::execute(state, player).await,
 		}
 	}
 }
