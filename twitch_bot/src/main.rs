@@ -36,6 +36,7 @@ use {
 	serde::Deserialize,
 	std::path::PathBuf,
 	tracing::{debug, info, warn, Level},
+	tracing_subscriber::fmt::format::FmtSpan,
 	twitch_irc::{
 		login::{CredentialsPair, StaticLoginCredentials},
 		message::ServerMessage,
@@ -53,6 +54,7 @@ async fn main() -> Eyre<()> {
 	tracing_subscriber::fmt()
 		.compact()
 		.with_max_level(Level::INFO)
+		.with_span_events(FmtSpan::NEW)
 		.init();
 
 	let config_file = std::fs::read_to_string(args.config_path)?;

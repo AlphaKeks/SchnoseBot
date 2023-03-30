@@ -3,6 +3,7 @@ use {
 	gokz_rs::{global_api, Mode},
 };
 
+#[tracing::instrument(skip(state))]
 pub async fn execute(
 	state: &GlobalState,
 	map: GlobalMap,

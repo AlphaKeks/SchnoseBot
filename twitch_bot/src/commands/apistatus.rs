@@ -3,6 +3,7 @@ use {
 	gokz_rs::global_api,
 };
 
+#[tracing::instrument(skip(state))]
 pub async fn execute(state: &GlobalState) -> Result<String> {
 	let status = global_api::checkhealth(&state.gokz_client).await?;
 

@@ -9,11 +9,14 @@ pub async fn execute(
 	map: GlobalMap,
 	player: PlayerIdentifier,
 	mode: Mode,
+	course: u8,
 ) -> Result<String> {
 	let tp =
-		global_api::get_pb(player.clone(), map.id.into(), mode, true, 0, &state.gokz_client).await;
+		global_api::get_pb(player.clone(), map.id.into(), mode, true, course, &state.gokz_client)
+			.await;
 	let pro =
-		global_api::get_pb(player.clone(), map.id.into(), mode, false, 0, &state.gokz_client).await;
+		global_api::get_pb(player.clone(), map.id.into(), mode, false, course, &state.gokz_client)
+			.await;
 
 	let map = map.name;
 	let mode = mode.short();
@@ -40,5 +43,5 @@ pub async fn execute(
 		String::from("no PRO record")
 	};
 
-	Ok(format!("[{player_name} on {map} in {mode}] TP: {tp} / PRO: {pro}"))
+	Ok(format!("[{player_name} on {map} B{course} in {mode}] TP: {tp} / PRO: {pro}"))
 }

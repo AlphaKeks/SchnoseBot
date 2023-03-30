@@ -1,5 +1,6 @@
 use crate::{global_maps::GlobalMap, Result};
 
+#[tracing::instrument]
 pub async fn execute(map: GlobalMap) -> Result<String> {
 	let GlobalMap {
 		id: _,

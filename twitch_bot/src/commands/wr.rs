@@ -3,6 +3,7 @@ use {
 	gokz_rs::{global_api, Mode},
 };
 
+#[tracing::instrument(skip(state))]
 pub async fn execute(state: &GlobalState, map: GlobalMap, mode: Mode) -> Result<String> {
 	let tp = global_api::get_wr(map.id.into(), mode, true, 0, &state.gokz_client).await;
 	let pro = global_api::get_wr(map.id.into(), mode, false, 0, &state.gokz_client).await;

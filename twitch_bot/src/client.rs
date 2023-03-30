@@ -102,6 +102,7 @@ impl GlobalState {
 			Ok(command) => {
 				let tag_user = match command {
 					Command::Apistatus => true,
+					Command::BPB { .. } => true,
 					Command::BWR { .. } => true,
 					Command::Map { .. } => true,
 					Command::WR { .. } => true,
@@ -141,6 +142,12 @@ impl GlobalState {
 #[allow(clippy::upper_case_acronyms)]
 pub enum Command {
 	Apistatus,
+	BPB {
+		map: GlobalMap,
+		player: PlayerIdentifier,
+		mode: Mode,
+		course: u8,
+	},
 	BWR {
 		map: GlobalMap,
 		mode: Mode,
@@ -183,6 +190,15 @@ impl Command {
 
 		match command_name {
 			"apistatus" => Ok(Self::Apistatus),
+			"bpb" => {
+				let (map, mode, course, player) =
+					parse_args!(message, MapIdentifier, "opt" Mode, "opt" u8, PlayerIdentifier)?;
+				let map = state.get_map(map)?;
+				let mode = mode.unwrap_or(Mode::KZTimer);
+				let course = course.unwrap_or(1).max(1);
+
+				Ok(Self::BPB { map, player, mode, course })
+			}
 			"bwr" => {
 				let (map, mode, course) =
 					parse_args!(message, MapIdentifier, "opt" Mode, "opt" u8)?;
@@ -206,7 +222,6 @@ impl Command {
 				Ok(Self::WR { map, mode })
 			}
 			"pb" => {
-				dbg!(&message);
 				let (map, mode, player) =
 					parse_args!(message, MapIdentifier, "opt" Mode, PlayerIdentifier)?;
 				let map = state.get_map(map)?;
@@ -221,6 +236,9 @@ impl Command {
 	pub async fn execute(self, state: &GlobalState) -> Result<String> {
 		match self {
 			Self::Apistatus => commands::apistatus::execute(state).await,
+			Self::BPB { map, player, mode, course } => {
+				commands::bpb::execute(state, map, player, mode, course).await
+			}
 			Self::BWR { map, mode, course } => {
 				commands::bwr::execute(state, map, mode, course).await
 			}
