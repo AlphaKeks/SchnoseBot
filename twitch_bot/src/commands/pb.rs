@@ -16,10 +16,10 @@ pub async fn execute(
 
 	let map = map.name;
 	let mode = mode.short();
-	let mut player_name = String::from("unknown");
+	let mut player_name = player;
 
 	let tp = if let Ok(record) = tp {
-		player_name = record.player_name.clone();
+		player_name = record.player_name.into();
 		format!(
 			"{} ({})",
 			fmt_time(record.time),
@@ -33,7 +33,7 @@ pub async fn execute(
 	};
 
 	let pro = if let Ok(record) = pro {
-		player_name = record.player_name.clone();
+		player_name = record.player_name.into();
 		fmt_time(record.time)
 	} else {
 		String::from("no PRO record")
