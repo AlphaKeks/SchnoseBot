@@ -1,100 +1,11 @@
-#![allow(clippy::needless_question_mark)]
-
 use {
+	crate::error::GenParseError,
 	color_eyre::Result,
 	gokz_rs::{MapIdentifier, Mode, PlayerIdentifier},
 };
 
-// trait FromStrWrapper {
-// 	type Output;
-// 	type Err;
-// 	fn from_opt_str(s: &str) -> Result<Self::Output, Self::Err>;
-// }
-//
-// impl<T: std::str::FromStr> FromStrWrapper for Option<T> {
-// 	type Output = Option<T>;
-// 	type Err = Option<Self::Output>;
-// 	fn from_opt_str(s: &str) -> Result<Self::Output, Self::Err> {
-// 		Ok(s.parse::<T>().ok())
-// 	}
-// }
-//
-// macro_rules! from_str_opt {
-// 	($t:ty) => {
-// 		impl FromStrWrapper for $t {
-// 			type Output = $t;
-// 			type Err = <$t as std::str::FromStr>::Err;
-// 			fn from_opt_str(s: &str) -> Result<Self::Output, Self::Err> {
-// 				s.parse()
-// 			}
-// 		}
-// 	};
-// }
-//
-// from_str_opt!(Mode);
-// from_str_opt!(PlayerIdentifier);
-// from_str_opt!(MapIdentifier);
-
-trait GenParseError {
-	fn incorrect() -> crate::Error;
-}
-
-macro_rules! gen_parse_err {
-	($t:ty, $incorrect:expr) => {
-		impl GenParseError for $t {
-			fn incorrect() -> crate::Error {
-				$incorrect
-			}
-		}
-	};
-}
-
-gen_parse_err!(Mode, crate::Error::IncorrectArgs { expected: String::from("valid mode") });
-gen_parse_err!(
-	PlayerIdentifier,
-	crate::Error::IncorrectArgs { expected: String::from("valid player") }
-);
-gen_parse_err!(MapIdentifier, crate::Error::IncorrectArgs { expected: String::from("valid map") });
-
-// macro_rules! parse_args {
-//     ( $message:expr, $( $t:ty ),+ ) => ({
-// 		(|| -> Result<_, crate::Error> {
-// 			let mut message: Vec<&str> = $message.split(' ').collect();
-// 			Ok(($({
-// 				let mut idx = None;
-// 				for (i, word) in message.iter().enumerate() {
-// 					if idx.is_some() {
-// 						break;
-// 					}
-// 					if <$t as FromStrWrapper>::from_opt_str(word).is_ok() {
-// 						idx = Some(i);
-// 					}
-// 				}
-// 				message.push("");
-//
-// 				let idx = idx.ok_or(<$t as GenParseError>::missing())?;
-// 				let word = message.remove(idx);
-// 				let parsed = <$t as FromStrWrapper>::from_opt_str(word).expect("we found it earlier");
-// 				Result::<_, crate::Error>::Ok(parsed)
-// 			}?),+))
-// 		})()
-// 	});
-// }
-
 macro_rules! parse_args {
-    ( internal $message:expr, $t:ty ) => ({
-		(|| -> Result<_, crate::Error> {
-			for (i, word) in $message.iter().enumerate() {
-				if let Ok(parsed) = word.parse::<$t>() {
-					let _ = $message.remove(i);
-					return Ok(parsed);
-				}
-			}
-			Err(<$t as GenParseError>::incorrect())
-		})()
-    });
-
-    ( internal $message:expr, opt $t:ty ) => ({
+    ( $message:expr => $opt:literal $t:ty ) => ({
 		(|| -> Result<Option<$t>> {
 			for (i, word) in $message.iter().enumerate() {
 				if let Ok(parsed) = word.parse::<$t>() {
@@ -106,14 +17,27 @@ macro_rules! parse_args {
 		})()
 	});
 
-    ( $message:expr, $( $($opt:ident)? $t:ty ),+ ) => ({
-		let mut message: Vec<&str> = $message.split(' ').collect();
+    ( $message:expr => $t:ty ) => ({
+		(|| -> Result<_, crate::Error> {
+			for (i, word) in $message.iter().enumerate() {
+				if let Ok(parsed) = word.parse::<$t>() {
+					let _ = $message.remove(i);
+					return Ok(parsed);
+				}
+			}
+			Err(<$t as GenParseError>::incorrect())
+		})()
+    });
 
-		Ok((
-			$({
-				$( parse_args!(internal &mut message, $($opt:ident)? $t) ),+
-			}?),+
-		))
+    ( $message:expr, $( $($opt:literal)? $t:ty ),+ ) => ({
+		(|| -> Result<_, crate::Error> {
+			let mut message: Vec<&str> = $message.split(' ').collect();
+			Ok((
+				$(
+					parse_args!(message => $($opt)? $t)?
+				),+
+			))
+		})()
     });
 }
 
@@ -124,35 +48,75 @@ fn map_only() -> Result<()> {
 	let map = parse_args!(message, MapIdentifier)?;
 	assert_eq!(map, MapIdentifier::Name(String::from("lionharder")));
 
+	let message = "";
+
+	let map = parse_args!(message, MapIdentifier);
+	assert!(map.is_err());
+
+	let message = "";
+
+	let map = parse_args!(message, "opt" MapIdentifier)?;
+	assert!(map.is_none());
+
+	let message = "lionharder";
+
+	let map = parse_args!(message, "opt" MapIdentifier)?;
+	assert!(map.is_some());
+	assert_eq!(map, Some(MapIdentifier::Name(String::from("lionharder"))));
+
 	Ok(())
 }
 
-// #[test]
-// fn map_and_mode() -> Result<()> {
-// 	let message = "lionharder skz";
-//
-// 	let (map, mode) = parse_args!(message, MapIdentifier, Mode)?;
-// 	assert_eq!(map, MapIdentifier::Name(String::from("lionharder")));
-// 	assert_eq!(mode, Mode::SimpleKZ);
-//
-// 	Ok(())
-// }
+#[test]
+fn map_and_mode() -> Result<()> {
+	let message = "lionharder skz";
 
-// #[test]
-// fn map_and_mode_and_player() -> Result<()> {
-// 	let message = "lionharder skz alphakeks";
-//
-// 	let (map, mode, player) = parse_args!(message, MapIdentifier, Mode, PlayerIdentifier)?;
-// 	assert_eq!(map, MapIdentifier::Name(String::from("lionharder")));
-// 	assert_eq!(mode, Mode::SimpleKZ);
-// 	assert_eq!(player, PlayerIdentifier::Name(String::from("alphakeks")));
-//
-// 	let message = "lionharder alphakeks skz";
-//
-// 	let (map, mode, player) = parse_args!(message, MapIdentifier, Mode, PlayerIdentifier)?;
-// 	assert_eq!(map, MapIdentifier::Name(String::from("lionharder")));
-// 	assert_eq!(mode, Mode::SimpleKZ);
-// 	assert_eq!(player, PlayerIdentifier::Name(String::from("alphakeks")));
-//
-// 	Ok(())
-// }
+	let (map, mode) = parse_args!(message, MapIdentifier, Mode)?;
+	assert_eq!(map, MapIdentifier::Name(String::from("lionharder")));
+	assert_eq!(mode, Mode::SimpleKZ);
+
+	let message = "";
+
+	let parse_result = parse_args!(message, MapIdentifier, Mode);
+	assert!(parse_result.is_err());
+
+	let message = "";
+
+	let (map, mode) = parse_args!(message, "opt" MapIdentifier, "opt" Mode)?;
+	assert!(map.is_none());
+	assert!(mode.is_none());
+
+	let message = "lionharder";
+
+	let (map, mode) = parse_args!(message, "opt" MapIdentifier, "opt" Mode)?;
+	assert!(map.is_some());
+	assert!(mode.is_none());
+
+	let message = "skz";
+
+	let (mode, map) = parse_args!(message, "opt" Mode, "opt" MapIdentifier)?;
+	assert!(mode.is_some());
+	assert!(map.is_none());
+
+	Ok(())
+}
+
+#[test]
+fn map_maybe_mode_maybe_player() -> Result<()> {
+	let message = "lionharder skz alphakeks";
+
+	let (map, mode, player) = parse_args!(message, MapIdentifier, Mode, PlayerIdentifier)?;
+	assert_eq!(map, MapIdentifier::Name(String::from("lionharder")));
+	assert_eq!(mode, Mode::SimpleKZ);
+	assert_eq!(player, PlayerIdentifier::Name(String::from("alphakeks")));
+
+	let message = "lionharder skz";
+
+	let (map, mode, player) =
+		parse_args!(message, MapIdentifier, "opt" Mode, "opt" PlayerIdentifier)?;
+	assert_eq!(map, MapIdentifier::Name(String::from("lionharder")));
+	assert_eq!(mode, Some(Mode::SimpleKZ));
+	assert_eq!(player, None);
+
+	Ok(())
+}

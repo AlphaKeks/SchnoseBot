@@ -1,4 +1,7 @@
-use std::fmt::Display;
+use {
+	gokz_rs::{MapIdentifier, Mode, PlayerIdentifier},
+	std::fmt::Display,
+};
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -50,3 +53,23 @@ impl From<std::convert::Infallible> for Error {
 		Self::Unknown
 	}
 }
+
+pub trait GenParseError {
+	fn incorrect() -> crate::Error;
+}
+
+macro_rules! gen_parse_err {
+	($t:ty, $incorrect:expr) => {
+		impl GenParseError for $t {
+			fn incorrect() -> crate::Error {
+				$incorrect
+			}
+		}
+	};
+}
+
+pub(crate) use gen_parse_err;
+
+gen_parse_err!(Mode, crate::Error::IncorrectArgs { expected: String::from("mode") });
+gen_parse_err!(PlayerIdentifier, crate::Error::IncorrectArgs { expected: String::from("player") });
+gen_parse_err!(MapIdentifier, crate::Error::IncorrectArgs { expected: String::from("map") });
