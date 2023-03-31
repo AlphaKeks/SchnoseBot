@@ -1,17 +1,9 @@
 [package]
-name = "twitch_bot"
+name = "gsi_client"
 version = "0.1.0"
 edition = "2021"
 
-authors = ["AlphaKeks <alphakeks@dawn.sh>"]
-repository = "https://github.com/AlphaKeks/SchnoseBot"
-readme = "./README.md"
-license-file = "../LICENSE"
-publish = false
-
 [dependencies]
-schnosebot = { path = "../schnosebot" }
-
 # error handling
 color-eyre = { workspace = true }
 
@@ -27,17 +19,17 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 toml = { workspace = true }
 
-# utility
-chrono = { workspace = true }
-
 # GOKZ
 gokz_rs = { workspace = true }
 
 # async
-tokio = { workspace = true }
+tokio = { version = "0.2", features = ["full"] }
 
 # SQL
 sqlx = { workspace = true }
 
-# Twitch
-twitch-irc = "5"
+# CS:GO
+csgo-gsi = "0.3"
+
+# egui
+eframe = { version = "0.21" }
