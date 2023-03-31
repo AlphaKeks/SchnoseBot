@@ -1,6 +1,7 @@
 use {
 	crate::{client::GlobalState, global_maps::GlobalMap, util::fmt_time, Result},
 	gokz_rs::{global_api, Mode},
+	tokio::time::{sleep, Duration},
 };
 
 #[tracing::instrument(skip(state))]
@@ -35,6 +36,8 @@ pub async fn execute(
 	} else {
 		String::from("no PRO record")
 	};
+
+	sleep(Duration::from_millis(727)).await;
 
 	Ok(format!("[BWR {course} on {map} in {mode}] TP: {tp} / PRO: {pro}"))
 }

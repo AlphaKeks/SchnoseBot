@@ -36,5 +36,8 @@ gokz_rs = { workspace = true }
 # async
 tokio = { workspace = true }
 
+# SQL
+sqlx = { workspace = true }
+
 # Twitch
 twitch-irc = "5"

@@ -8,20 +8,21 @@ struct Args {
 	#[arg(short, long = "config")]
 	#[clap(default_value = "./config.toml")]
 	config_path: PathBuf,
+
+	#[arg(long)]
+	#[clap(default_value = "false")]
+	debug: bool,
 }
 
 #[derive(Debug, Deserialize)]
 #[allow(unused)]
 struct Config {
-	client_id: String,
-	client_secret: String,
-	access_token: String,
-	refresh_token: String,
-	channel_names: Vec<String>,
+	mysql_url: String,
 }
 
 mod client;
 mod commands;
+mod db;
 mod error;
 mod funny_macro;
 mod global_maps;
@@ -53,7 +54,7 @@ async fn main() -> Eyre<()> {
 
 	tracing_subscriber::fmt()
 		.compact()
-		.with_max_level(Level::INFO)
+		.with_max_level(if args.debug { Level::DEBUG } else { Level::INFO })
 		.with_span_events(FmtSpan::NEW)
 		.init();
 
@@ -62,40 +63,9 @@ async fn main() -> Eyre<()> {
 
 	let gokz_client = gokz_rs::Client::new();
 
-	// if gokz_client
-	// 	.get("https://id.twitch.tv/oauth2/validate")
-	// 	.header("Authorization", format!("OAuth {}", config.access_token))
-	// 	.send()
-	// 	.await?
-	// 	.error_for_status()
-	// 	.is_err()
-	// {
-	// 	let refresh_token = gokz_client
-	// 		.post("https://id.twitch.tv/oauth2/token")
-	// 		.header("Content-Type", "application/x-www-form-urlencoded")
-	// 		.query(&[
-	// 			("client_id", config.client_id.as_str()),
-	// 			("client_secret", config.client_secret.as_str()),
-	// 			("grant_type", "refresh_token"),
-	// 			("refresh_token", config.refresh_token.as_str()),
-	// 		])
-	// 		.send()
-	// 		.await?
-	// 		.json::<serde_json::Value>()
-	// 		.await?;
-	//
-	// 	dbg!(&refresh_token);
-	//
-	// 	config.refresh_token = refresh_token
-	// 		.get("refresh_token")
-	// 		.expect("No refresh_token field found")
-	// 		.to_string();
-	//
-	// 	config.access_token = refresh_token
-	// 		.get("access_token")
-	// 		.expect("No refresh_token field found")
-	// 		.to_string();
-	// }
+	let mysql_url = config.mysql_url;
+	let config = db::get_config(&mysql_url).await?;
+	let config = db::update_tokens(&mysql_url, config, &gokz_client).await?;
 
 	let client_config = ClientConfig::new_simple(StaticLoginCredentials {
 		credentials: CredentialsPair {

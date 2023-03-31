@@ -108,6 +108,8 @@ impl GlobalState {
 					Command::WR { .. } => true,
 					Command::PB { .. } => true,
 					Command::Player { .. } => true,
+					Command::Recent { .. } => true,
+					Command::MostRecentRun => true,
 				};
 
 				match command.execute(self).await {
@@ -169,6 +171,10 @@ pub enum Command {
 	Player {
 		player: PlayerIdentifier,
 	},
+	Recent {
+		player: PlayerIdentifier,
+	},
+	MostRecentRun,
 }
 
 impl Command {
@@ -193,7 +199,7 @@ impl Command {
 		);
 
 		match command_name {
-			"apistatus" => Ok(Self::Apistatus),
+			"api" | "apistatus" => Ok(Self::Apistatus),
 			"bpb" => {
 				let (map, mode, course, player) =
 					parse_args!(message, MapIdentifier, "opt" Mode, "opt" u8, PlayerIdentifier)?;
@@ -212,7 +218,7 @@ impl Command {
 
 				Ok(Self::BWR { map, mode, course })
 			}
-			"map" => {
+			"m" | "map" => {
 				let map = parse_args!(message, MapIdentifier)?;
 				let map = state.get_map(map)?;
 
@@ -233,11 +239,17 @@ impl Command {
 
 				Ok(Self::PB { map, player, mode })
 			}
-			"player" => {
+			"p" | "player" | "profile" => {
 				let player = parse_args!(message, PlayerIdentifier)?;
 
 				Ok(Self::Player { player })
 			}
+			"recent" => {
+				let player = parse_args!(message, PlayerIdentifier)?;
+
+				Ok(Self::Recent { player })
+			}
+			"mostrecentrun" | "mrr" => Ok(Self::MostRecentRun),
 			cmd => Err(Error::UnknownCommand(cmd.to_owned())),
 		}
 	}
@@ -255,6 +267,8 @@ impl Command {
 			Self::WR { map, mode } => commands::wr::execute(state, map, mode).await,
 			Self::PB { map, player, mode } => commands::pb::execute(state, map, player, mode).await,
 			Self::Player { player } => commands::player::execute(state, player).await,
+			Self::Recent { player } => commands::recent::execute(state, player).await,
+			Self::MostRecentRun => commands::mrr::execute(state).await,
 		}
 	}
 }

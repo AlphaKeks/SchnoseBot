@@ -1,4 +1,7 @@
-use crate::{global_maps::GlobalMap, Result};
+use {
+	crate::{global_maps::GlobalMap, Result},
+	tokio::time::{sleep, Duration},
+};
 
 #[tracing::instrument]
 pub async fn execute(map: GlobalMap) -> Result<String> {
@@ -21,8 +24,11 @@ pub async fn execute(map: GlobalMap) -> Result<String> {
 
 	let tier = tier as u8;
 	let bonuses = courses.len() - 1;
+	let plural = if bonuses > 1 { "es" } else { "" };
+
+	sleep(Duration::from_millis(727)).await;
 
 	Ok(format!(
-		"{name} (T{tier}) - {bonuses} Bonuses - Made by {mapper_name} - Last Updated on {updated_on}"
+		"{name} (T{tier}) - {bonuses} Bonus{plural} - Made by {mapper_name} - Last Updated on {updated_on}"
 	))
 }
