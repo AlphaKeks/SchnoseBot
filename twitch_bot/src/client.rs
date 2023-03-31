@@ -5,6 +5,7 @@ use {
 	schnosebot::global_maps::{self, GlobalMap},
 	sqlx::{MySql, Pool, QueryBuilder},
 	std::{collections::HashSet, fmt::Display},
+	tracing::warn,
 	twitch_irc::{
 		irc,
 		login::StaticLoginCredentials,

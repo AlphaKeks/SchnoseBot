@@ -35,6 +35,7 @@ use {
 	serde::Deserialize,
 	sqlx::mysql::MySqlPoolOptions,
 	std::path::PathBuf,
+	tokio::time::Instant,
 	tracing::{debug, info, warn, Level},
 	tracing_subscriber::fmt::format::FmtSpan,
 	twitch_irc::{
@@ -89,29 +90,44 @@ async fn main() -> Eyre<()> {
 			.join(channel.to_owned())?;
 	}
 
+	let mut last_message = Instant::now();
+
 	while let Some(message) = stream.recv().await {
 		match message {
 			ServerMessage::Privmsg(message) => {
 				info!("{}: {}", message.sender.name, message.message_text);
 
 				if message.channel_login == "schnosebot" {
+					let elapsed = last_message.elapsed().as_secs();
+					if elapsed < 30 {
+						let msg = format!(
+							"Currently on cooldown. Please wait another {} second(s).",
+							30 - elapsed
+						);
+						global_state
+							.send(msg, message, false)
+							.await?;
+						continue;
+					}
+
 					match message.message_text.as_str() {
 						"!join" => {
 							global_state
 								.join_channel(message)
 								.await?;
-
-							continue;
 						}
 						"!leave" => {
 							global_state
 								.leave_channel(message)
 								.await?;
-
-							continue;
 						}
 						_ => {}
 					}
+
+					debug!("Current channels: {:#?}", global_state.channels);
+
+					last_message = Instant::now();
+					continue;
 				}
 
 				if let Err(why) = global_state
