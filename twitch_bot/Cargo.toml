@@ -30,7 +30,6 @@ toml = { workspace = true }
 
 # utility
 chrono = { workspace = true }
-fuzzy-matcher = { workspace = true }
 
 # GOKZ
 gokz_rs = { workspace = true }

@@ -1,10 +1,9 @@
 use {
 	crate::{commands, funny_macro::parse_args, Error, Result},
 	color_eyre::{eyre::eyre, Result as Eyre},
-	fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher},
 	gokz_rs::{MapIdentifier, Mode, PlayerIdentifier},
 	schnosebot::global_maps::{self, GlobalMap},
-	sqlx::{MySql, Pool},
+	sqlx::{MySql, Pool, QueryBuilder},
 	std::{collections::HashSet, fmt::Display},
 	twitch_irc::{
 		irc,
@@ -52,29 +51,9 @@ impl GlobalState {
 
 	pub fn get_map(&self, map_identifier: impl Into<MapIdentifier>) -> Result<GlobalMap> {
 		let map_identifier = map_identifier.into();
-		match map_identifier {
-			MapIdentifier::ID(map_id) => self
-				.global_maps()
-				.iter()
-				.find_map(|map| if map.id == map_id { Some(map.to_owned()) } else { None })
-				.ok_or(gokz_rs::Error::InvalidMapIdentifier { value: map_id.to_string() }.into()),
-			MapIdentifier::Name(map_name) => {
-				let fzf = SkimMatcherV2::default();
-				let map_name = map_name.to_lowercase();
-				self.global_maps()
-					.iter()
-					.filter_map(|map| {
-						let score = fzf.fuzzy_match(&map.name, &map_name)?;
-						if score > 0 || map_name.is_empty() {
-							return Some((score, map.to_owned()));
-						}
-						None
-					})
-					.max_by(|(a_score, _), (b_score, _)| a_score.cmp(b_score))
-					.map(|(_, map)| map)
-					.ok_or(gokz_rs::Error::InvalidMapIdentifier { value: map_name }.into())
-			}
-		}
+		schnosebot::global_maps::fuzzy_find_map(map_identifier.clone(), self.global_maps()).ok_or(
+			gokz_rs::Error::InvalidMapIdentifier { value: map_identifier.to_string() }.into(),
+		)
 	}
 
 	pub async fn send(
@@ -136,6 +115,8 @@ impl GlobalState {
 						format!("Incorrect arguments. Expected {expected}.")
 					}
 					Error::GOKZ { message } => message,
+					e @ Error::Database => e.to_string(),
+					e @ Error::Twitch => e.to_string(),
 				},
 				true,
 			),
@@ -143,6 +124,47 @@ impl GlobalState {
 
 		self.send(reply, message, tag_user)
 			.await
+	}
+
+	pub async fn join_channel(&mut self, ctx: PrivmsgMessage) -> Result<()> {
+		let channel_name = &ctx.sender.login;
+		let mut query = QueryBuilder::new("INSERT INTO channels (channel_name) VALUES (");
+		query.push_bind(channel_name).push(")");
+		query
+			.build()
+			.execute(&self.conn_pool)
+			.await?;
+
+		self.channels
+			.insert(channel_name.to_owned());
+
+		self.client
+			.join(channel_name.to_owned())?;
+
+		self.send(format!("Successfully joined {channel_name}."), ctx, true)
+			.await?;
+
+		Ok(())
+	}
+
+	pub async fn leave_channel(&mut self, ctx: PrivmsgMessage) -> Result<()> {
+		let channel_name = &ctx.sender.login;
+		let mut query = QueryBuilder::new("DELETE FROM channels WHERE channel_name = ");
+		query.push_bind(channel_name);
+		query
+			.build()
+			.execute(&self.conn_pool)
+			.await?;
+
+		self.channels.remove(channel_name);
+
+		self.client
+			.part(channel_name.to_owned());
+
+		self.send(format!("Successfully left {channel_name}."), ctx, true)
+			.await?;
+
+		Ok(())
 	}
 }
 

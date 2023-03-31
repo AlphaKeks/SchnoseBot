@@ -1,6 +1,7 @@
 use {
 	gokz_rs::{MapIdentifier, Mode, PlayerIdentifier},
 	std::fmt::Display,
+	tracing::error,
 };
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -14,6 +15,8 @@ pub enum Error {
 	MissingArgs { missing: String },
 	IncorrectArgs { expected: String },
 	GOKZ { message: String },
+	Database,
+	Twitch,
 }
 
 impl std::error::Error for Error {}
@@ -32,6 +35,8 @@ impl Display for Error {
 				f.write_fmt(format_args!("Incorrect arguments. Expected {expected}."))
 			}
 			Self::GOKZ { message } => f.write_str(message),
+			Self::Database => f.write_str("Database error."),
+			Self::Twitch => f.write_str("Twitch API error."),
 		}
 	}
 }
@@ -51,6 +56,20 @@ impl From<color_eyre::Report> for Error {
 impl From<std::convert::Infallible> for Error {
 	fn from(_: std::convert::Infallible) -> Self {
 		Self::Unknown
+	}
+}
+
+impl From<sqlx::Error> for Error {
+	fn from(value: sqlx::Error) -> Self {
+		error!("Database error: {value:#?}");
+		Self::Database
+	}
+}
+
+impl From<twitch_irc::validate::Error> for Error {
+	fn from(value: twitch_irc::validate::Error) -> Self {
+		error!("Twitch error: {value:#?}");
+		Self::Twitch
 	}
 }
 

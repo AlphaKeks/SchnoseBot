@@ -79,7 +79,7 @@ async fn main() -> Eyre<()> {
 	let (mut stream, twitch_client) =
 		TwitchIRCClient::<SecureTCPTransport, StaticLoginCredentials>::new(client_config);
 
-	let global_state =
+	let mut global_state =
 		GlobalState::new(twitch_client, config.channel_names, gokz_client, conn_pool).await;
 
 	for channel in &global_state.channels {
@@ -93,6 +93,27 @@ async fn main() -> Eyre<()> {
 		match message {
 			ServerMessage::Privmsg(message) => {
 				info!("{}: {}", message.sender.name, message.message_text);
+
+				if message.channel_login == "schnosebot" {
+					match message.message_text.as_str() {
+						"!join" => {
+							global_state
+								.join_channel(message)
+								.await?;
+
+							continue;
+						}
+						"!leave" => {
+							global_state
+								.leave_channel(message)
+								.await?;
+
+							continue;
+						}
+						_ => {}
+					}
+				}
+
 				if let Err(why) = global_state
 					.handle_command(message)
 					.await
