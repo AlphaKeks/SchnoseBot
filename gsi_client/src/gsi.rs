@@ -7,14 +7,17 @@ use {
 	tracing::{error, info},
 };
 
-#[derive(Debug, Clone, Serialize)]
+/// This struct holds the relevant information about the game that we will send to SchnoseAPI and
+/// display on the desktop client.
+#[derive(Debug, Clone, Serialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Info {
-	pub name: String,
+	pub player_name: String,
 	pub steam_id: SteamID,
 	pub mode: Option<Mode>,
 	pub map: Option<(String, Tier)>,
 }
 
+/// Start the GSI server that will listen for updates from CS:GO and send them to the GUI thread.
 pub async fn run(cfg_path: String, port: u16, tx: Sender<Info>) {
 	let gsi_config = GSIConfigBuilder::new("schnose-csgo-watcher")
 		.heartbeat(Duration::from_secs(1))
@@ -61,7 +64,7 @@ pub async fn run(cfg_path: String, port: u16, tx: Sender<Info>) {
 			.and_then(|map| get_map_blocking(map.name.clone(), &gokz_client).ok());
 
 		let info = Info {
-			name: player.name.clone(),
+			player_name: player.name.clone(),
 			steam_id,
 			mode,
 			map,
