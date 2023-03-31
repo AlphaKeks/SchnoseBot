@@ -23,6 +23,7 @@ struct Args {
 pub struct Config {
 	pub cfg_path: String,
 	pub port: u16,
+	pub api_key: String,
 }
 
 fn main() -> Eyre<()> {
@@ -44,6 +45,7 @@ fn main() -> Eyre<()> {
 
 	if let Err(why) = state.run(eframe::NativeOptions {
 		decorated: true,
+		drag_and_drop_support: true,
 		transparent: true,
 		vsync: false,
 		hardware_acceleration: eframe::HardwareAcceleration::Preferred,

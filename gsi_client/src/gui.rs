@@ -13,7 +13,6 @@ use {
 #[derive(Debug)]
 pub struct State {
 	pub current_info: Option<gsi::Info>,
-	pub auth_token: String,
 	pub config: crate::Config,
 	/// This will be sent to the GSI thread when clicking a button.
 	pub info_tx: Option<Sender<gsi::Info>>,
@@ -27,7 +26,6 @@ impl State {
 	pub fn new(config: crate::Config, tx: Sender<gsi::Info>, rx: Receiver<gsi::Info>) -> Self {
 		Self {
 			current_info: None,
-			auth_token: String::new(),
 			config,
 			info_tx: Some(tx),
 			info_rx: rx,
@@ -61,15 +59,24 @@ impl State {
 	/// The text box for putting in the CS:GO path.
 	#[tracing::instrument(skip(ui))]
 	pub fn render_path_box(&mut self, ui: &mut egui::Ui) {
-		ui.label("Enter your csgo/cfg path here: ");
-		ui.text_edit_singleline(&mut self.config.cfg_path);
+		ui.label("Current CFG folder:");
+		ui.code(format!("{}\n", self.config.cfg_path));
+
+		if ui.button("Choose new folder").clicked() {
+			if let Some(path) = rfd::FileDialog::new().pick_folder() {
+				self.config.cfg_path = path
+					.as_os_str()
+					.to_string_lossy()
+					.to_string();
+			}
+		}
 	}
 
-	/// The text box for putting in the API token.
+	/// The text box for putting in the API key.
 	#[tracing::instrument(skip(ui))]
-	pub fn render_token_box(&mut self, ui: &mut egui::Ui) {
-		ui.label("Enter your API token here: ");
-		ui.text_edit_singleline(&mut self.auth_token);
+	pub fn render_api_key_box(&mut self, ui: &mut egui::Ui) {
+		ui.label("\nEnter your API key here: ");
+		ui.text_edit_singleline(&mut self.config.api_key);
 	}
 
 	/// The button to launch the GSI thread.
@@ -224,7 +231,7 @@ impl eframe::App for State {
 					if let Err(why) = self
 						.gokz_client
 						.post("https://schnose.xyz/api/twitch_info")
-						.header("x-schnose-auth-key", &self.auth_token)
+						.header("x-schnose-auth-key", &self.config.api_key)
 						.send()
 					{
 						error!("POST request to SchnoseAPI failed: {why:#?}");
@@ -239,7 +246,7 @@ impl eframe::App for State {
 			ui.vertical_centered(|ui| {
 				self.render_status(ui);
 				self.render_path_box(ui);
-				self.render_token_box(ui);
+				self.render_api_key_box(ui);
 				self.render_run_button(ui);
 			});
 

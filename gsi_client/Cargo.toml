@@ -33,3 +33,4 @@ csgo-gsi = "0.3"
 
 # egui
 eframe = { version = "0.21" }
+rfd = "0.11"
