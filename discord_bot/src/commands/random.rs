@@ -2,10 +2,10 @@ use {
 	super::choices::TierChoice,
 	crate::{
 		error::{Error, Result},
-		global_maps::GlobalMap,
 		Context, State,
 	},
 	rand::Rng,
+	schnosebot::global_maps::GlobalMap,
 };
 
 /// Get a random map name from the global map pool.

@@ -1,8 +1,10 @@
 use {
-	crate::{commands, funny_macro::parse_args, global_maps::GlobalMap, Error, Result},
+	crate::{commands, funny_macro::parse_args, Error, Result},
 	color_eyre::{eyre::eyre, Result as Eyre},
 	fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher},
 	gokz_rs::{MapIdentifier, Mode, PlayerIdentifier},
+	schnosebot::global_maps::{self, GlobalMap},
+	sqlx::{MySql, Pool},
 	std::{collections::HashSet, fmt::Display},
 	twitch_irc::{
 		irc,
@@ -21,6 +23,7 @@ pub struct GlobalState {
 	pub channels: HashSet<String>,
 	pub gokz_client: gokz_rs::Client,
 	pub maps: Vec<GlobalMap>,
+	pub conn_pool: Pool<MySql>,
 }
 
 impl GlobalState {
@@ -28,8 +31,9 @@ impl GlobalState {
 		client: TwitchClient,
 		channels: Vec<String>,
 		gokz_client: gokz_rs::Client,
+		conn_pool: Pool<MySql>,
 	) -> Self {
-		let maps = crate::global_maps::init(&gokz_client)
+		let maps = global_maps::init(&gokz_client)
 			.await
 			.expect("Failed to fetch global maps.");
 
@@ -38,6 +42,7 @@ impl GlobalState {
 			channels: HashSet::from_iter(channels),
 			gokz_client,
 			maps,
+			conn_pool,
 		}
 	}
 
@@ -60,7 +65,7 @@ impl GlobalState {
 					.iter()
 					.filter_map(|map| {
 						let score = fzf.fuzzy_match(&map.name, &map_name)?;
-						if score > 50 || map_name.is_empty() {
+						if score > 0 || map_name.is_empty() {
 							return Some((score, map.to_owned()));
 						}
 						None

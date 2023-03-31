@@ -25,8 +25,6 @@ mod commands;
 mod db;
 mod error;
 mod funny_macro;
-mod global_maps;
-mod util;
 
 pub use error::{Error, Result};
 
@@ -35,6 +33,7 @@ use {
 	client::GlobalState,
 	color_eyre::Result as Eyre,
 	serde::Deserialize,
+	sqlx::mysql::MySqlPoolOptions,
 	std::path::PathBuf,
 	tracing::{debug, info, warn, Level},
 	tracing_subscriber::fmt::format::FmtSpan,
@@ -63,9 +62,12 @@ async fn main() -> Eyre<()> {
 
 	let gokz_client = gokz_rs::Client::new();
 
-	let mysql_url = config.mysql_url;
-	let config = db::get_config(&mysql_url).await?;
-	let config = db::update_tokens(&mysql_url, config, &gokz_client).await?;
+	let conn_pool = MySqlPoolOptions::new()
+		.connect(&config.mysql_url)
+		.await?;
+
+	let config = db::get_config(&conn_pool).await?;
+	let config = db::update_tokens(config, &gokz_client, &conn_pool).await?;
 
 	let client_config = ClientConfig::new_simple(StaticLoginCredentials {
 		credentials: CredentialsPair {
@@ -77,7 +79,8 @@ async fn main() -> Eyre<()> {
 	let (mut stream, twitch_client) =
 		TwitchIRCClient::<SecureTCPTransport, StaticLoginCredentials>::new(client_config);
 
-	let global_state = GlobalState::new(twitch_client, config.channel_names, gokz_client).await;
+	let global_state =
+		GlobalState::new(twitch_client, config.channel_names, gokz_client, conn_pool).await;
 
 	for channel in &global_state.channels {
 		info!("Joining `{channel}`");

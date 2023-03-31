@@ -1,11 +1,6 @@
-use sqlx::{MySql, QueryBuilder};
+use sqlx::{MySql, Pool, QueryBuilder};
 
-use {
-	color_eyre::Result as Eyre,
-	serde::Deserialize,
-	sqlx::{mysql::MySqlPoolOptions, FromRow},
-	tracing::warn,
-};
+use {color_eyre::Result as Eyre, serde::Deserialize, sqlx::FromRow, tracing::warn};
 
 #[derive(Debug, FromRow)]
 pub struct ConfigRow {
@@ -28,17 +23,13 @@ pub struct Config {
 	pub channel_names: Vec<String>,
 }
 
-pub async fn get_config(mysql_url: &str) -> Result<Config, sqlx::Error> {
-	let conn = MySqlPoolOptions::new()
-		.connect(mysql_url)
-		.await?;
-
+pub async fn get_config(conn_pool: &Pool<MySql>) -> Result<Config, sqlx::Error> {
 	let config: ConfigRow = sqlx::query_as("SELECT * FROM configs LIMIT 1")
-		.fetch_one(&conn)
+		.fetch_one(conn_pool)
 		.await?;
 
 	let channels: Vec<ChannelRow> = sqlx::query_as("SELECT * FROM channels")
-		.fetch_all(&conn)
+		.fetch_all(conn_pool)
 		.await?;
 
 	Ok(Config {
@@ -54,9 +45,9 @@ pub async fn get_config(mysql_url: &str) -> Result<Config, sqlx::Error> {
 }
 
 pub async fn update_tokens(
-	mysql_url: &str,
 	mut config: Config,
 	client: &gokz_rs::Client,
+	conn_pool: &Pool<MySql>,
 ) -> Eyre<Config> {
 	let response = client
 		.get("https://id.twitch.tv/oauth2/validate")
@@ -83,10 +74,6 @@ pub async fn update_tokens(
 				.json::<TwitchResponse>()
 				.await?;
 
-			let pool = MySqlPoolOptions::new()
-				.connect(mysql_url)
-				.await?;
-
 			let mut query = QueryBuilder::<MySql>::new("UPDATE configs SET access_token = ");
 
 			query
@@ -96,7 +83,7 @@ pub async fn update_tokens(
 				.push(" WHERE client_id = ")
 				.push_bind(&config.client_id);
 
-			query.build().execute(&pool).await?;
+			query.build().execute(conn_pool).await?;
 
 			config.access_token = new_credentials.access_token;
 			config.refresh_token = new_credentials.refresh_token;

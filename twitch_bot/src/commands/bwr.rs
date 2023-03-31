@@ -1,6 +1,7 @@
 use {
-	crate::{client::GlobalState, global_maps::GlobalMap, util::fmt_time, Result},
+	crate::{client::GlobalState, Result},
 	gokz_rs::{global_api, Mode},
+	schnosebot::{formatting::fmt_time, global_maps::GlobalMap},
 	tokio::time::{sleep, Duration},
 };
 

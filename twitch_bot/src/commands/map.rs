@@ -1,5 +1,6 @@
 use {
-	crate::{global_maps::GlobalMap, Result},
+	crate::Result,
+	schnosebot::global_maps::GlobalMap,
 	tokio::time::{sleep, Duration},
 };
 

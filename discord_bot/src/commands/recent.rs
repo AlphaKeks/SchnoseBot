@@ -2,12 +2,12 @@ use {
 	super::pagination::paginate,
 	crate::{
 		error::{Error, Result},
-		gokz::fmt_time,
 		target::Target,
 		Context, State,
 	},
-	gokz_rs::{global_api, schnose_api, MapIdentifier},
+	gokz_rs::{global_api, schnose_api},
 	poise::serenity_prelude::CreateEmbed,
+	schnosebot::formatting::fmt_time,
 };
 
 /// Get a player's 10 most recent runs.
@@ -52,7 +52,7 @@ pub async fn recent(
 			.map(|place| format!("[#{place}]"))?;
 
 		let (map_name, map_tier, map_url, map_thumbnail) = ctx
-			.get_map(&MapIdentifier::Name(record.map_name.clone()))
+			.get_map(record.map_name.clone())
 			.map(|map| {
 				(
 					map.name,

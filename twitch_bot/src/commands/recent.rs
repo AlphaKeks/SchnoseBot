@@ -1,6 +1,7 @@
 use {
-	crate::{client::GlobalState, util::fmt_time, Result},
+	crate::{client::GlobalState, Result},
 	gokz_rs::{schnose_api, PlayerIdentifier},
+	schnosebot::formatting::fmt_time,
 	tokio::time::{sleep, Duration},
 };
 

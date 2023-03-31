@@ -1,0 +1,21 @@
+[package]
+name = "schnosebot"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# error handling
+color-eyre = { workspace = true }
+
+# logging
+tracing = { workspace = true }
+
+# parsing
+serde = { workspace = true }
+
+# util
+chrono = { workspace = true }
+fuzzy-matcher = { workspace = true }
+
+# GOKZ
+gokz_rs = { workspace = true }

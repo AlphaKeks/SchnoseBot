@@ -9,29 +9,26 @@
 #![warn(missing_debug_implementations, missing_docs, rust_2018_idioms)]
 #![warn(clippy::style, clippy::perf, clippy::complexity, clippy::correctness)]
 
+mod based_maps;
 mod commands;
 mod db;
 mod error;
-mod global_maps;
 mod gokz;
 mod process;
 mod steam;
 mod target;
 
 use {
-	crate::{
-		error::{Error, Result},
-		global_maps::GlobalMap,
-	},
+	crate::error::{Error, Result},
 	clap::{Parser, ValueEnum},
 	color_eyre::Result as Eyre,
-	fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher},
 	gokz_rs::{MapIdentifier, Mode, SteamID},
 	poise::{
 		async_trait,
 		serenity_prelude::{Activity, GatewayIntents, GuildId, UserId},
 		Command, Event, Framework, FrameworkOptions, PrefixFrameworkOptions,
 	},
+	schnosebot::global_maps::{self, GlobalMap},
 	serde::Deserialize,
 	sqlx::{mysql::MySqlPoolOptions, MySql, Pool, QueryBuilder},
 	std::{collections::HashSet, path::PathBuf},
@@ -129,10 +126,10 @@ async fn main() -> Eyre<()> {
 						info!("Connected to Discord as {}!", data_about_bot.user.tag());
 
 						// Change status every 5 minutes to a different map name
-						let mut old_idx = global_maps::BASED_MAPS.len();
+						let mut old_idx = based_maps::BASED_MAPS.len();
 						loop {
-							let idx = old_idx % global_maps::BASED_MAPS.len();
-							let map = global_maps::BASED_MAPS[idx];
+							let idx = old_idx % based_maps::BASED_MAPS.len();
+							let map = based_maps::BASED_MAPS[idx];
 							ctx.set_activity(Activity::playing(map))
 								.await;
 							old_idx += 1;
@@ -313,10 +310,10 @@ pub struct GlobalState {
 	pub gokz_client: gokz_rs::Client,
 
 	/// Cache of all global maps.
-	pub global_maps: &'static Vec<GlobalMap>,
+	pub global_maps: Vec<GlobalMap>,
 
 	/// Cache of all global map names.
-	pub global_map_names: &'static Vec<&'static str>,
+	pub global_map_names: Vec<String>,
 
 	/// #7480c2
 	pub color: (u8, u8, u8),
@@ -338,17 +335,24 @@ impl GlobalState {
 			.expect("Failed to establish database connection.");
 
 		let gokz_client = gokz_rs::Client::new();
-		let global_maps: &'static Vec<GlobalMap> = Box::leak(Box::new(
-			global_maps::init(&gokz_client)
-				.await
-				.expect("Failed to fetch global maps."),
-		));
-		let global_map_names: &'static Vec<&'static str> = Box::leak(Box::new(
-			global_maps
-				.iter()
-				.map(|map| map.name.as_str())
-				.collect::<Vec<&str>>(),
-		));
+		// let global_maps: &'static Vec<GlobalMap> = Box::leak(Box::new(
+		// 	global_maps::init(&gokz_client)
+		// 		.await
+		// 		.expect("Failed to fetch global maps."),
+		// ));
+		// let global_map_names: &'static Vec<&'static str> = Box::leak(Box::new(
+		// 	global_maps
+		// 		.iter()
+		// 		.map(|map| map.name.as_str())
+		// 		.collect::<Vec<&str>>(),
+		// ));
+		let global_maps = global_maps::init(&gokz_client)
+			.await
+			.expect("Failed to fetch global maps.");
+		let global_map_names = global_maps
+			.iter()
+			.map(|map| map.name.to_string())
+			.collect();
 
 		Self {
 			config,
@@ -376,12 +380,11 @@ pub trait State {
 	fn config(&self) -> &Config;
 	fn database(&self) -> &Pool<MySql>;
 	fn gokz_client(&self) -> &gokz_rs::Client;
-	fn global_maps(&self) -> &'static Vec<GlobalMap>;
-	fn global_map_names(&self) -> &'static Vec<&'static str>;
-	fn get_map(&self, map_identifier: &MapIdentifier) -> Result<GlobalMap>;
-
-	fn get_map_name(&self, map_name: &str) -> Result<String> {
-		self.get_map(&MapIdentifier::Name(map_name.to_owned()))
+	fn global_maps(&self) -> &Vec<GlobalMap>;
+	fn global_map_names(&self) -> &Vec<String>;
+	fn get_map(&self, map_identifier: impl Into<MapIdentifier>) -> Result<GlobalMap>;
+	fn get_map_name(&self, map_identifier: impl Into<MapIdentifier>) -> Result<String> {
+		self.get_map(map_identifier)
 			.map(|map| map.name)
 	}
 
@@ -408,38 +411,17 @@ impl State for Context<'_> {
 		&self.data().gokz_client
 	}
 
-	fn global_maps(&self) -> &'static Vec<GlobalMap> {
-		self.data().global_maps
+	fn global_maps(&self) -> &Vec<GlobalMap> {
+		&self.data().global_maps
 	}
 
-	fn global_map_names(&self) -> &'static Vec<&'static str> {
-		self.data().global_map_names
+	fn global_map_names(&self) -> &Vec<String> {
+		&self.data().global_map_names
 	}
 
-	fn get_map(&self, map_identifier: &MapIdentifier) -> Result<GlobalMap> {
-		match map_identifier {
-			MapIdentifier::ID(map_id) => self
-				.global_maps()
-				.iter()
-				.find_map(|map| if map.id == *map_id { Some(map.to_owned()) } else { None })
-				.ok_or(Error::MapNotGlobal),
-			MapIdentifier::Name(map_name) => {
-				let fzf = SkimMatcherV2::default();
-				let map_name = map_name.to_lowercase();
-				self.global_maps()
-					.iter()
-					.filter_map(move |map| {
-						let score = fzf.fuzzy_match(&map.name, &map_name)?;
-						if score > 50 || map_name.is_empty() {
-							return Some((score, map.to_owned()));
-						}
-						None
-					})
-					.max_by(|(a_score, _), (b_score, _)| a_score.cmp(b_score))
-					.map(|(_, map)| map)
-					.ok_or(Error::MapNotGlobal)
-			}
-		}
+	fn get_map(&self, map_identifier: impl Into<MapIdentifier>) -> Result<GlobalMap> {
+		schnosebot::global_maps::fuzzy_find_map(map_identifier, self.global_maps())
+			.ok_or(Error::MapNotGlobal)
 	}
 
 	fn color(&self) -> (u8, u8, u8) {

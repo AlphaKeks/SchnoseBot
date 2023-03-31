@@ -4,7 +4,6 @@ use {
 		error::{Error, Result},
 		Context, State,
 	},
-	gokz_rs::MapIdentifier,
 };
 
 /// Get detailed information on a map.
@@ -26,7 +25,7 @@ pub async fn map(
 ) -> Result<()> {
 	ctx.defer().await?;
 
-	let map = ctx.get_map(&MapIdentifier::Name(map_choice))?;
+	let map = ctx.get_map(map_choice)?;
 
 	let mapper = if let Some(steam_id) = map.mapper_steam_id {
 		format!("[{}](https://steamcommunity.com/profiles/{})", map.mapper_name, steam_id.as_id64())

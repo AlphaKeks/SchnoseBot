@@ -91,10 +91,10 @@ mod autocompletion {
 		let mut map_names = ctx
 			.global_map_names()
 			.iter()
-			.filter_map(move |name| {
+			.filter_map(|name| {
 				let score = fzf.fuzzy_match(name, &input)?;
-				if score > 50 || input.is_empty() {
-					return Some((score, String::from(*name)));
+				if score > 0 || input.is_empty() {
+					return Some((score, name.clone()));
 				}
 				None
 			})

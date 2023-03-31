@@ -1,25 +1,15 @@
-//! Fetch all global maps from the `GlobalAPI` and `KZ:GO` and put them into a unified data
-//! structure.
+use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
 
 use {
-	crate::error::Result,
 	chrono::NaiveDateTime,
+	color_eyre::Result,
 	gokz_rs::{
 		global_api,
 		schnose_api::{self, maps::Course},
-		Mode, SteamID, Tier,
+		MapIdentifier, Mode, SteamID, Tier,
 	},
 	serde::{Deserialize, Serialize},
 };
-
-pub static BASED_MAPS: [&str; 27] = [
-	"kz_epiphany_v2", "kz_lionharder", "kz_spacemario_h", "kz_mz", "kz_technical_difficulties",
-	"kz_bhop_badges3", "kz_village", "kz_lionheart", "kz_oloramasa", "kz_haste", "kz_drops_od",
-	"kz_otakuroom", "kzpro_wrath", "kz_custos", "kz_erratum_v2", "kz_shell", "kz_avoria",
-	"kz_bhop_essence", "kz_okaychamp", "kz_ladderall", "kz_dale", "kz_2seasons_winter_final",
-	"kz_gy_agitation", "kz_after_agitation_easy_fix", "kz_imaginary_final", "kz_adv_cursedjourney",
-	"kz_exps_cursedjourney",
-];
 
 /// Custom version of [`global_api::Map`] with some additional fields for convenience.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -89,4 +79,42 @@ pub async fn init(gokz_client: &gokz_rs::Client) -> Result<Vec<GlobalMap>> {
 	maps.sort_unstable_by(|a, b| a.name.cmp(&b.name));
 
 	Ok(maps)
+}
+
+const MIN_SCORE: i64 = 1;
+
+pub fn fuzzy_find_map(
+	map_identifier: impl Into<MapIdentifier>,
+	map_pool: &[GlobalMap],
+) -> Option<GlobalMap> {
+	let map_identifier = map_identifier.into();
+	match map_identifier {
+		MapIdentifier::ID(map_id) => {
+			map_pool
+				.iter()
+				.find_map(|map| if map.id == map_id { Some(map.to_owned()) } else { None })
+		}
+		MapIdentifier::Name(map_name) => {
+			let fzf = SkimMatcherV2::default();
+			let map_name = map_name.to_lowercase();
+			map_pool
+				.iter()
+				.filter_map(|map| {
+					let score = fzf.fuzzy_match(&map.name, &map_name)?;
+					if score >= MIN_SCORE || map_name.is_empty() {
+						return Some((score, map.to_owned()));
+					}
+					None
+				})
+				.max_by(|(a_score, _), (b_score, _)| a_score.cmp(b_score))
+				.map(|(_, map)| map)
+		}
+	}
+}
+
+pub fn fuzzy_find_map_name(
+	map_identifier: impl Into<MapIdentifier>,
+	map_pool: &[GlobalMap],
+) -> Option<String> {
+	fuzzy_find_map(map_identifier, map_pool).map(|map| map.name)
 }

@@ -2,10 +2,11 @@ use {
 	super::{autocompletion::autocomplete_map, choices::ModeChoice},
 	crate::{
 		error::{Error, Result},
-		gokz::{fmt_time, format_replay_links},
+		gokz::format_replay_links,
 		Context, State,
 	},
 	gokz_rs::{global_api, MapIdentifier},
+	schnosebot::formatting::fmt_time,
 };
 
 /// World record on a given bonus course.
@@ -42,7 +43,7 @@ pub async fn bwr(
 		.find_user_by_id(*ctx.author().id.as_u64())
 		.await;
 
-	let map = ctx.get_map(&MapIdentifier::Name(map_choice))?;
+	let map = ctx.get_map(map_choice)?;
 	let map_identifier = MapIdentifier::Name(map.name);
 	let mode = ModeChoice::parse_input(mode_choice, &db_entry)?;
 	let course = course_choice.unwrap_or(1).max(1);

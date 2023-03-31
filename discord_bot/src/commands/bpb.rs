@@ -2,11 +2,12 @@ use {
 	super::{autocompletion::autocomplete_map, choices::ModeChoice},
 	crate::{
 		error::{Error, Result},
-		gokz::{fmt_time, format_replay_links},
+		gokz::format_replay_links,
 		target::Target,
 		Context, State,
 	},
 	gokz_rs::{global_api, MapIdentifier},
+	schnosebot::formatting::fmt_time,
 };
 
 /// A player's personal best on a bonus course.
@@ -55,7 +56,7 @@ pub async fn bpb(
 		.find_user_by_id(*ctx.author().id.as_u64())
 		.await;
 
-	let map = ctx.get_map(&MapIdentifier::Name(map_choice))?;
+	let map = ctx.get_map(map_choice)?;
 	let map_identifier = MapIdentifier::Name(map.name);
 	let mode = ModeChoice::parse_input(mode_choice, &db_entry)?;
 	let player_identifier = Target::parse_input(target, db_entry, &ctx).await?;

@@ -6,11 +6,11 @@ use {
 	},
 	crate::{
 		error::{Error, Result},
-		gokz::fmt_time,
 		Context, State,
 	},
 	gokz_rs::{global_api, MapIdentifier},
 	poise::serenity_prelude::CreateEmbed,
+	schnosebot::formatting::fmt_time,
 };
 
 /// Top 100 records on a bonus.
@@ -54,7 +54,7 @@ pub async fn bmaptop(
 		.find_user_by_id(*ctx.author().id.as_u64())
 		.await;
 
-	let map = ctx.get_map(&MapIdentifier::Name(map_choice))?;
+	let map = ctx.get_map(map_choice)?;
 	let map_identifier = MapIdentifier::Name(map.name);
 	let mode = ModeChoice::parse_input(mode_choice, &db_entry)?;
 	let runtype = matches!(runtype_choice, Some(RuntypeChoice::TP));

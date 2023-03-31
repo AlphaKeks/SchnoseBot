@@ -10,6 +10,8 @@ license-file = "../LICENSE"
 publish = false
 
 [dependencies]
+schnosebot = { path = "../schnosebot" }
+
 # error handling
 color-eyre = { workspace = true }
 
