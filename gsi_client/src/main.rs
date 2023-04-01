@@ -1,10 +1,16 @@
 use {
-	clap::Parser, color_eyre::Result as Eyre, gsi_client::gsi, serde::Deserialize,
-	std::path::PathBuf, std::sync::mpsc, tracing::error, tracing::Level,
+	clap::Parser,
+	color_eyre::Result as Eyre,
+	gsi_client::gsi,
+	serde::Deserialize,
+	std::path::PathBuf,
+	tokio::sync::mpsc,
+	tracing::{error, Level},
 	tracing_subscriber::fmt::format::FmtSpan,
 };
 
 mod gui;
+mod http_server;
 
 #[derive(Debug, Parser)]
 struct Args {
@@ -26,7 +32,8 @@ pub struct Config {
 	pub api_key: String,
 }
 
-fn main() -> Eyre<()> {
+#[tokio::main]
+async fn main() -> Eyre<()> {
 	color_eyre::install()?;
 	let args = Args::parse();
 	let config_file = std::fs::read_to_string(args.config_path)?;
@@ -39,7 +46,7 @@ fn main() -> Eyre<()> {
 		.with_span_events(FmtSpan::NEW)
 		.init();
 
-	let (tx, rx) = mpsc::channel::<gsi::Info>();
+	let (tx, rx) = mpsc::unbounded_channel::<gsi::Info>();
 
 	let state = gui::State::new(config, tx, rx);
 

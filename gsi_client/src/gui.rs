@@ -1,31 +1,36 @@
 use {
+	crate::http_server,
 	eframe::egui,
 	gsi_client::gsi,
 	std::{
 		collections::BTreeMap,
-		sync::mpsc::{Receiver, Sender},
+		sync::{Arc, Mutex},
 	},
-	tokio::runtime::Runtime,
+	tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender},
 	tracing::{error, info},
 };
 
 /// The GUI state object.
 #[derive(Debug)]
 pub struct State {
-	pub current_info: Option<gsi::Info>,
+	pub current_info: Arc<Mutex<Option<gsi::Info>>>,
 	pub config: crate::Config,
 	/// This will be sent to the GSI thread when clicking a button.
-	pub info_tx: Option<Sender<gsi::Info>>,
-	pub info_rx: Receiver<gsi::Info>,
+	pub info_tx: Option<UnboundedSender<gsi::Info>>,
+	pub info_rx: UnboundedReceiver<gsi::Info>,
 	pub gsi_running: bool,
 	pub gokz_client: gokz_rs::BlockingClient,
 }
 
 impl State {
 	#[tracing::instrument]
-	pub fn new(config: crate::Config, tx: Sender<gsi::Info>, rx: Receiver<gsi::Info>) -> Self {
+	pub fn new(
+		config: crate::Config,
+		tx: UnboundedSender<gsi::Info>,
+		rx: UnboundedReceiver<gsi::Info>,
+	) -> Self {
 		Self {
-			current_info: None,
+			current_info: Arc::new(Mutex::new(None)),
 			config,
 			info_tx: Some(tx),
 			info_rx: rx,
@@ -37,13 +42,25 @@ impl State {
 	#[tracing::instrument]
 	pub fn info(&self) -> Option<gsi::Info> {
 		self.current_info
-			.as_ref()
-			.map(ToOwned::to_owned)
+			.try_lock()
+			.ok()
+			.and_then(|lock| (*lock).clone())
+	}
+
+	pub fn get_info(&self) -> Option<gsi::Info> {
+		self.gokz_client
+			.get("http://localhost:1337")
+			.send()
+			.ok()?
+			.json()
+			.ok()
 	}
 
 	/// Start the GUI.
 	#[tracing::instrument(skip(options))]
 	pub fn run(self, options: eframe::NativeOptions) -> eframe::Result<()> {
+		let current_info = Arc::clone(&self.current_info);
+		tokio::spawn(http_server::run(current_info));
 		eframe::run_native("SchnoseBot CS:GO Watcher", options, Box::new(|_| Box::new(self)))
 	}
 
@@ -94,12 +111,7 @@ impl State {
 
 				// Spawn new thread for GSI and give it the sender to send information as it changes
 				// ingame.
-				let config = self.config.clone();
-				std::thread::spawn(move || {
-					Runtime::new()
-						.expect("Failed to spawn GSI runtime.")
-						.block_on(gsi::run(config.cfg_path, config.port, tx));
-				});
+				tokio::spawn(gsi::run(self.config.cfg_path.clone(), self.config.port, tx));
 
 				self.gsi_running = true;
 			}
@@ -109,16 +121,18 @@ impl State {
 	/// Pretty print the current [`Info`] in the GUI.
 	#[tracing::instrument(skip(ui))]
 	pub fn render_current_info(&self, ui: &mut egui::Ui) {
-		let info_json = match &self.current_info {
+		let Ok(current_info) = self.current_info.try_lock() else {
+			return;
+		};
+
+		let info_json = match &*current_info {
 			Some(info) => {
 				let (map_name, map_tier) = match &info.map {
-					Some((name, tier)) => (name.to_owned(), format!("{} ({})", *tier as u8, tier)),
+					Some(map) => (map.name.clone(), format!("{} ({})", map.tier as u8, map.tier)),
 					None => (String::from("Unknown"), String::from("Unknown")),
 				};
 				format!(
 					r#"
-
-
 
 Info {{
     player: {}
@@ -127,8 +141,6 @@ Info {{
 	map_name: {}
 	map_tier: {}
 }}
-
-
 
 "#,
 					info.player_name,
@@ -225,8 +237,12 @@ impl eframe::App for State {
 			// Ask for new [`Info`] struct from the GSI thread.
 			if let Ok(info) = self.info_rx.try_recv() {
 				// If they are different, update the state and send the new info to SchnoseAPI.
-				if self.current_info.as_ref() != Some(&info) {
-					self.current_info = Some(info);
+				let Ok(mut current_info) = self.current_info.try_lock() else {
+					return;
+				};
+
+				if current_info.as_ref() != Some(&info) {
+					*current_info = Some(info);
 
 					if let Err(why) = self
 						.gokz_client

@@ -1,31 +1,41 @@
 use {
-	csgo_gsi::{GSIConfigBuilder, GSIServer, Subscription},
 	gokz_rs::{schnose_api, MapIdentifier, Mode, SteamID, Tier},
-	serde::Serialize,
+	schnose_gsi::{GSIConfigBuilder, GSIServer, Subscription},
+	serde::{Deserialize, Serialize},
 	serde_json::Value as JsonValue,
-	std::{sync::mpsc::Sender, time::Duration},
+	std::time::Duration,
+	tokio::sync::mpsc::UnboundedSender,
 	tracing::{error, info},
 };
 
 /// This struct holds the relevant information about the game that we will send to SchnoseAPI and
 /// display on the desktop client.
-#[derive(Debug, Clone, Serialize, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Info {
 	pub player_name: String,
 	pub steam_id: SteamID,
 	pub mode: Option<Mode>,
-	pub map: Option<(String, Tier)>,
+	pub map: Option<MapInfo>,
+}
+
+/// Information about the current map being played.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+pub struct MapInfo {
+	pub name: String,
+	pub tier: Tier,
 }
 
 /// Start the GSI server that will listen for updates from CS:GO and send them to the GUI thread.
-pub async fn run(cfg_path: String, port: u16, tx: Sender<Info>) {
-	let gsi_config = GSIConfigBuilder::new("schnose-csgo-watcher")
+pub async fn run(cfg_path: String, port: u16, tx: UnboundedSender<Info>) {
+	let mut gsi_config = GSIConfigBuilder::new("schnose-csgo-watcher");
+	gsi_config
 		.heartbeat(Duration::from_secs(1))
 		.subscribe_multiple([
 			Subscription::Map,
 			Subscription::PlayerID,
-		])
-		.build();
+		]);
+
+	let gsi_config = gsi_config.build();
 
 	let mut server = GSIServer::new(gsi_config, port);
 
@@ -35,7 +45,7 @@ pub async fn run(cfg_path: String, port: u16, tx: Sender<Info>) {
 
 	let gokz_client = gokz_rs::BlockingClient::new();
 
-	server.add_listener(move |event| {
+	server.add_event_listener(move |event| {
 		info!("GSI Event: {event:#?}");
 
 		let player = event
@@ -53,28 +63,35 @@ pub async fn run(cfg_path: String, port: u16, tx: Sender<Info>) {
 					.and_then(|(mode, _rank)| mode.parse::<Mode>().ok())
 			});
 
-		let steam_id = player
-			.steam_id
-			.parse::<SteamID>()
-			.expect("If CS:GO ever sends an invalid SteamID, shoot me.");
-
 		let map = event
 			.map
 			.as_ref()
-			.and_then(|map| get_map_blocking(map.name.clone(), &gokz_client).ok());
+			.and_then(|map| get_map_blocking(map.name.clone(), &gokz_client).ok())
+			.map(|(name, tier)| MapInfo { name, tier });
 
 		let info = Info {
 			player_name: player.name.clone(),
-			steam_id,
+			steam_id: player.steam_id,
 			mode,
 			map,
 		};
 
 		info!("Sending info: {info:#?}");
 
-		if let Err(why) = tx.send(info) {
-			error!("Failed sending message: {why:#?}");
-		}
+		match gokz_client
+			.post("http://localhost:1337/new_info")
+			.json(&info)
+			.send()
+			.map(|res| res.error_for_status())
+		{
+			Ok(Ok(res)) => info!("POST successful: {res:#?}"),
+			Ok(Err(why)) | Err(why) => error!("POST failed: {why:#?}"),
+		};
+
+		match tx.send(info) {
+			Ok(()) => info!("Sent successfully."),
+			Err(why) => error!("Failed sending message: {why:#?}"),
+		};
 	});
 
 	info!("Listening for GSI events.");

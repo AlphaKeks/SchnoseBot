@@ -23,14 +23,18 @@ toml = { workspace = true }
 gokz_rs = { workspace = true }
 
 # async
-tokio = { version = "0.2", features = ["full"] }
+tokio = { workspace = true }
+futures = { workspace = true }
 
 # SQL
 sqlx = { workspace = true }
 
 # CS:GO
-csgo-gsi = "0.3"
+schnose_gsi = { version = "0.1", features = ["gokz"] }
 
 # egui
 eframe = { version = "0.21" }
 rfd = "0.11"
+
+# http
+axum = { version = "0.6", features = ["macros"] }
