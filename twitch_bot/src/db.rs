@@ -30,8 +30,10 @@ pub struct Config {
 	pub channel_names: Vec<String>,
 }
 
-pub async fn get_config(conn_pool: &Pool<MySql>) -> Eyre<Config, sqlx::Error> {
-	let config: ConfigRow = sqlx::query_as("SELECT * FROM configs WHERE id = 1")
+pub async fn get_config(conn_pool: &Pool<MySql>, prod: bool) -> Eyre<Config, sqlx::Error> {
+	let cfg_id = if prod { 1 } else { 2 };
+	dbg!(cfg_id);
+	let config: ConfigRow = sqlx::query_as(&format!("SELECT * FROM configs WHERE id = {cfg_id}"))
 		.fetch_one(conn_pool)
 		.await?;
 

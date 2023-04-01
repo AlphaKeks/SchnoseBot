@@ -2,7 +2,7 @@ use {
 	crate::{
 		commands,
 		db::{StreamerInfo, StreamerInfoRow},
-		error::GenParseError,
+		error::{DatabaseError, GenParseError},
 		funny_macro::parse_args,
 		Error, Result,
 	},
@@ -69,7 +69,14 @@ impl GlobalState {
 		query
 			.build_query_as::<StreamerInfoRow>()
 			.fetch_one(&self.conn_pool)
-			.await?
+			.await
+			.map_err(|why| {
+				if let sqlx::Error::RowNotFound = why {
+					Error::Database(DatabaseError::StreamerNotFound)
+				} else {
+					Error::Database(DatabaseError::Other)
+				}
+			})?
 			.try_into()
 	}
 
@@ -132,7 +139,7 @@ impl GlobalState {
 						format!("Incorrect arguments. Expected {expected}.")
 					}
 					Error::GOKZ { message } => message,
-					e @ Error::Database => e.to_string(),
+					e @ Error::Database(_) => e.to_string(),
 					e @ Error::Twitch => e.to_string(),
 				},
 				true,
@@ -246,6 +253,7 @@ impl Command {
 		let streamer_info = state
 			.streamer_info(message.channel_id)
 			.await;
+
 		let channel_name = message.channel_login;
 		let sender_name = message.sender.name;
 		let parser = Parser::new(streamer_info.as_ref(), channel_name, sender_name);

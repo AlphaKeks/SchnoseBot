@@ -67,7 +67,7 @@ async fn main() -> Eyre<()> {
 		.connect(&config.mysql_url)
 		.await?;
 
-	let config = db::get_config(&conn_pool).await?;
+	let config = db::get_config(&conn_pool, !args.debug).await?;
 	let config = db::update_tokens(config, &gokz_client, &conn_pool).await?;
 
 	let client_config = ClientConfig::new_simple(StaticLoginCredentials {
@@ -99,18 +99,18 @@ async fn main() -> Eyre<()> {
 
 				if message.channel_login == "schnosebot" {
 					let elapsed = last_message.elapsed().as_secs();
-					if elapsed < 30 {
-						let msg = format!(
-							"Currently on cooldown. Please wait another {} second(s).",
-							30 - elapsed
-						);
-						global_state
-							.send(msg, message, false)
-							.await?;
-						continue;
-					}
 
 					match message.message_text.trim() {
+						"!join" | "!leave" if elapsed < 30 => {
+							let msg = format!(
+								"Currently on cooldown. Please wait another {} second(s).",
+								30 - elapsed
+							);
+							global_state
+								.send(msg, message, false)
+								.await?;
+							continue;
+						}
 						"!join" => {
 							global_state
 								.join_channel(message)

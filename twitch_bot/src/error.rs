@@ -15,7 +15,7 @@ pub enum Error {
 	MissingArgs { missing: String },
 	IncorrectArgs { expected: String },
 	GOKZ { message: String },
-	Database,
+	Database(DatabaseError),
 	Twitch,
 }
 
@@ -35,7 +35,12 @@ impl Display for Error {
 				f.write_fmt(format_args!("Incorrect arguments. Expected {expected}."))
 			}
 			Self::GOKZ { message } => f.write_str(message),
-			Self::Database => f.write_str("Database error."),
+			Self::Database(db_err) => match db_err {
+				DatabaseError::StreamerNotFound => {
+					f.write_str("Streamer is not in the database. Please supply arguments.")
+				}
+				DatabaseError::Other => f.write_str("Database error."),
+			},
 			Self::Twitch => f.write_str("Twitch API error."),
 		}
 	}
@@ -68,7 +73,7 @@ impl From<std::convert::Infallible> for Error {
 impl From<sqlx::Error> for Error {
 	fn from(value: sqlx::Error) -> Self {
 		error!("Database error: {value:#?}");
-		Self::Database
+		Self::Database(DatabaseError::Other)
 	}
 }
 
@@ -77,6 +82,12 @@ impl From<twitch_irc::validate::Error> for Error {
 		error!("Twitch error: {value:#?}");
 		Self::Twitch
 	}
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum DatabaseError {
+	StreamerNotFound,
+	Other,
 }
 
 pub trait GenParseError {
