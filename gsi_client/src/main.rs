@@ -1,3 +1,5 @@
+#![windows_subsystem = "windows"]
+
 use {
 	clap::Parser,
 	color_eyre::Result as Eyre,
