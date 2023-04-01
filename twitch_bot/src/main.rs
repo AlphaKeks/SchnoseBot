@@ -69,7 +69,7 @@ async fn main() -> Eyre<()> {
 		.await?;
 
 	let config = db::get_config(&conn_pool, !args.debug).await?;
-	let config = db::update_tokens(config, &gokz_client, &conn_pool).await?;
+	let config = db::update_tokens(config, !args.debug, &gokz_client, &conn_pool).await?;
 
 	let client_config = ClientConfig::new_simple(StaticLoginCredentials {
 		credentials: CredentialsPair {

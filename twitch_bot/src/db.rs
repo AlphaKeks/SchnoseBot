@@ -55,6 +55,7 @@ pub async fn get_config(conn_pool: &Pool<MySql>, prod: bool) -> Eyre<Config, sql
 
 pub async fn update_tokens(
 	mut config: Config,
+	prod: bool,
 	client: &gokz_rs::Client,
 	conn_pool: &Pool<MySql>,
 ) -> Eyre<Config> {
@@ -89,8 +90,8 @@ pub async fn update_tokens(
 				.push_bind(&new_credentials.access_token)
 				.push(" , refresh_token = ")
 				.push_bind(&new_credentials.refresh_token)
-				.push(" WHERE client_id = ")
-				.push_bind(&config.client_id);
+				.push(" WHERE id = ")
+				.push_bind(if prod { 1 } else { 2 });
 
 			query.build().execute(conn_pool).await?;
 
