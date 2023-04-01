@@ -60,7 +60,7 @@ async fn post_info(
 	};
 
 	let request = gokz_client
-		.post("http://localhost:3000/api/twitch_info")
+		.post("http://schnose.xyz/api/twitch_info")
 		.header("x-schnose-auth-key", api_key)
 		.json(&info);
 
