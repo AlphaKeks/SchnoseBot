@@ -38,7 +38,7 @@ impl GlobalState {
 		gokz_client: gokz_rs::Client,
 		conn_pool: Pool<MySql>,
 	) -> Self {
-		let maps = global_maps::init(&gokz_client)
+		let maps = global_maps::init(&gokz_client, false)
 			.await
 			.expect("Failed to fetch global maps.");
 
@@ -147,6 +147,7 @@ impl GlobalState {
 					Error::GOKZ { message } => message,
 					e @ Error::Database(_) => e.to_string(),
 					e @ Error::Twitch => e.to_string(),
+					e @ Error::StreamerNotPlaying => e.to_string(),
 				},
 				true,
 			),
@@ -374,7 +375,7 @@ impl Parser<'_> {
 				.streamer_info?
 				.map
 				.as_ref()
-				.ok_or(MapIdentifier::incorrect())?
+				.ok_or(MapIdentifier::streamer_not_playing())?
 				.name
 				.clone()
 				.into()),

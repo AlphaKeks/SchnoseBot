@@ -335,18 +335,7 @@ impl GlobalState {
 			.expect("Failed to establish database connection.");
 
 		let gokz_client = gokz_rs::Client::new();
-		// let global_maps: &'static Vec<GlobalMap> = Box::leak(Box::new(
-		// 	global_maps::init(&gokz_client)
-		// 		.await
-		// 		.expect("Failed to fetch global maps."),
-		// ));
-		// let global_map_names: &'static Vec<&'static str> = Box::leak(Box::new(
-		// 	global_maps
-		// 		.iter()
-		// 		.map(|map| map.name.as_str())
-		// 		.collect::<Vec<&str>>(),
-		// ));
-		let global_maps = global_maps::init(&gokz_client)
+		let global_maps = global_maps::init(&gokz_client, true)
 			.await
 			.expect("Failed to fetch global maps.");
 		let global_map_names = global_maps

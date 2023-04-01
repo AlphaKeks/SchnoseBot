@@ -25,7 +25,7 @@ pub async fn execute(map: GlobalMap) -> Result<String> {
 
 	let tier = tier as u8;
 	let bonuses = courses.len() - 1;
-	let plural = if bonuses > 1 { "es" } else { "" };
+	let plural = if bonuses == 1 { "" } else { "es" };
 
 	sleep(Duration::from_millis(727)).await;
 

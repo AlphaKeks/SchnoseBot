@@ -32,7 +32,7 @@ pub struct GlobalMap {
 
 /// Gets called once at the start to fetch and process all maps.
 #[tracing::instrument]
-pub async fn init(gokz_client: &gokz_rs::Client) -> Result<Vec<GlobalMap>> {
+pub async fn init(gokz_client: &gokz_rs::Client, global_only: bool) -> Result<Vec<GlobalMap>> {
 	let mut maps = Vec::new();
 	let filters = global_api::record_filters::get_filters(
 		global_api::record_filters::index::Params {
@@ -45,32 +45,36 @@ pub async fn init(gokz_client: &gokz_rs::Client) -> Result<Vec<GlobalMap>> {
 	)
 	.await?;
 
-	for global_map in schnose_api::get_global_maps(gokz_client).await? {
-		let url = format!("https://kzgo.eu/maps/{}", &global_map.name);
+	for map in if global_only {
+		schnose_api::get_global_maps(gokz_client).await?
+	} else {
+		schnose_api::get_maps(gokz_client).await?
+	} {
+		let url = format!("https://kzgo.eu/maps/{}", &map.name);
 		let thumbnail = format!(
 			"https://raw.githubusercontent.com/KZGlobalTeam/map-images/master/images/{}.jpg",
-			&global_map.name
+			&map.name
 		);
 
 		maps.push(GlobalMap {
-			id: global_map.id,
-			name: global_map.name,
-			tier: global_map.tier,
-			courses: global_map.courses,
+			id: map.id,
+			name: map.name,
+			tier: map.tier,
+			courses: map.courses,
 			kzt: filters
 				.iter()
-				.any(|filter| filter.map_id == global_map.id && filter.mode == Mode::KZTimer),
+				.any(|filter| filter.map_id == map.id && filter.mode == Mode::KZTimer),
 			skz: filters
 				.iter()
-				.any(|filter| filter.map_id == global_map.id && filter.mode == Mode::SimpleKZ),
+				.any(|filter| filter.map_id == map.id && filter.mode == Mode::SimpleKZ),
 			vnl: filters
 				.iter()
-				.any(|filter| filter.map_id == global_map.id && filter.mode == Mode::Vanilla),
-			mapper_name: global_map.mapper_name,
-			mapper_steam_id: global_map.mapper_steam_id,
-			filesize: global_map.filesize,
-			created_on: global_map.created_on,
-			updated_on: global_map.updated_on,
+				.any(|filter| filter.map_id == map.id && filter.mode == Mode::Vanilla),
+			mapper_name: map.mapper_name,
+			mapper_steam_id: map.mapper_steam_id,
+			filesize: map.filesize,
+			created_on: map.created_on,
+			updated_on: map.updated_on,
 			url,
 			thumbnail,
 		});

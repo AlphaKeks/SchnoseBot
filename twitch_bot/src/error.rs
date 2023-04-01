@@ -17,6 +17,7 @@ pub enum Error {
 	GOKZ { message: String },
 	Database(DatabaseError),
 	Twitch,
+	StreamerNotPlaying,
 }
 
 impl std::error::Error for Error {}
@@ -42,6 +43,9 @@ impl Display for Error {
 				DatabaseError::Other => f.write_str("Database error."),
 			},
 			Self::Twitch => f.write_str("Twitch API error."),
+			Self::StreamerNotPlaying => {
+				f.write_str("The streamer is not currently playing. Please supply arguments.")
+			}
 		}
 	}
 }
@@ -92,6 +96,9 @@ pub enum DatabaseError {
 
 pub trait GenParseError {
 	fn incorrect() -> crate::Error;
+	fn streamer_not_playing() -> crate::Error {
+		crate::Error::StreamerNotPlaying
+	}
 }
 
 macro_rules! gen_parse_err {
