@@ -55,6 +55,7 @@ async fn main() -> Eyre<()> {
 	tracing_subscriber::fmt()
 		.compact()
 		.with_max_level(if args.debug { Level::DEBUG } else { Level::INFO })
+		.with_line_number(true)
 		.with_span_events(FmtSpan::NEW)
 		.init();
 
@@ -101,6 +102,12 @@ async fn main() -> Eyre<()> {
 					let elapsed = last_message.elapsed().as_secs();
 
 					match message.message_text.trim() {
+						"!id" => {
+							global_state
+								.send(message.sender.id.clone(), message, true)
+								.await?;
+							continue;
+						}
 						"!join" | "!leave" if elapsed < 30 => {
 							let msg = format!(
 								"Currently on cooldown. Please wait another {} second(s).",
