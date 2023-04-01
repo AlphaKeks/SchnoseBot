@@ -4,8 +4,7 @@ use {
 	eframe::Storage,
 	gsi_client::gsi,
 	serde::{Deserialize, Serialize},
-	std::io::Write,
-	std::path::PathBuf,
+	std::{fs::File, io::Write, path::PathBuf},
 	tokio::sync::mpsc,
 	tracing::{error, info, Level},
 	tracing_subscriber::fmt::format::FmtSpan,
@@ -63,6 +62,45 @@ impl Config {
 			_ => None,
 		}
 	}
+
+	pub fn setup(mut config_dir: PathBuf) -> Option<File> {
+		let mut file = match File::create(&config_dir) {
+			Ok(file) => file,
+			Err(why) => {
+				if let std::io::ErrorKind::NotFound = why.kind() {
+					let full_config_dir = config_dir.clone();
+					config_dir.pop();
+					match std::fs::create_dir(&config_dir) {
+						Ok(()) => match File::create(full_config_dir) {
+							Ok(file) => file,
+							Err(why) => {
+								error!("Failed to create `{config_dir:?}`: {why:#?}");
+								return None;
+							}
+						},
+						Err(why) => {
+							error!("Failed to create `{config_dir:?}`: {why:#?}");
+							return None;
+						}
+					}
+				} else {
+					error!("Failed to open `{config_dir:?}`: {why:#?}");
+					return None;
+				}
+			}
+		};
+
+		let default_config = r#"cfg_path = ""
+port = 3333
+api_key = ""
+"#;
+
+		if let Err(why) = file.write_all(default_config.as_bytes()) {
+			error!("Failed to write out default config: {why:#?}");
+		}
+
+		Some(file)
+	}
 }
 
 impl Storage for Config {
@@ -83,35 +121,14 @@ impl Storage for Config {
 	}
 
 	fn flush(&mut self) {
-		let Some(mut config_dir) = Self::get_config_dir() else {
+		let Some(config_dir) = Self::get_config_dir() else {
 			error!("Failed to get config dir.");
 			return;
 		};
 
-		let mut file = match std::fs::File::create(&config_dir) {
-			Ok(file) => file,
-			Err(why) => {
-				if let std::io::ErrorKind::NotFound = why.kind() {
-					let full_config_dir = config_dir.clone();
-					config_dir.pop();
-					match std::fs::create_dir(&config_dir) {
-						Ok(()) => match std::fs::File::create(full_config_dir) {
-							Ok(file) => file,
-							Err(why) => {
-								error!("Failed to create `{config_dir:?}`: {why:#?}");
-								return;
-							}
-						},
-						Err(why) => {
-							error!("Failed to create `{config_dir:?}`: {why:#?}");
-							return;
-						}
-					}
-				} else {
-					error!("Failed to open `{config_dir:?}`: {why:#?}");
-					return;
-				}
-			}
+		let Some(mut file) = Self::setup(config_dir.clone()) else {
+			error!("Failed to create config file.");
+			return;
 		};
 
 		let Ok(toml_string) = toml::to_string_pretty(self) else {
@@ -145,6 +162,11 @@ async fn main() -> Eyre<()> {
 	} else {
 		let config_dir = Config::get_config_dir()
 			.expect("Missing `config` argument and couldn't find default location.");
+
+		if !config_dir.exists() {
+			Config::setup(config_dir.clone());
+		}
+
 		let config_file = std::fs::read_to_string(config_dir)?;
 		toml::from_str(&config_file)?
 	};
