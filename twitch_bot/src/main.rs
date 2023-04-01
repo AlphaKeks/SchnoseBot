@@ -96,13 +96,15 @@ async fn main() -> Eyre<()> {
 	while let Some(message) = stream.recv().await {
 		match message {
 			ServerMessage::Privmsg(mut message) => {
-				info!("{}: {:?}", message.sender.name, message.message_text);
-
+				let old_message = message.message_text.clone();
 				message.message_text = message
 						.message_text
 						.chars() // filter out weird unicode characters that 7tv sometimes inserts
 						.filter(|c| c.is_ascii() || (c.is_whitespace() && !c.is_ascii_whitespace()))
 						.collect();
+
+				info!("{}: {:?}", message.sender.name, old_message);
+				info!("{}: {:?}", message.sender.name, message.message_text);
 
 				if message.channel_login == "schnosebot" {
 					let elapsed = last_message.elapsed().as_secs();
