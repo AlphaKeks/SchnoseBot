@@ -1,7 +1,7 @@
 use {
 	axum::{
-		extract::{Json, Query, State},
-		http::StatusCode,
+		extract::{Json, State},
+		http::{HeaderMap, StatusCode},
 		response::IntoResponse,
 		routing::{get, post},
 		Router, Server,
@@ -12,15 +12,21 @@ use {
 		net::SocketAddr,
 		sync::{Arc, Mutex},
 	},
-	tracing::{debug, info},
+	tracing::{debug, error, info},
 };
 
 #[derive(Debug, Clone)]
-pub struct InfoState(Arc<Mutex<Option<gsi::Info>>>);
+pub struct InfoState {
+	info_state: Arc<Mutex<Option<gsi::Info>>>,
+	gokz_client: gokz_rs::BlockingClient,
+}
 
 impl From<Arc<Mutex<Option<gsi::Info>>>> for InfoState {
 	fn from(value: Arc<Mutex<Option<gsi::Info>>>) -> Self {
-		Self(value)
+		Self {
+			info_state: value,
+			gokz_client: gokz_rs::BlockingClient::new(),
+		}
 	}
 }
 
@@ -41,14 +47,37 @@ pub async fn run(state: impl Into<InfoState>) {
 }
 
 async fn post_info(
-	State(InfoState(info_state)): State<InfoState>,
+	headers: HeaderMap,
+	State(InfoState { info_state, gokz_client }): State<InfoState>,
 	Json(info): Json<gsi::Info>,
 ) -> impl IntoResponse {
+	let Some(api_key) = headers.get("x-schnose-auth-key") else {
+		return StatusCode::BAD_REQUEST;
+	};
+
+	let Ok(api_key) = api_key.to_str() else {
+		return StatusCode::BAD_REQUEST;
+	};
+
+	let request = gokz_client
+		.post("http://localhost:3000/api/twitch_info")
+		.header("x-schnose-auth-key", api_key)
+		.json(&info);
+
 	let Ok(mut lock) = info_state.lock() else {
 		return StatusCode::INTERNAL_SERVER_ERROR;
 	};
 
 	*lock = Some(info);
+
+	debug!("POSTing to SchnoseAPI...");
+	match request
+		.send()
+		.map(|res| res.error_for_status())
+	{
+		Ok(Ok(res)) => info!("POST to SchnoseAPI was successful: {res:#?}"),
+		Ok(Err(why)) | Err(why) => error!("POST to SchnoseAPI failed: {why:#?}"),
+	}
 
 	StatusCode::OK
 }
@@ -68,7 +97,7 @@ impl<T: Serialize> IntoResponse for Response<T> {
 	}
 }
 
-async fn get_info(State(InfoState(info_state)): State<InfoState>) -> Response<gsi::Info> {
+async fn get_info(State(InfoState { info_state, .. }): State<InfoState>) -> Response<gsi::Info> {
 	let Ok(lock) = info_state.lock() else {
 		return Response::Failure;
 	};

@@ -1,9 +1,15 @@
-use sqlx::{MySql, Pool, QueryBuilder};
-
-use {color_eyre::Result as Eyre, serde::Deserialize, sqlx::FromRow, tracing::warn};
+use {
+	crate::{Error, Result},
+	color_eyre::Result as Eyre,
+	gokz_rs::{Mode, SteamID, Tier},
+	serde::Deserialize,
+	sqlx::{FromRow, MySql, Pool, QueryBuilder},
+	tracing::warn,
+};
 
 #[derive(Debug, FromRow)]
 pub struct ConfigRow {
+	pub id: u32,
 	pub client_id: String,
 	pub client_secret: String,
 	pub access_token: String,
@@ -15,6 +21,7 @@ pub struct ChannelRow {
 	pub channel_name: String,
 }
 
+#[derive(Debug, Clone)]
 pub struct Config {
 	pub client_id: String,
 	pub client_secret: String,
@@ -23,12 +30,12 @@ pub struct Config {
 	pub channel_names: Vec<String>,
 }
 
-pub async fn get_config(conn_pool: &Pool<MySql>) -> Result<Config, sqlx::Error> {
-	let config: ConfigRow = sqlx::query_as("SELECT * FROM configs LIMIT 1")
+pub async fn get_config(conn_pool: &Pool<MySql>) -> Eyre<Config, sqlx::Error> {
+	let config: ConfigRow = sqlx::query_as("SELECT * FROM configs WHERE id = 1")
 		.fetch_one(conn_pool)
 		.await?;
 
-	let channels: Vec<ChannelRow> = sqlx::query_as("SELECT * FROM channels")
+	let channels: Vec<ChannelRow> = sqlx::query_as("SELECT * FROM twitch_bot_channels")
 		.fetch_all(conn_pool)
 		.await?;
 
@@ -101,4 +108,55 @@ struct TwitchResponse {
 	refresh_token: String,
 	scope: Vec<String>,
 	token_type: String,
+}
+
+#[derive(Debug, Clone, FromRow)]
+pub struct StreamerInfoRow {
+	pub api_key: String,
+	pub channel_id: u32,
+	pub channel_name: String,
+	pub player_name: String,
+	pub steam_id: String,
+	pub mode: Option<String>,
+	pub map_name: Option<String>,
+	pub map_tier: Option<u8>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct StreamerInfo {
+	pub api_key: String,
+	pub channel_id: u32,
+	pub channel_name: String,
+	pub player_name: String,
+	pub steam_id: SteamID,
+	pub mode: Option<Mode>,
+	pub map: Option<MapInfo>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct MapInfo {
+	pub name: String,
+	pub tier: Tier,
+}
+
+impl TryFrom<StreamerInfoRow> for StreamerInfo {
+	type Error = Error;
+
+	fn try_from(value: StreamerInfoRow) -> Result<Self> {
+		Ok(Self {
+			api_key: value.api_key,
+			channel_id: value.channel_id,
+			channel_name: value.channel_name,
+			player_name: value.player_name,
+			steam_id: value.steam_id.parse()?,
+			mode: match value.mode {
+				Some(mode) => Some(mode.parse()?),
+				None => None,
+			},
+			map: match (value.map_name, value.map_tier) {
+				(Some(name), Some(tier)) => Some(MapInfo { name, tier: tier.try_into()? }),
+				_ => None,
+			},
+		})
+	}
 }

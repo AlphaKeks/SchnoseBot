@@ -41,6 +41,12 @@ impl Display for Error {
 	}
 }
 
+impl From<&Error> for Error {
+	fn from(value: &Error) -> Self {
+		value.to_owned()
+	}
+}
+
 impl From<gokz_rs::Error> for Error {
 	fn from(value: gokz_rs::Error) -> Self {
 		Self::GOKZ { message: value.to_string() }

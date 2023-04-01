@@ -26,7 +26,7 @@ pub struct MapInfo {
 }
 
 /// Start the GSI server that will listen for updates from CS:GO and send them to the GUI thread.
-pub async fn run(cfg_path: String, port: u16, tx: UnboundedSender<Info>) {
+pub async fn run(cfg_path: String, api_key: String, port: u16, tx: UnboundedSender<Info>) {
 	let mut gsi_config = GSIConfigBuilder::new("schnose-csgo-watcher");
 	gsi_config
 		.heartbeat(Duration::from_secs(1))
@@ -81,6 +81,7 @@ pub async fn run(cfg_path: String, port: u16, tx: UnboundedSender<Info>) {
 		match gokz_client
 			.post("http://localhost:1337/new_info")
 			.json(&info)
+			.header("x-schnose-auth-key", &api_key)
 			.send()
 			.map(|res| res.error_for_status())
 		{

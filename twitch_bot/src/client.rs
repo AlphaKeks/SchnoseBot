@@ -1,5 +1,11 @@
 use {
-	crate::{commands, funny_macro::parse_args, Error, Result},
+	crate::{
+		commands,
+		db::{StreamerInfo, StreamerInfoRow},
+		error::GenParseError,
+		funny_macro::parse_args,
+		Error, Result,
+	},
 	color_eyre::{eyre::eyre, Result as Eyre},
 	gokz_rs::{MapIdentifier, Mode, PlayerIdentifier},
 	schnosebot::global_maps::{self, GlobalMap},
@@ -56,6 +62,17 @@ impl GlobalState {
 		)
 	}
 
+	pub async fn streamer_info(&self, channel_id: impl AsRef<str>) -> Result<StreamerInfo> {
+		let mut query = QueryBuilder::new("SELECT * FROM streamers WHERE channel_id = ");
+		query.push_bind(channel_id.as_ref());
+
+		query
+			.build_query_as::<StreamerInfoRow>()
+			.fetch_one(&self.conn_pool)
+			.await?
+			.try_into()
+	}
+
 	pub async fn send(
 		&self,
 		message: impl Display,
@@ -82,7 +99,7 @@ impl GlobalState {
 	}
 
 	pub async fn handle_command(&self, message: PrivmsgMessage) -> Eyre<()> {
-		let (reply, tag_user) = match Command::parse(self, message.message_text.clone()) {
+		let (reply, tag_user) = match Command::parse(self, message.clone()).await {
 			Ok(command) => {
 				let tag_user = match command {
 					Command::Apistatus => true,
@@ -128,7 +145,8 @@ impl GlobalState {
 
 	pub async fn join_channel(&mut self, ctx: PrivmsgMessage) -> Result<()> {
 		let channel_name = &ctx.sender.login;
-		let mut query = QueryBuilder::new("INSERT INTO channels (channel_name) VALUES (");
+		let mut query =
+			QueryBuilder::new("INSERT INTO twitch_bot_channels (channel_name) VALUES (");
 		query.push_bind(channel_name).push(")");
 		query
 			.build()
@@ -149,7 +167,7 @@ impl GlobalState {
 
 	pub async fn leave_channel(&mut self, ctx: PrivmsgMessage) -> Result<()> {
 		let channel_name = &ctx.sender.login;
-		let mut query = QueryBuilder::new("DELETE FROM channels WHERE channel_name = ");
+		let mut query = QueryBuilder::new("DELETE FROM twitch_bot_channels WHERE channel_name = ");
 		query.push_bind(channel_name);
 		query
 			.build()
@@ -205,74 +223,89 @@ pub enum Command {
 }
 
 impl Command {
-	pub fn parse(state: &GlobalState, message: String) -> Result<Self> {
-		if !message.starts_with('!') {
+	pub async fn parse(state: &GlobalState, message: PrivmsgMessage) -> Result<Self> {
+		if !message.message_text.starts_with('!') {
 			return Err(Error::NotACommand);
 		}
 
-		let message = message.trim().to_owned();
+		let msg = message.message_text.trim().to_owned();
 
-		let (_prefix, args) = message
+		let (_prefix, args) = msg
 			.split_once('!')
 			.expect("We checked for '!' above.");
 
 		let mut args = args.split(' ').collect::<Vec<_>>();
 
-		let (command_name, message) = (
+		let (command_name, msg) = (
 			args[0],
 			args.drain(1..)
 				.collect::<Vec<_>>()
 				.join(" "),
 		);
 
+		let streamer_info = state
+			.streamer_info(message.channel_id)
+			.await;
+		let channel_name = message.channel_login;
+		let sender_name = message.sender.name;
+		let parser = Parser::new(streamer_info.as_ref(), channel_name, sender_name);
+
 		match command_name {
 			"api" | "apistatus" => Ok(Self::Apistatus),
 			"bpb" => {
 				let (map, mode, course, player) =
-					parse_args!(message, MapIdentifier, "opt" Mode, "opt" u8, PlayerIdentifier)?;
+					parse_args!(msg, "opt" MapIdentifier, "opt" Mode, "opt" u8, PlayerIdentifier)?;
+				let map = parser.parse_map(map)?;
 				let map = state.get_map(map)?;
-				let mode = mode.unwrap_or(Mode::KZTimer);
+				let mode = parser.parse_mode(mode);
 				let course = course.unwrap_or(1).max(1);
 
 				Ok(Self::BPB { map, player, mode, course })
 			}
 			"bwr" => {
 				let (map, mode, course) =
-					parse_args!(message, MapIdentifier, "opt" Mode, "opt" u8)?;
+					parse_args!(msg, "opt" MapIdentifier, "opt" Mode, "opt" u8)?;
+				let map = parser.parse_map(map)?;
 				let map = state.get_map(map)?;
-				let mode = mode.unwrap_or(Mode::KZTimer);
+				let mode = parser.parse_mode(mode);
 				let course = course.unwrap_or(1).max(1);
 
 				Ok(Self::BWR { map, mode, course })
 			}
 			"m" | "map" => {
-				let map = parse_args!(message, MapIdentifier)?;
+				let map = parse_args!(msg, "opt" MapIdentifier)?;
+				let map = parser.parse_map(map)?;
 				let map = state.get_map(map)?;
 
 				Ok(Self::Map { map })
 			}
 			"wr" => {
-				let (map, mode) = parse_args!(message, MapIdentifier, "opt" Mode)?;
+				let (map, mode) = parse_args!(msg, "opt" MapIdentifier, "opt" Mode)?;
+				let map = parser.parse_map(map)?;
 				let map = state.get_map(map)?;
-				let mode = mode.unwrap_or(Mode::KZTimer);
+				let mode = parser.parse_mode(mode);
 
 				Ok(Self::WR { map, mode })
 			}
 			"pb" => {
 				let (map, mode, player) =
-					parse_args!(message, MapIdentifier, "opt" Mode, PlayerIdentifier)?;
+					parse_args!(msg, "opt" MapIdentifier, "opt" Mode, "opt" PlayerIdentifier)?;
+				let map = parser.parse_map(map)?;
 				let map = state.get_map(map)?;
-				let mode = mode.unwrap_or(Mode::KZTimer);
+				let mode = parser.parse_mode(mode);
+				let player = parser.parse_player_identifier(player);
 
 				Ok(Self::PB { map, player, mode })
 			}
 			"p" | "player" | "profile" => {
-				let player = parse_args!(message, PlayerIdentifier)?;
+				let player = parse_args!(msg, "opt" PlayerIdentifier)?;
+				let player = parser.parse_player_identifier(player);
 
 				Ok(Self::Player { player })
 			}
 			"recent" => {
-				let player = parse_args!(message, PlayerIdentifier)?;
+				let player = parse_args!(msg, "opt" PlayerIdentifier)?;
+				let player = parser.parse_player_identifier(player);
 
 				Ok(Self::Recent { player })
 			}
@@ -296,6 +329,69 @@ impl Command {
 			Self::Player { player } => commands::player::execute(state, player).await,
 			Self::Recent { player } => commands::recent::execute(state, player).await,
 			Self::MostRecentRun => commands::mrr::execute(state).await,
+		}
+	}
+}
+
+#[derive(Debug)]
+struct Parser<'a> {
+	streamer_info: std::result::Result<&'a StreamerInfo, &'a Error>,
+	channel_name: String,
+	_sender_name: String,
+}
+
+impl Parser<'_> {
+	fn new<'a>(
+		streamer_info: std::result::Result<&'a StreamerInfo, &'a Error>,
+		channel_name: String,
+		sender_name: String,
+	) -> Parser<'a> {
+		Parser {
+			streamer_info,
+			channel_name,
+			_sender_name: sender_name,
+		}
+	}
+
+	fn parse_map(&self, map_identifier: Option<MapIdentifier>) -> Result<MapIdentifier> {
+		match map_identifier {
+			Some(map_identifier) => Ok(map_identifier),
+			None => Ok(self
+				.streamer_info?
+				.map
+				.as_ref()
+				.ok_or(MapIdentifier::incorrect())?
+				.name
+				.clone()
+				.into()),
+		}
+	}
+
+	fn parse_mode(&self, mode: Option<Mode>) -> Mode {
+		match mode {
+			Some(mode) => mode,
+			None => match self.streamer_info {
+				Ok(streamer_info) => streamer_info
+					.mode
+					.unwrap_or(Mode::KZTimer),
+				Err(_) => Mode::KZTimer,
+			},
+		}
+	}
+
+	fn parse_player_identifier(
+		&self,
+		player_identifier: Option<PlayerIdentifier>,
+	) -> PlayerIdentifier {
+		match player_identifier {
+			Some(player_identifier) => player_identifier,
+			None => match self.streamer_info {
+				Ok(streamer_info) => streamer_info.steam_id.into(),
+				Err(_) => match self.streamer_info {
+					Ok(streamer_info) => streamer_info.player_name.clone().into(),
+					Err(_) => self.channel_name.clone().into(),
+				},
+			},
 		}
 	}
 }

@@ -7,7 +7,7 @@ use {
 		sync::{Arc, Mutex},
 	},
 	tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender},
-	tracing::{error, info},
+	tracing::info,
 };
 
 /// The GUI state object.
@@ -45,15 +45,6 @@ impl State {
 			.try_lock()
 			.ok()
 			.and_then(|lock| (*lock).clone())
-	}
-
-	pub fn get_info(&self) -> Option<gsi::Info> {
-		self.gokz_client
-			.get("http://localhost:1337")
-			.send()
-			.ok()?
-			.json()
-			.ok()
 	}
 
 	/// Start the GUI.
@@ -111,7 +102,12 @@ impl State {
 
 				// Spawn new thread for GSI and give it the sender to send information as it changes
 				// ingame.
-				tokio::spawn(gsi::run(self.config.cfg_path.clone(), self.config.port, tx));
+				tokio::spawn(gsi::run(
+					self.config.cfg_path.clone(),
+					self.config.api_key.clone(),
+					self.config.port,
+					tx,
+				));
 
 				self.gsi_running = true;
 			}
@@ -243,15 +239,6 @@ impl eframe::App for State {
 
 				if current_info.as_ref() != Some(&info) {
 					*current_info = Some(info);
-
-					if let Err(why) = self
-						.gokz_client
-						.post("https://schnose.xyz/api/twitch_info")
-						.header("x-schnose-auth-key", &self.config.api_key)
-						.send()
-					{
-						error!("POST request to SchnoseAPI failed: {why:#?}");
-					}
 				}
 			}
 
