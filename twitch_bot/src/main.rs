@@ -110,7 +110,7 @@ async fn main() -> Eyre<()> {
 						continue;
 					}
 
-					match message.message_text.as_str() {
+					match message.message_text.trim() {
 						"!join" => {
 							global_state
 								.join_channel(message)
