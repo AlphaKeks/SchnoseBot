@@ -103,8 +103,11 @@ async fn main() -> Eyre<()> {
 						.filter(|c| c.is_ascii() || (c.is_whitespace() && !c.is_ascii_whitespace()))
 						.collect();
 
-				info!("{}: {:?}", message.sender.name, old_message);
-				info!("{}: {:?}", message.sender.name, message.message_text);
+				info!("[{}] {}: {:?}", message.channel_login, message.sender.name, old_message);
+				info!(
+					"[{}] {}: {:?}",
+					message.channel_login, message.sender.name, message.message_text
+				);
 
 				if message.channel_login == "schnosebot" {
 					let elapsed = last_message.elapsed().as_secs();
