@@ -1,11 +1,13 @@
 use {
 	clap::Parser,
 	color_eyre::Result as Eyre,
+	eframe::Storage,
 	gsi_client::gsi,
-	serde::Deserialize,
+	serde::{Deserialize, Serialize},
+	std::io::Write,
 	std::path::PathBuf,
 	tokio::sync::mpsc,
-	tracing::{error, Level},
+	tracing::{error, info, Level},
 	tracing_subscriber::fmt::format::FmtSpan,
 };
 
@@ -25,19 +27,110 @@ struct Args {
 	debug: bool,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Config {
 	pub cfg_path: String,
 	pub port: u16,
 	pub api_key: String,
 }
 
+impl Config {
+	pub fn get_config_dir() -> Option<PathBuf> {
+		match std::env::consts::OS {
+			"linux" | "macos" => {
+				let Ok(home_dir) = std::env::var("HOME") else {
+					error!("Could not find $HOME");
+					return None;
+				};
+
+				let mut home_dir = PathBuf::from(home_dir);
+				home_dir.push(".config");
+				home_dir.push("schnose_gsi");
+				home_dir.push("config.toml");
+				Some(home_dir)
+			}
+			"windows" => {
+				let Ok(appdata) = std::env::var("APPDATA") else {
+					error!("Could not find %APPDATA%.");
+					return None;
+				};
+
+				let mut appdata = PathBuf::from(appdata);
+				appdata.push("schnose_gsi");
+				appdata.push("config.toml");
+				Some(appdata)
+			}
+			_ => None,
+		}
+	}
+}
+
+impl Storage for Config {
+	fn get_string(&self, key: &str) -> Option<String> {
+		match key {
+			"cfg_path" => Some(self.cfg_path.clone()),
+			"api_key" => Some(self.api_key.clone()),
+			_ => None,
+		}
+	}
+
+	fn set_string(&mut self, key: &str, value: String) {
+		match key {
+			"cfg_path" => self.cfg_path = value,
+			"api_key" => self.api_key = value,
+			_ => {}
+		}
+	}
+
+	fn flush(&mut self) {
+		let Some(mut config_dir) = Self::get_config_dir() else {
+			error!("Failed to get config dir.");
+			return;
+		};
+
+		let mut file = match std::fs::File::create(&config_dir) {
+			Ok(file) => file,
+			Err(why) => {
+				if let std::io::ErrorKind::NotFound = why.kind() {
+					let full_config_dir = config_dir.clone();
+					config_dir.pop();
+					match std::fs::create_dir(&config_dir) {
+						Ok(()) => match std::fs::File::create(full_config_dir) {
+							Ok(file) => file,
+							Err(why) => {
+								error!("Failed to create `{config_dir:?}`: {why:#?}");
+								return;
+							}
+						},
+						Err(why) => {
+							error!("Failed to create `{config_dir:?}`: {why:#?}");
+							return;
+						}
+					}
+				} else {
+					error!("Failed to open `{config_dir:?}`: {why:#?}");
+					return;
+				}
+			}
+		};
+
+		let Ok(toml_string) = toml::to_string_pretty(self) else {
+			error!("Failed to convert config to toml.");
+			return;
+		};
+
+		if let Err(why) = file.write_all(toml_string.as_bytes()) {
+			error!("Failed to save config: {why:#?}");
+		}
+
+		info!("Wrote config to `{config_dir:?}`.");
+	}
+}
+
 #[tokio::main]
 async fn main() -> Eyre<()> {
 	color_eyre::install()?;
 	let args = Args::parse();
-	let config_file = std::fs::read_to_string(args.config_path)?;
-	let config: Config = toml::from_str(&config_file)?;
 
 	tracing_subscriber::fmt()
 		.compact()
@@ -45,6 +138,18 @@ async fn main() -> Eyre<()> {
 		.with_line_number(true)
 		.with_span_events(FmtSpan::NEW)
 		.init();
+
+	let mut config: Config = if args.config_path.exists() {
+		let config_file = std::fs::read_to_string(args.config_path)?;
+		toml::from_str(&config_file)?
+	} else {
+		let config_dir = Config::get_config_dir()
+			.expect("Missing `config` argument and couldn't find default location.");
+		let config_file = std::fs::read_to_string(config_dir)?;
+		toml::from_str(&config_file)?
+	};
+
+	config.flush();
 
 	let (tx, rx) = mpsc::unbounded_channel::<gsi::Info>();
 

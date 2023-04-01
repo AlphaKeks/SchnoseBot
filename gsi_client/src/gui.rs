@@ -1,5 +1,5 @@
 use {
-	crate::http_server,
+	crate::{http_server, Config},
 	eframe::egui,
 	gsi_client::gsi,
 	std::{
@@ -7,7 +7,7 @@ use {
 		sync::{Arc, Mutex},
 	},
 	tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender},
-	tracing::info,
+	tracing::{error, info},
 };
 
 /// The GUI state object.
@@ -52,7 +52,7 @@ impl State {
 	pub fn run(self, options: eframe::NativeOptions) -> eframe::Result<()> {
 		let current_info = Arc::clone(&self.current_info);
 		tokio::spawn(http_server::run(current_info));
-		eframe::run_native("SchnoseBot CS:GO Watcher", options, Box::new(|_| Box::new(self)))
+		eframe::run_native("schnose_gsi", options, Box::new(|_ctx| Box::new(self)))
 	}
 
 	/// Status message at the top of the screen.
@@ -255,5 +255,22 @@ impl eframe::App for State {
 
 			self.render_current_info(ui);
 		});
+	}
+
+	/// Save app state before shutting down.
+	fn save(&mut self, _storage: &mut dyn eframe::Storage) {
+		let Some(config_dir) = Config::get_config_dir() else {
+			error!("Failed to get config path.");
+			return;
+		};
+
+		let Ok(toml_string) = toml::to_string_pretty(&self.config) else {
+			error!("Failed to convert config to toml.");
+			return;
+		};
+
+		if let Err(why) = std::fs::write(config_dir, toml_string) {
+			error!("Failed to save config file: {why:?}");
+		}
 	}
 }

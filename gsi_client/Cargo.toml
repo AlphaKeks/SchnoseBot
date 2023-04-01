@@ -33,7 +33,7 @@ sqlx = { workspace = true }
 schnose_gsi = { version = "0.1", features = ["gokz"] }
 
 # egui
-eframe = { version = "0.21" }
+eframe = { version = "0.21", features = ["persistence"] }
 rfd = "0.11"
 
 # http
