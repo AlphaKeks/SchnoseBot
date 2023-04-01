@@ -106,6 +106,12 @@ impl GlobalState {
 	}
 
 	pub async fn handle_command(&self, message: PrivmsgMessage) -> Eyre<()> {
+		if message.message_text.trim() == "!id" {
+			self.send(message.sender.id.clone(), message, true)
+				.await?;
+			return Ok(());
+		}
+
 		let (reply, tag_user) = match Command::parse(self, message.clone()).await {
 			Ok(command) => {
 				let tag_user = match command {
@@ -153,7 +159,7 @@ impl GlobalState {
 	pub async fn join_channel(&mut self, ctx: PrivmsgMessage) -> Result<()> {
 		let channel_name = &ctx.sender.login;
 		let mut query =
-			QueryBuilder::new("INSERT INTO twitch_bot_channels (channel_name) VALUES (");
+			QueryBuilder::new("INSERT IGNORE INTO twitch_bot_channels (channel_name) VALUES (");
 		query.push_bind(channel_name).push(")");
 		query
 			.build()

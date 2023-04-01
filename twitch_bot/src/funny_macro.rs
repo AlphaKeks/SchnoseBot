@@ -2,7 +2,7 @@ macro_rules! parse_args {
     ( $message:expr => $opt:literal $t:ty ) => ({
 		(|| -> std::result::Result<Option<$t>, $crate::Error> {
 			for (i, word) in $message.iter().enumerate() {
-				if let Ok(parsed) = dbg!(word).parse::<$t>() {
+				if let Ok(parsed) = word.parse::<$t>() {
 					let _ = $message.remove(i);
 					return Ok(Some(parsed));
 				}
@@ -14,7 +14,7 @@ macro_rules! parse_args {
     ( $message:expr => $t:ty ) => ({
 		(|| -> std::result::Result<_, $crate::Error> {
 			for (i, word) in $message.iter().enumerate() {
-				if let Ok(parsed) = dbg!(word).parse::<$t>() {
+				if let Ok(parsed) = word.parse::<$t>() {
 					let _ = $message.remove(i);
 					return Ok(parsed);
 				}
@@ -27,10 +27,9 @@ macro_rules! parse_args {
 		(|| -> std::result::Result<_, $crate::Error> {
 			let mut message: Vec<&str> = $message.split(' ').collect();
 			Ok((
-				$({
-					dbg!(&message);
+				$(
 					parse_args!(message => $($opt)? $t)?
-				}),+
+				),+
 			))
 		})()
     });

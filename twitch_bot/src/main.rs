@@ -95,19 +95,19 @@ async fn main() -> Eyre<()> {
 
 	while let Some(message) = stream.recv().await {
 		match message {
-			ServerMessage::Privmsg(message) => {
-				info!("{}: {}", message.sender.name, message.message_text);
+			ServerMessage::Privmsg(mut message) => {
+				info!("{}: {:?}", message.sender.name, message.message_text);
 
 				if message.channel_login == "schnosebot" {
 					let elapsed = last_message.elapsed().as_secs();
 
+					message.message_text = message
+						.message_text
+						.chars() // filter out weird unicode characters that 7tv sometimes inserts
+						.filter(|c| c.is_ascii() || (c.is_whitespace() && !c.is_ascii_whitespace()))
+						.collect();
+
 					match message.message_text.trim() {
-						"!id" => {
-							global_state
-								.send(message.sender.id.clone(), message, true)
-								.await?;
-							continue;
-						}
 						"!join" | "!leave" if elapsed < 30 => {
 							let msg = format!(
 								"Currently on cooldown. Please wait another {} second(s).",

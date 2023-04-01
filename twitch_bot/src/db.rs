@@ -4,7 +4,7 @@ use {
 	gokz_rs::{Mode, SteamID, Tier},
 	serde::Deserialize,
 	sqlx::{FromRow, MySql, Pool, QueryBuilder},
-	tracing::warn,
+	tracing::{info, warn},
 };
 
 #[derive(Debug, FromRow)]
@@ -32,7 +32,7 @@ pub struct Config {
 
 pub async fn get_config(conn_pool: &Pool<MySql>, prod: bool) -> Eyre<Config, sqlx::Error> {
 	let cfg_id = if prod { 1 } else { 2 };
-	dbg!(cfg_id);
+	info!("Connecting to {} DB", if prod { "PROD" } else { "LOCAL" });
 	let config: ConfigRow = sqlx::query_as(&format!("SELECT * FROM configs WHERE id = {cfg_id}"))
 		.fetch_one(conn_pool)
 		.await?;
