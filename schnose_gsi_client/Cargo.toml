@@ -1,5 +1,5 @@
 [package]
-name = "gsi_client"
+name = "schnose_gsi_client"
 version = "0.1.0"
 edition = "2021"
 
@@ -19,22 +19,15 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 toml = { workspace = true }
 
+# async
+tokio = { workspace = true }
+
 # GOKZ
 gokz_rs = { workspace = true }
 
-# async
-tokio = { workspace = true }
-futures = { workspace = true }
+# GSI
+schnose_gsi = { version = "0.2", features = ["gokz"] }
 
-# SQL
-sqlx = { workspace = true }
-
-# CS:GO
-schnose_gsi = { version = "0.1", features = ["gokz"] }
-
-# egui
+# GUI
 eframe = { version = "0.21", features = ["persistence"] }
 rfd = "0.11"
-
-# http
-axum = { version = "0.6", features = ["macros"] }
