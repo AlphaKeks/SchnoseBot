@@ -1,14 +1,16 @@
-use crate::config::Config;
-use color_eyre::Result;
-use gokz_rs::{schnose_api, MapIdentifier, Mode, SteamID, Tier};
-use schnose_gsi::{GSIConfigBuilder, GSIServer, Subscription};
-use serde::{Deserialize, Serialize};
-use std::{
-	sync::{Arc, Mutex},
-	time::Duration,
+use {
+	crate::config::Config,
+	color_eyre::Result,
+	gokz_rs::{schnose_api, MapIdentifier, Mode, SteamID, Tier},
+	schnose_gsi::{GSIConfigBuilder, GSIServer, Subscription},
+	serde::{Deserialize, Serialize},
+	std::{
+		sync::{Arc, Mutex},
+		time::Duration,
+	},
+	tokio::sync::mpsc::UnboundedSender,
+	tracing::{error, info, warn},
 };
-use tokio::sync::mpsc::UnboundedSender;
-use tracing::{error, info, warn};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CSGOReport {

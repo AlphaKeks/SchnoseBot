@@ -1,6 +1,8 @@
-use color_eyre::{eyre::eyre, Result};
-use serde::{Deserialize, Serialize};
-use std::{fs::File, path::PathBuf};
+use {
+	color_eyre::{eyre::eyre, Result},
+	serde::{Deserialize, Serialize},
+	std::{fs::File, path::PathBuf},
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {

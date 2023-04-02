@@ -1,20 +1,22 @@
-use eframe::{
-	egui::{
-		self, style::Selection, CentralPanel, FontData, FontDefinitions, RichText, Style,
-		TextStyle, TopBottomPanel, Ui, Visuals,
+use {
+	eframe::{
+		egui::{
+			self, style::Selection, CentralPanel, FontData, FontDefinitions, RichText, Style,
+			TextStyle, TopBottomPanel, Ui, Visuals,
+		},
+		epaint::{Color32, FontFamily, FontId},
+		HardwareAcceleration, NativeOptions, Theme,
 	},
-	epaint::{Color32, FontFamily, FontId},
-	HardwareAcceleration, NativeOptions, Theme,
+	rfd::FileDialog,
+	schnose_gsi_client::{
+		config::Config,
+		gsi::{self, CSGOReport},
+	},
+	serde::Serialize,
+	std::{collections::BTreeMap, fs::File},
+	tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender},
+	tracing::{error, info},
 };
-use rfd::FileDialog;
-use schnose_gsi_client::{
-	config::Config,
-	gsi::{self, CSGOReport},
-};
-use serde::Serialize;
-use std::{collections::BTreeMap, fs::File};
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
-use tracing::{error, info};
 
 #[derive(Debug, Serialize)]
 pub struct GsiGui {

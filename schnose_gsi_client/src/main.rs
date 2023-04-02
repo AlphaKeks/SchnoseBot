@@ -1,12 +1,14 @@
 #![windows_subsystem = "windows"]
 
-use clap::Parser;
-use color_eyre::Result;
-use schnose_gsi_client::{config::Config, gsi::CSGOReport};
-use std::path::PathBuf;
-use tokio::sync::mpsc;
-use tracing::{info, Level};
-use tracing_subscriber::fmt::format::FmtSpan;
+use {
+	clap::Parser,
+	color_eyre::Result,
+	schnose_gsi_client::{config::Config, gsi::CSGOReport},
+	std::path::PathBuf,
+	tokio::sync::mpsc,
+	tracing::{info, Level},
+	tracing_subscriber::fmt::format::FmtSpan,
+};
 
 mod gui;
 
