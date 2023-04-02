@@ -43,9 +43,9 @@ async fn main() -> Result<()> {
 		info!("[{log_level}] Initialized logging.");
 	}
 
-	// The `sender` will be given to a separate thread that will listen for CS:GO updates and send
+	// This `sender` will be given to a separate thread that will listen for CS:GO updates and send
 	// those upates to the GUI thread using this channel.
-	let (gsi_sender, gsi_receiver) = mpsc::unbounded_channel::<CSGOReport>();
+	let (gui_sender, gui_receiver) = mpsc::unbounded_channel::<CSGOReport>();
 
 	let config = match args.config_path {
 		Some(path) => {
@@ -55,9 +55,9 @@ async fn main() -> Result<()> {
 		None => Config::load()?,
 	};
 
-	gui::GsiGui::init(gsi_sender, gsi_receiver, config)
+	gui::GsiGui::init(gui_sender, gui_receiver, config)
 		.await
-		.expect("Failed to run GUI.");
+		.expect("Failed to run GUI");
 
 	Ok(())
 }

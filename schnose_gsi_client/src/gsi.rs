@@ -9,7 +9,7 @@ use {
 		time::Duration,
 	},
 	tokio::sync::mpsc::UnboundedSender,
-	tracing::{error, info, warn},
+	tracing::{error, info},
 };
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -23,7 +23,7 @@ pub struct CSGOReport {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Map {
 	pub name: String,
-	pub tier: Tier,
+	pub tier: Option<Tier>,
 }
 
 pub async fn run_server(gsi_sender: UnboundedSender<CSGOReport>, config: Config) {
@@ -76,6 +76,8 @@ pub async fn run_server(gsi_sender: UnboundedSender<CSGOReport>, config: Config)
 				.as_ref()
 				.expect("There is always a player.");
 
+			let steam_id = player.steam_id;
+
 			let mode = player
 				.clan
 				.as_ref()
@@ -86,50 +88,71 @@ pub async fn run_server(gsi_sender: UnboundedSender<CSGOReport>, config: Config)
 						.and_then(|(mode, _rank)| mode.parse::<Mode>().ok())
 				});
 
-			let map = match event.map {
-				Some(map) => {
-					let Ok(map) = schnose_api::get_map(&MapIdentifier::from(map.name.clone()), &gokz_client).await else {
-						return warn!("Failed to fetch map `{map:?}`.");
-					};
+			let current_map_name = event.map.as_ref().map(|map| &map.name);
 
-					Some(Map {
-						name: map.name,
-						tier: map.tier
-					})
-				}
-				None => None
-			};
-
-			let csgo_report = CSGOReport {
-				player_name: player.name.clone(),
-				steam_id: player.steam_id,
-				mode,
-				map
-			};
-
+			let mut report = None;
 			{
-				let mut last_info_lock = match last_info.lock() {
+				let old_report = match last_info.lock() {
 					Ok(lock) => lock,
 					Err(why) => return error!("Failed to acquire Mutex: {why:?}"),
 				};
 
-				// If Map/Mode/Player haven't changed, return early.
-				if (*last_info_lock).as_ref() == Some(&csgo_report) {
-					return;
-				} else {
-					*last_info_lock = Some(csgo_report.clone());
+				let old_player = old_report
+					.as_ref()
+					.map(|report: &CSGOReport| &report.player_name);
+
+				let old_mode = old_report
+					.as_ref()
+					.and_then(|report: &CSGOReport| report.mode);
+
+				let old_map_name = old_report
+					.as_ref()
+					.and_then(|report: &CSGOReport| report.map.as_ref().map(|map| &map.name));
+
+				if let Some(old_report) = &*old_report {
+					if Some(&player.name) == old_player
+						&& mode == old_mode && current_map_name == old_map_name
+					{
+						report = Some(old_report.clone());
+					}
 				}
 			}
 
-			// Otherwise notify the GUI thread and SchnoseAPI
-			info!("Info has changed! New: {csgo_report:#?}");
+			let report = match report {
+				Some(report) => report,
+				None => {
+					let map = match current_map_name {
+						Some(map_name) => {
+							let map_identifier = MapIdentifier::from(map_name.to_owned());
+							match schnose_api::get_map(&map_identifier, &gokz_client)
+								.await
+								.ok()
+							{
+								Some(map) => Some(Map { name: map.name, tier: Some(map.tier) }),
+								None => Some(Map { name: map_name.to_owned(), tier: None }),
+							}
+						}
+						None => None,
+					};
 
-			match gsi_sender.send(csgo_report.clone()) {
-				Ok(()) => info!("Info sent successfully."),
+					CSGOReport {
+						player_name: player.name.clone(),
+						steam_id,
+						mode,
+						map,
+					}
+				}
+			};
+
+			// Otherwise notify the GUI thread and SchnoseAPI
+			info!("Info has changed! New: {report:#?}");
+
+			match gsi_sender.send(report.clone()) {
+				Ok(()) => info!("[GUI] Info sent successfully."),
 				Err(why) => error!("Failed sending info: {why:?}"),
 			};
 
-			match post_to_schnose_api(csgo_report, api_key, &gokz_client).await {
+			match post_to_schnose_api(report, api_key, &gokz_client).await {
 				Ok(()) => info!("POSTed successfully."),
 				Err(why) => error!("Failed to POST: {why:?}"),
 			};
