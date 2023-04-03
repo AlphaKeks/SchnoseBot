@@ -158,8 +158,16 @@ impl GlobalState {
 			),
 		};
 
-		self.send(reply, message, tag_user)
+		std::thread::sleep(std::time::Duration::from_secs(2));
+
+		if let Err(why) = self
+			.send(reply, message, tag_user)
 			.await
+		{
+			error!("Failed to send reply: {why:?}");
+		}
+
+		Ok(())
 	}
 
 	pub async fn join_channel(&mut self, ctx: PrivmsgMessage) -> Result<()> {
