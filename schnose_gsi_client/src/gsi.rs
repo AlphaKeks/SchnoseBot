@@ -1,7 +1,7 @@
 use {
 	crate::{config::Config, server},
 	color_eyre::Result,
-	gokz_rs::{global_api, schnose_api, MapIdentifier, Mode, SteamID, Tier},
+	gokz_rs::{schnose_api, MapIdentifier, Mode, SteamID, Tier},
 	schnose_gsi::{GSIConfigBuilder, GSIServer, Subscription},
 	serde::{Deserialize, Serialize},
 	std::{
@@ -89,11 +89,15 @@ pub async fn run_server(axum_sender: UnboundedSender<server::Payload>, config: C
 						.map
 						.as_ref()
 						.map(|map| {
-							let (_, map_name) = map
-								.name
-								.rsplit_once('/')
-								.unwrap_or_default();
-							String::from(map_name)
+							if map.name.contains('/') {
+								let (_, map_name) = map
+									.name
+									.rsplit_once('/')
+									.unwrap_or_default();
+								String::from(map_name)
+							} else {
+								map.name.clone()
+							}
 						})
 						.unwrap_or_else(|| String::from("unknown map")),
 					map_tier: None,
@@ -115,10 +119,6 @@ pub async fn run_server(axum_sender: UnboundedSender<server::Payload>, config: C
 						.player
 						.as_ref()
 						.map(|player| player.steam_id),
-					tp_wr: None,
-					pro_wr: None,
-					tp_pb: None,
-					pro_pb: None,
 				};
 
 				// If `last_info` does not yet exist, initialize it with the current info.
@@ -160,44 +160,6 @@ pub async fn run_server(axum_sender: UnboundedSender<server::Payload>, config: C
 				Ok(map) => Some(map.tier),
 				Err(_) => None,
 			};
-
-			// - We have a mode ✓
-			// - We have a player ✓
-			// - The map has a tier (is global) ✓
-			if let (Some(mode), Some(steam_id), Some(_)) = (info.mode, info.steam_id, info.map_tier)
-			{
-				info.tp_wr =
-					global_api::get_wr(info.map_name.clone().into(), mode, true, 0, &gokz_client)
-						.await
-						.ok();
-
-				info.pro_wr =
-					global_api::get_wr(info.map_name.clone().into(), mode, false, 0, &gokz_client)
-						.await
-						.ok();
-
-				info.tp_pb = global_api::get_pb(
-					steam_id.into(),
-					info.map_name.clone().into(),
-					mode,
-					true,
-					0,
-					&gokz_client,
-				)
-				.await
-				.ok();
-
-				info.pro_pb = global_api::get_pb(
-					steam_id.into(),
-					info.map_name.clone().into(),
-					mode,
-					false,
-					0,
-					&gokz_client,
-				)
-				.await
-				.ok();
-			}
 
 			// Send the update to the Axum backend.
 			match axum_sender.send(info.clone()) {

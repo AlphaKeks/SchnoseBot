@@ -73,23 +73,64 @@
 			return timeString;
 		}
 
+		let number = 0;
+
+		let [tp_wr, pro_wr] = [null, null];
+		let [tp_pb, pro_pb] = [null, null];
+
 		setInterval(async () => {
 
-			const payload = await fetch("http://localhost:9999/gsi")
+			const gameInfo = await fetch("http://localhost:9999/gsi")
 				.then((res) => res.json())
 				.catch(console.error);
 
-			mapName.innerHTML = `${payload.map_name}`;
+			const [tp_wr_req, pro_wr_req] = number % 2 == 0 && gameInfo.steam_id && gameInfo.map_name && gameInfo.mode
+				? await fetch(
+					`http://localhost:9999/wrs?steam_id=${gameInfo.steam_id}&map_identifier=${gameInfo.map_name}&mode=${gameInfo.mode}`
+				)
+					.then((res) => res.json())
+					.catch(console.error)
+				: [null, null];
 
-			if (payload?.mode) {
-				mapName.innerHTML = `[${payload.mode}] ${mapName.innerHTML}`;
+			if (tp_wr_req && pro_wr_req) {
+				if (tp_wr !== tp_wr_req) {
+					tp_wr = tp_wr_req;
+				}
+
+				if (pro_wr !== pro_wr_req) {
+					pro_wr = pro_wr_req;
+				}
 			}
 
-			if (payload?.tp_wr) {
-				tpWr.innerHTML = `${formatTime(payload?.tp_wr?.time)} by ${payload?.tp_wr?.player_name}`;
+			const [tp_pb_req, pro_pb_req] = number % 2 == 0 && gameInfo.steam_id && gameInfo.map_name && gameInfo.mode
+				? await fetch(
+					`http://localhost:9999/pbs?steam_id=${gameInfo.steam_id}&map_identifier=${gameInfo.map_name}&mode=${gameInfo.mode}`
+				)
+					.then((res) => res.json())
+					.catch(console.error)
+				: [null, null];
 
-				if (payload?.tp_pb && payload?.tp_pb - payload?.tp_wr != 0) {
-					tpPb.innerHTML = `(+${formatTime(payload?.tp_pb?.time)})`;
+			if (tp_pb_req && pro_pb_req) {
+				if (tp_pb !== tp_pb_req) {
+					tp_pb = tp_pb_req;
+				}
+
+				if (pro_pb !== pro_pb_req) {
+					pro_pb = pro_pb_req;
+				}
+			}
+
+			mapName.innerHTML = `${gameInfo.map_name}`;
+
+			if (gameInfo?.mode) {
+				mapName.innerHTML = `[${gameInfo.mode}] ${mapName.innerHTML}`;
+			}
+
+			if (tp_wr) {
+				tpWr.innerHTML = `${formatTime(tp_wr.time)} by ${tp_wr.player_name}`;
+
+				if (tp_pb && tp_pb.time - tp_wr.time != 0) {
+					tpPb.innerHTML = `(+${formatTime(tp_pb.time)})`;
 				}
 
 			} else {
@@ -97,11 +138,11 @@
 				tpPb.innerHTML = "";
 			}
 
-			if (payload?.pro_wr) {
-				proWr.innerHTML = `${formatTime(payload?.pro_wr?.time)} by ${payload?.pro_wr?.player_name}`;
+			if (pro_wr) {
+				proWr.innerHTML = `${formatTime(pro_wr.time)} by ${pro_wr.player_name}`;
 
-				if (payload?.pro_pb && payload?.pro_pb - payload?.pro_wr != 0) {
-					proPb.innerHTML = `(+${formatTime(payload?.pro_pb?.time)})`;
+				if (pro_pb && pro_pb.time - pro_wr.time != 0) {
+					proPb.innerHTML = `(+${formatTime(pro_pb.time)})`;
 				}
 
 			} else {
@@ -109,7 +150,9 @@
 				proPb.innerHTML = "";
 			}
 
-		}, 1000);
+			number += 1;
+
+		}, 5000);
 	</script>
 </body>
 

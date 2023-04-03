@@ -1,19 +1,19 @@
 use {
 	axum::{
-		extract::State as AxumState,
-		http::{HeaderMap, StatusCode},
+		extract::{Query, State as AxumState},
+		http::StatusCode,
 		response::{Html, IntoResponse},
 		routing::get,
 		Json, Router, Server,
 	},
-	gokz_rs::{global_api::Record, Mode, SteamID, Tier},
-	serde::{Serialize, Serializer},
+	gokz_rs::{global_api, MapIdentifier, Mode, SteamID, Tier},
+	serde::{Deserialize, Serialize, Serializer},
 	std::{
 		net::SocketAddr,
 		sync::{Arc, Mutex},
 	},
 	tokio::sync::mpsc::UnboundedReceiver,
-	tracing::{debug, error},
+	tracing::{error, warn},
 };
 
 fn ser_mode<S>(mode: &Option<Mode>, serializer: S) -> Result<S::Ok, S::Error>
@@ -31,16 +31,13 @@ pub struct Payload {
 	#[serde(serialize_with = "ser_mode")]
 	pub mode: Option<Mode>,
 	pub steam_id: Option<SteamID>,
-	pub tp_wr: Option<Record>,
-	pub pro_wr: Option<Record>,
-	pub tp_pb: Option<Record>,
-	pub pro_pb: Option<Record>,
 }
 
 #[derive(Debug, Clone)]
 struct State {
 	current_payload: Arc<Mutex<Payload>>,
 	receiver: Arc<Mutex<UnboundedReceiver<Payload>>>,
+	gokz_client: Arc<gokz_rs::Client>,
 }
 
 pub async fn run(mut receiver: UnboundedReceiver<Payload>) {
@@ -52,12 +49,15 @@ pub async fn run(mut receiver: UnboundedReceiver<Payload>) {
 	let state = State {
 		current_payload: Arc::new(Mutex::new(initial_payload)),
 		receiver: Arc::new(Mutex::new(receiver)),
+		gokz_client: Arc::new(gokz_rs::Client::new()),
 	};
 
 	let addr = SocketAddr::from(([127, 0, 0, 1], 9999));
 	let router = Router::new()
 		.route("/", get(overlay))
 		.route("/gsi", get(recv))
+		.route("/wrs", get(get_wrs))
+		.route("/pbs", get(get_pbs))
 		.with_state(state);
 
 	Server::bind(&addr)
@@ -82,9 +82,7 @@ async fn overlay() -> impl IntoResponse {
 	Html(include_str!("../static/overlay.html"))
 }
 
-async fn recv(AxumState(state): AxumState<State>, headers: HeaderMap) -> impl IntoResponse {
-	debug!("Headers: {headers:?}");
-
+async fn recv(AxumState(state): AxumState<State>) -> impl IntoResponse {
 	let mut current_payload = match state.current_payload.lock() {
 		Ok(guard) => guard,
 		Err(why) => {
@@ -107,10 +105,61 @@ async fn recv(AxumState(state): AxumState<State>, headers: HeaderMap) -> impl In
 			new_payload
 		}
 		Err(why) => {
-			error!("No new data? {why:?}");
+			warn!("No new data? {why:?}");
 			(*current_payload).clone()
 		}
 	};
 
 	(StatusCode::OK, Response(Some(payload)))
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct Params {
+	steam_id: SteamID,
+	map_identifier: MapIdentifier,
+	mode: Mode,
+}
+
+async fn get_wrs(
+	Query(Params { map_identifier, mode, .. }): Query<Params>,
+	AxumState(state): AxumState<State>,
+) -> impl IntoResponse {
+	let tp = global_api::get_wr(map_identifier.clone(), mode, true, 0, &state.gokz_client)
+		.await
+		.ok();
+
+	let pro = global_api::get_wr(map_identifier.clone(), mode, false, 0, &state.gokz_client)
+		.await
+		.ok();
+
+	Json((tp, pro))
+}
+
+async fn get_pbs(
+	Query(Params { steam_id, map_identifier, mode, .. }): Query<Params>,
+	AxumState(state): AxumState<State>,
+) -> impl IntoResponse {
+	let tp = global_api::get_pb(
+		steam_id.into(),
+		map_identifier.clone(),
+		mode,
+		true,
+		0,
+		&state.gokz_client,
+	)
+	.await
+	.ok();
+
+	let pro = global_api::get_pb(
+		steam_id.into(),
+		map_identifier.clone(),
+		mode,
+		false,
+		0,
+		&state.gokz_client,
+	)
+	.await
+	.ok();
+
+	Json((tp, pro))
 }
