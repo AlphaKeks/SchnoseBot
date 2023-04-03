@@ -3,6 +3,23 @@
 	clippy::style, missing_debug_implementations, rust_2018_idioms, rustdoc::broken_intra_doc_links
 )]
 
+use {
+	clap::Parser,
+	client::GlobalState,
+	color_eyre::Result as Eyre,
+	serde::Deserialize,
+	sqlx::mysql::MySqlPoolOptions,
+	std::path::PathBuf,
+	tokio::time::Instant,
+	tracing::{debug, info, warn, Level},
+	tracing_subscriber::fmt::format::FmtSpan,
+	twitch_irc::{
+		login::{CredentialsPair, StaticLoginCredentials},
+		message::ServerMessage,
+		ClientConfig, SecureTCPTransport, TwitchIRCClient,
+	},
+};
+
 #[derive(Debug, Parser)]
 struct Args {
 	#[arg(short, long = "config")]
@@ -27,23 +44,6 @@ mod error;
 mod funny_macro;
 
 pub use error::{Error, Result};
-
-use {
-	clap::Parser,
-	client::GlobalState,
-	color_eyre::Result as Eyre,
-	serde::Deserialize,
-	sqlx::mysql::MySqlPoolOptions,
-	std::path::PathBuf,
-	tokio::time::Instant,
-	tracing::{debug, info, warn, Level},
-	tracing_subscriber::fmt::format::FmtSpan,
-	twitch_irc::{
-		login::{CredentialsPair, StaticLoginCredentials},
-		message::ServerMessage,
-		ClientConfig, SecureTCPTransport, TwitchIRCClient,
-	},
-};
 
 const BOT_NAME: &str = "schnosebot";
 

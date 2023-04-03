@@ -44,7 +44,7 @@ pub async fn run(mut receiver: UnboundedReceiver<Payload>) {
 
 	let addr = SocketAddr::from(([127, 0, 0, 1], 9999));
 	let router = Router::new()
-		.route("/", get(recv))
+		.route("/gsi", get(recv))
 		.with_state(state);
 
 	Server::bind(&addr)
