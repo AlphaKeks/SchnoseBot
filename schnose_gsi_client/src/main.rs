@@ -3,11 +3,10 @@
 use {
 	clap::Parser,
 	color_eyre::Result,
-	schnose_gsi_client::{config::Config, gsi::CSGOReport},
+	schnose_gsi_client::config::Config,
 	std::path::PathBuf,
-	tokio::sync::mpsc,
 	tracing::{info, Level},
-	tracing_subscriber::fmt::format::FmtSpan,
+	tracing_subscriber::{fmt::format::FmtSpan, EnvFilter},
 };
 
 mod gui;
@@ -38,6 +37,7 @@ async fn main() -> Result<()> {
 			.with_max_level(log_level)
 			.with_line_number(true)
 			.with_span_events(FmtSpan::NEW)
+			.with_env_filter(EnvFilter::from_default_env())
 			.init();
 
 		info!("[{log_level}] Initialized logging.");
@@ -45,7 +45,7 @@ async fn main() -> Result<()> {
 
 	// This `sender` will be given to a separate thread that will listen for CS:GO updates and send
 	// those upates to the GUI thread using this channel.
-	let (gui_sender, gui_receiver) = mpsc::unbounded_channel::<CSGOReport>();
+	// let (gui_sender, gui_receiver) = mpsc::unbounded_channel::<CSGOReport>();
 
 	let config = match args.config_path {
 		Some(path) => {
@@ -55,7 +55,7 @@ async fn main() -> Result<()> {
 		None => Config::load()?,
 	};
 
-	gui::GsiGui::init(gui_sender, gui_receiver, config)
+	gui::GsiGui::init(config)
 		.await
 		.expect("Failed to run GUI");
 

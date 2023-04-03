@@ -1,18 +1,16 @@
-use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
-
 use {
 	chrono::NaiveDateTime,
 	color_eyre::Result,
+	fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher},
 	gokz_rs::{
 		global_api,
 		schnose_api::{self, maps::Course},
 		MapIdentifier, Mode, SteamID, Tier,
 	},
-	serde::{Deserialize, Serialize},
 };
 
 /// Custom version of [`global_api::Map`] with some additional fields for convenience.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct GlobalMap {
 	pub id: u16,
 	pub name: String,

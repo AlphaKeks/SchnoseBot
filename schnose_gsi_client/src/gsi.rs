@@ -1,7 +1,7 @@
 use {
-	crate::config::Config,
+	crate::{config::Config, server},
 	color_eyre::Result,
-	gokz_rs::{schnose_api, MapIdentifier, Mode, SteamID, Tier},
+	gokz_rs::{global_api, schnose_api, MapIdentifier, Mode, SteamID, Tier},
 	schnose_gsi::{GSIConfigBuilder, GSIServer, Subscription},
 	serde::{Deserialize, Serialize},
 	std::{
@@ -9,7 +9,7 @@ use {
 		time::Duration,
 	},
 	tokio::sync::mpsc::UnboundedSender,
-	tracing::{error, info},
+	tracing::{debug, error, info},
 };
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -26,7 +26,7 @@ pub struct Map {
 	pub tier: Option<Tier>,
 }
 
-pub async fn run_server(gsi_sender: UnboundedSender<CSGOReport>, config: Config) {
+pub async fn run_server(axum_sender: UnboundedSender<server::Payload>, config: Config) {
 	let mut config_builder = GSIConfigBuilder::new("schnose-gsi-client");
 
 	config_builder
@@ -59,103 +59,176 @@ pub async fn run_server(gsi_sender: UnboundedSender<CSGOReport>, config: Config)
 	}
 
 	let gokz_client = Arc::new(gokz_rs::Client::new());
-	let gsi_sender = Arc::new(gsi_sender);
-	let last_info = Arc::new(Mutex::new(None));
+	let axum_sender = Arc::new(axum_sender);
+	let last_info = Arc::new(Mutex::new(Option::<server::Payload>::None));
 
 	gsi_server.add_async_event_listener(move |event| {
 		let gokz_client = Arc::clone(&gokz_client);
-		let gsi_sender = Arc::clone(&gsi_sender);
+		// let gsi_sender = Arc::clone(&gsi_sender);
+		let axum_sender = Arc::clone(&axum_sender);
 		let last_info = Arc::clone(&last_info);
 		let api_key = config.schnose_api_key.clone();
 
 		Box::pin(async move {
-			info!("New GSI Event: {event:#?}");
+			// debug!("New GSI Event: {event:#?}");
+			info!("New GSI Event.");
 
-			let player = event
-				.player
-				.as_ref()
-				.expect("There is always a player.");
-
-			let steam_id = player.steam_id;
-
-			let mode = player
-				.clan
-				.as_ref()
-				.and_then(|clan_tag| {
-					clan_tag
-						.replace(['[', ']'], "")
-						.split_once(' ')
-						.and_then(|(mode, _rank)| mode.parse::<Mode>().ok())
-				});
-
-			let current_map_name = event.map.as_ref().map(|map| &map.name);
-
-			let mut report = None;
-			{
-				let old_report = match last_info.lock() {
-					Ok(lock) => lock,
-					Err(why) => return error!("Failed to acquire Mutex: {why:?}"),
+			let mut info = {
+				// Get info from last event
+				let mut last_info_guard = match last_info.lock() {
+					Ok(guard) => guard,
+					Err(why) => {
+						error!("Failed to acquire Mutex guard.");
+						debug!("Failed to acquire Mutex guard: {why:?}");
+						return;
+					}
 				};
 
-				let old_player = old_report
-					.as_ref()
-					.map(|report: &CSGOReport| &report.player_name);
+				let new_info = server::Payload {
+					map_name: event
+						.map
+						.as_ref()
+						.map(|map| map.name.clone())
+						.unwrap_or_else(|| String::from("unknown map")),
+					map_tier: None,
+					mode: event
+						.player
+						.as_ref()
+						.and_then(|player| {
+							player
+								.clan
+								.as_ref()
+								.and_then(|clan_tag| {
+									let (mode, _rank) = clan_tag.split_once(' ')?;
+									mode.replace('[', "")
+										.parse::<Mode>()
+										.ok()
+								})
+						}),
+					steam_id: event
+						.player
+						.as_ref()
+						.map(|player| player.steam_id),
+					tp_wr: None,
+					pro_wr: None,
+					tp_pb: None,
+					pro_pb: None,
+				};
 
-				let old_mode = old_report
-					.as_ref()
-					.and_then(|report: &CSGOReport| report.mode);
-
-				let old_map_name = old_report
-					.as_ref()
-					.and_then(|report: &CSGOReport| report.map.as_ref().map(|map| &map.name));
-
-				if let Some(old_report) = &*old_report {
-					if Some(&player.name) == old_player
-						&& mode == old_mode && current_map_name == old_map_name
-					{
-						report = Some(old_report.clone());
+				// If `last_info` does not yet exist, initialize it with the current info.
+				let last_info = match &*last_info_guard {
+					Some(info) => info.clone(),
+					None => {
+						*last_info_guard = Some(new_info.clone());
+						new_info.clone()
 					}
+				};
+
+				let same_map = new_info.map_name == last_info.map_name;
+				let same_mode = new_info.mode == last_info.mode;
+				let same_player = new_info.steam_id == last_info.steam_id;
+
+				// If the new info is the same as the last one, we don't want to do anything.
+				if same_map && same_mode && same_player {
+					return;
+				} else {
+					debug!("last map: {}", last_info.map_name);
+					debug!("new map: {}", new_info.map_name);
+					debug!("last mode: {:?}", last_info.mode);
+					debug!("new mode: {:?}", new_info.mode);
+					debug!("last player: {:?}", last_info.steam_id);
+					debug!("new player: {:?}", new_info.steam_id);
 				}
+
+				*last_info_guard = Some(new_info.clone());
+
+				new_info
+			};
+
+			info.map_tier = match schnose_api::get_map(
+				&MapIdentifier::Name(info.map_name.clone()),
+				&gokz_client,
+			)
+			.await
+			{
+				Ok(map) => Some(map.tier),
+				Err(_) => None,
+			};
+
+			// - We have a mode ✓
+			// - We have a player ✓
+			// - The map has a tier (is global) ✓
+			if let (Some(mode), Some(steam_id), Some(_)) = (info.mode, info.steam_id, info.map_tier)
+			{
+				info.tp_wr =
+					global_api::get_wr(info.map_name.clone().into(), mode, true, 0, &gokz_client)
+						.await
+						.ok();
+
+				info.pro_wr =
+					global_api::get_wr(info.map_name.clone().into(), mode, true, 0, &gokz_client)
+						.await
+						.ok();
+
+				info.tp_pb = global_api::get_pb(
+					steam_id.into(),
+					info.map_name.clone().into(),
+					mode,
+					true,
+					0,
+					&gokz_client,
+				)
+				.await
+				.ok();
+
+				info.pro_pb = global_api::get_pb(
+					steam_id.into(),
+					info.map_name.clone().into(),
+					mode,
+					true,
+					0,
+					&gokz_client,
+				)
+				.await
+				.ok();
 			}
 
-			let report = match report {
-				Some(report) => report,
-				None => {
-					let map = match current_map_name {
-						Some(map_name) => {
-							let map_identifier = MapIdentifier::from(map_name.to_owned());
-							match schnose_api::get_map(&map_identifier, &gokz_client)
-								.await
-								.ok()
-							{
-								Some(map) => Some(Map { name: map.name, tier: Some(map.tier) }),
-								None => Some(Map { name: map_name.to_owned(), tier: None }),
-							}
-						}
-						None => None,
-					};
-
-					CSGOReport {
-						player_name: player.name.clone(),
-						steam_id,
-						mode,
-						map,
-					}
+			// Send the update to the Axum backend.
+			match axum_sender.send(info.clone()) {
+				Ok(()) => {
+					info!("[TO Axum] Info sent successfully.");
+					debug!("[TO Axum] Info sent successfully: {info:#?}");
+				}
+				Err(why) => {
+					error!("Failed to send info to Axum.");
+					debug!("Failed to send info to Axum: {why:?}");
 				}
 			};
 
-			// Otherwise notify the GUI thread and SchnoseAPI
-			info!("Info has changed! New: {report:#?}");
+			// Also notfiy SchnoseAPI.
+			if let Some(steam_id) = info.steam_id {
+				let csgo_report = CSGOReport {
+					player_name: event
+						.player
+						.as_ref()
+						.map(|player| player.name.clone())
+						.unwrap_or_else(|| String::from("unknown")),
+					steam_id,
+					mode: info.mode,
+					map: Some(Map { name: info.map_name, tier: info.map_tier }),
+				};
 
-			match gsi_sender.send(report.clone()) {
-				Ok(()) => info!("[GUI] Info sent successfully."),
-				Err(why) => error!("Failed sending info: {why:?}"),
-			};
-
-			match post_to_schnose_api(report, api_key, &gokz_client).await {
-				Ok(()) => info!("POSTed successfully."),
-				Err(why) => error!("Failed to POST: {why:?}"),
-			};
+				match post_to_schnose_api(csgo_report.clone(), api_key, &gokz_client).await {
+					Ok(()) => {
+						info!("[TO SchnoseAPI] Report sent successfully.");
+						debug!("[TO SchnoseAPI] Report sent successfully: {csgo_report:#?}");
+					}
+					Err(why) => {
+						error!("Failed to send report to SchnoseAPI.");
+						debug!("Failed to send report to SchnoseAPI: {why:?}");
+					}
+				};
+			}
 		})
 	});
 
@@ -185,7 +258,8 @@ async fn post_to_schnose_api(
 			Ok(())
 		}
 		Ok(Err(why)) | Err(why) => {
-			error!("POST failed: {why:#?}");
+			error!("POST failed.");
+			debug!("POST failed: {why:#?}");
 			Err(why.into())
 		}
 	}

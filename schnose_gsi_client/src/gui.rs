@@ -11,23 +11,29 @@ use {
 	schnose_gsi_client::{
 		config::Config,
 		gsi::{self, CSGOReport},
+		server,
 	},
 	serde::Serialize,
 	std::{collections::BTreeMap, fs::File},
-	tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender},
+	tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender},
 	tracing::{error, info},
 };
 
 #[derive(Debug, Serialize)]
 pub struct GsiGui {
 	pub csgo_report: Option<CSGOReport>,
-	#[serde(skip)]
-	pub gsi_sender: UnboundedSender<CSGOReport>,
-	#[serde(skip)]
-	pub gsi_receiver: UnboundedReceiver<CSGOReport>,
+	// #[serde(skip)]
+	// pub gsi_sender: UnboundedSender<CSGOReport>,
+	// #[serde(skip)]
+	// pub gsi_receiver: UnboundedReceiver<CSGOReport>,
 	pub csgo_cfg_folder: String,
 	pub config: Config,
 	pub gsi_server_running: bool,
+
+	#[serde(skip)]
+	pub axum_sender: UnboundedSender<server::Payload>,
+	#[serde(skip)]
+	pub axum_receiver: Option<UnboundedReceiver<server::Payload>>,
 }
 
 impl GsiGui {
@@ -37,8 +43,8 @@ impl GsiGui {
 
 	#[tracing::instrument]
 	pub async fn init(
-		gsi_sender: UnboundedSender<CSGOReport>,
-		gsi_receiver: UnboundedReceiver<CSGOReport>,
+		// gsi_sender: UnboundedSender<CSGOReport>,
+		// gsi_receiver: UnboundedReceiver<CSGOReport>,
 		config: Config,
 	) -> eframe::Result<()> {
 		let csgo_cfg_folder = config
@@ -46,13 +52,17 @@ impl GsiGui {
 			.display()
 			.to_string();
 
+		let (axum_sender, axum_receiver) = mpsc::unbounded_channel();
+
 		let gui = Self {
 			csgo_report: None,
-			gsi_sender,
-			gsi_receiver,
+			// gsi_sender,
+			// gsi_receiver,
 			csgo_cfg_folder,
 			config,
 			gsi_server_running: false,
+			axum_sender,
+			axum_receiver: Some(axum_receiver),
 		};
 
 		let native_options = NativeOptions {
@@ -196,7 +206,7 @@ impl GsiGui {
 		});
 	}
 
-	#[tracing::instrument(skip(ui))]
+	// #[tracing::instrument(skip(ui))]
 	pub fn render_run_button(&mut self, ui: &mut Ui) {
 		if self.gsi_server_running {
 			return;
@@ -206,35 +216,22 @@ impl GsiGui {
 			if ui.button("Run GSI server.").clicked() {
 				// Spawn a thread to listen for CS:GO events and send them back to
 				// the GUI through a channel.
-				tokio::spawn(gsi::run_server(self.gsi_sender.clone(), self.config.clone()));
+				tokio::spawn(gsi::run_server(
+					// self.gsi_sender.clone(),
+					self.axum_sender.clone(),
+					self.config.clone(),
+				));
+
+				// Spawn a thread that will expose information on an HTTP endpoint.
+				tokio::spawn(server::run(
+					self.axum_receiver
+						.take()
+						.expect("We only ever take this receiver once -- here."),
+				));
+
 				self.gsi_server_running = true;
 			}
 		});
-	}
-
-	pub fn render_csgo_report(&mut self, ui: &mut Ui) {
-		// If there is a new report in the channel, render that. Otherwise render whatever is
-		// currently stored in state.
-		let csgo_report = match self.gsi_receiver.try_recv() {
-			Ok(report) => {
-				self.csgo_report = Some(report.clone());
-				Some(report)
-			}
-			Err(_) => self.csgo_report.clone(),
-		};
-
-		match csgo_report {
-			Some(report) => {
-				let report_text = serde_json::to_string_pretty(&report)
-					.unwrap_or_else(|_| String::from("can't parse report"));
-				ui.code(report_text);
-			}
-			None => {
-				ui.vertical_centered(|ui| {
-					ui.heading("No info");
-				});
-			}
-		};
 	}
 }
 
@@ -247,7 +244,6 @@ impl eframe::App for GsiGui {
 		CentralPanel::default().show(ctx, |ui| {
 			self.render_cfg_path_prompt(ui);
 			self.render_run_button(ui);
-			self.render_csgo_report(ui);
 			self.render_api_key_prompt(ui);
 		});
 	}

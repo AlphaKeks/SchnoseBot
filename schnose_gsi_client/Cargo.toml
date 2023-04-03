@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+schnosebot = { path = "../schnosebot" }
+
 # error handling
 color-eyre = { workspace = true }
 
@@ -21,6 +23,7 @@ toml = { workspace = true }
 
 # async
 tokio = { workspace = true }
+axum = { version = "0.6", features = ["macros"] }
 
 # GOKZ
 gokz_rs = { workspace = true }
