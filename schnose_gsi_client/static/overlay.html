@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@600&display=swap" rel="stylesheet">
+	<title>SchnoseBot GSI Overlay</title>
+</head>
+
+<style>
+	* {
+		font-family: "Quicksand", sans-serif;
+	}
+
+	.map-name {
+		font-size: 3.5em;
+		color: white;
+	}
+
+	.text {
+		color: white;
+	}
+
+	.wr {
+		font-size: 2.5em;
+	}
+
+	.tp {
+		color: #e3ad39;
+	}
+
+	.pro {
+		color: #5e97d8;
+	}
+
+	.pb {
+		color: #f38ba8;
+	}
+</style>
+
+<body>
+	<div class="map-name">unknown map</div>
+
+	<div class="wr tp">
+		TP » <span class="text tp-wr">none</span> <span id="tp-pb" class="pb"></span>
+	</div>
+
+	<div class="wr pro">
+		PRO » <span class="text pro-wr">none</span> <span id="pro-pb" class="pb"></span>
+	</div>
+
+	<script>
+		const mapName = document.querySelector(".map-name");
+		const tpWr = document.querySelector(".tp-wr");
+		const proWr = document.querySelector(".pro-wr");
+		const tpPb = document.querySelector("#tp-pb");
+		const proPb = document.querySelector("#pro-pb");
+
+		function formatTime(seconds) {
+			const hours = Math.floor(seconds / 3600);
+			const minutes = Math.floor((seconds % 3600) / 60);
+			const remainingSeconds = (seconds % 60).toFixed(3);
+
+			let timeString = `${minutes.toString().padStart(2, "0")}:${remainingSeconds.toString().padStart(2, "0")}`;
+
+			if (hours > 0) {
+				timeString = `${hours.toString().padStart(2, "0")}:${timeString}`;
+			}
+
+			return timeString;
+		}
+
+		setInterval(async () => {
+
+			const payload = await fetch("http://localhost:9999/gsi")
+				.then((res) => res.json())
+				.catch(console.error);
+
+			mapName.innerHTML = `${payload.map_name}`;
+
+			if (payload?.mode) {
+				mapName.innerHTML = `[${payload.mode}] ${mapName.innerHTML}`;
+			}
+
+			if (payload?.tp_wr) {
+				tpWr.innerHTML = `${formatTime(payload?.tp_wr?.time)} by ${payload?.tp_wr?.player_name}`;
+
+				if (payload?.tp_pb && payload?.tp_pb - payload?.tp_wr != 0) {
+					tpPb.innerHTML = `(+${formatTime(payload?.tp_pb?.time)})`;
+				}
+
+			} else {
+				tpWr.innerHTML = "none";
+				tpPb.innerHTML = "";
+			}
+
+			if (payload?.pro_wr) {
+				proWr.innerHTML = `${formatTime(payload?.pro_wr?.time)} by ${payload?.pro_wr?.player_name}`;
+
+				if (payload?.pro_pb && payload?.pro_pb - payload?.pro_wr != 0) {
+					proPb.innerHTML = `(+${formatTime(payload?.pro_pb?.time)})`;
+				}
+
+			} else {
+				proWr.innerHTML = "none";
+				proPb.innerHTML = "";
+			}
+
+		}, 1000);
+	</script>
+</body>
+
+</html>

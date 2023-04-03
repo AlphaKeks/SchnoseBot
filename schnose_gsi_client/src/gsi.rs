@@ -166,7 +166,7 @@ pub async fn run_server(axum_sender: UnboundedSender<server::Payload>, config: C
 						.ok();
 
 				info.pro_wr =
-					global_api::get_wr(info.map_name.clone().into(), mode, true, 0, &gokz_client)
+					global_api::get_wr(info.map_name.clone().into(), mode, false, 0, &gokz_client)
 						.await
 						.ok();
 
@@ -185,7 +185,7 @@ pub async fn run_server(axum_sender: UnboundedSender<server::Payload>, config: C
 					steam_id.into(),
 					info.map_name.clone().into(),
 					mode,
-					true,
+					false,
 					0,
 					&gokz_client,
 				)

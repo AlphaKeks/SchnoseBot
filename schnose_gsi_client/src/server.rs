@@ -1,22 +1,34 @@
 use {
 	axum::{
-		extract::State as AxumState, http::StatusCode, response::IntoResponse, routing::get, Json,
-		Router, Server,
+		extract::State as AxumState,
+		http::{HeaderMap, StatusCode},
+		response::{Html, IntoResponse},
+		routing::get,
+		Json, Router, Server,
 	},
 	gokz_rs::{global_api::Record, Mode, SteamID, Tier},
-	serde::Serialize,
+	serde::{Serialize, Serializer},
 	std::{
 		net::SocketAddr,
 		sync::{Arc, Mutex},
 	},
 	tokio::sync::mpsc::UnboundedReceiver,
-	tracing::error,
+	tracing::{debug, error},
 };
+
+fn ser_mode<S>(mode: &Option<Mode>, serializer: S) -> Result<S::Ok, S::Error>
+where
+	S: Serializer,
+{
+	mode.map(|mode| mode.short())
+		.serialize(serializer)
+}
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Payload {
 	pub map_name: String,
 	pub map_tier: Option<Tier>,
+	#[serde(serialize_with = "ser_mode")]
 	pub mode: Option<Mode>,
 	pub steam_id: Option<SteamID>,
 	pub tp_wr: Option<Record>,
@@ -44,6 +56,7 @@ pub async fn run(mut receiver: UnboundedReceiver<Payload>) {
 
 	let addr = SocketAddr::from(([127, 0, 0, 1], 9999));
 	let router = Router::new()
+		.route("/", get(overlay))
 		.route("/gsi", get(recv))
 		.with_state(state);
 
@@ -65,7 +78,13 @@ impl IntoResponse for Response {
 	}
 }
 
-async fn recv(AxumState(state): AxumState<State>) -> impl IntoResponse {
+async fn overlay() -> impl IntoResponse {
+	Html(include_str!("../static/overlay.html"))
+}
+
+async fn recv(AxumState(state): AxumState<State>, headers: HeaderMap) -> impl IntoResponse {
+	debug!("Headers: {headers:?}");
+
 	let mut current_payload = match state.current_payload.lock() {
 		Ok(guard) => guard,
 		Err(why) => {
