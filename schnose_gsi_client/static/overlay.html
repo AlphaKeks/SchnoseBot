@@ -73,7 +73,28 @@
 			return timeString;
 		}
 
-		let number = 0;
+		function isKZMap(mapName) {
+			if (!mapName) {
+				return false;
+			}
+
+			const prefixes = [
+				"bkz",
+				"kz",
+				"kzpro",
+				"skz",
+				"vnl",
+				"xc",
+			];
+
+			for (const prefix of prefixes) {
+				if (mapName.startsWith(prefix)) {
+					return true;
+				}
+			}
+
+			return false;
+		}
 
 		let [tp_wr, pro_wr] = [null, null];
 		let [tp_pb, pro_pb] = [null, null];
@@ -84,7 +105,11 @@
 				.then((res) => res.json())
 				.catch(console.error);
 
-			const [tp_wr_req, pro_wr_req] = number % 2 == 0 && gameInfo.steam_id && gameInfo.map_name && gameInfo.mode
+			const shouldFetchRecords = gameInfo.steam_id
+				&& gameInfo.mode
+				&& isKZMap(gameInfo.map_name);
+
+			const [tp_wr_req, pro_wr_req] = shouldFetchRecords
 				? await fetch(
 					`http://localhost:9999/wrs?steam_id=${gameInfo.steam_id}&map_identifier=${gameInfo.map_name}&mode=${gameInfo.mode}`
 				)
@@ -102,7 +127,7 @@
 				}
 			}
 
-			const [tp_pb_req, pro_pb_req] = number % 2 == 0 && gameInfo.steam_id && gameInfo.map_name && gameInfo.mode
+			const [tp_pb_req, pro_pb_req] = shouldFetchRecords
 				? await fetch(
 					`http://localhost:9999/pbs?steam_id=${gameInfo.steam_id}&map_identifier=${gameInfo.map_name}&mode=${gameInfo.mode}`
 				)
@@ -126,6 +151,12 @@
 				mapName.innerHTML = `[${gameInfo.mode}] ${mapName.innerHTML}`;
 			}
 
+			if (gameInfo?.map_tier) {
+				mapName.innerHTML += ` (T${gameInfo.map_tier})`;
+			} else {
+				mapName.innerHTML += " (not global)";
+			}
+
 			if (tp_wr) {
 				tpWr.innerHTML = `${formatTime(tp_wr.time)} by ${tp_wr.player_name}`;
 
@@ -134,7 +165,7 @@
 				}
 
 			} else {
-				tpWr.innerHTML = "none";
+				tpWr.innerHTML = "no WR";
 				tpPb.innerHTML = "";
 			}
 
@@ -146,13 +177,11 @@
 				}
 
 			} else {
-				proWr.innerHTML = "none";
+				proWr.innerHTML = "no WR";
 				proPb.innerHTML = "";
 			}
 
-			number += 1;
-
-		}, 5000);
+		}, 2000);
 	</script>
 </body>
 
