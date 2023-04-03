@@ -88,7 +88,13 @@ pub async fn run_server(axum_sender: UnboundedSender<server::Payload>, config: C
 					map_name: event
 						.map
 						.as_ref()
-						.map(|map| map.name.clone())
+						.map(|map| {
+							let (_, map_name) = map
+								.name
+								.rsplit_once('/')
+								.unwrap_or_default();
+							String::from(map_name)
+						})
 						.unwrap_or_else(|| String::from("unknown map")),
 					map_tier: None,
 					mode: event
