@@ -22,10 +22,6 @@ use {
 #[derive(Debug, Serialize)]
 pub struct GsiGui {
 	pub csgo_report: Option<CSGOReport>,
-	// #[serde(skip)]
-	// pub gsi_sender: UnboundedSender<CSGOReport>,
-	// #[serde(skip)]
-	// pub gsi_receiver: UnboundedReceiver<CSGOReport>,
 	pub csgo_cfg_folder: String,
 	pub config: Config,
 	pub gsi_server_running: bool,
@@ -42,11 +38,7 @@ impl GsiGui {
 	const MONOSPACE_FONT: &str = "Fira Code";
 
 	#[tracing::instrument]
-	pub async fn init(
-		// gsi_sender: UnboundedSender<CSGOReport>,
-		// gsi_receiver: UnboundedReceiver<CSGOReport>,
-		config: Config,
-	) -> eframe::Result<()> {
+	pub async fn init(config: Config) -> eframe::Result<()> {
 		let csgo_cfg_folder = config
 			.csgo_cfg_path
 			.display()
@@ -56,8 +48,6 @@ impl GsiGui {
 
 		let gui = Self {
 			csgo_report: None,
-			// gsi_sender,
-			// gsi_receiver,
 			csgo_cfg_folder,
 			config,
 			gsi_server_running: false,

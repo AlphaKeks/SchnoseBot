@@ -11,6 +11,7 @@ use {
 	schnosebot::global_maps::{self, GlobalMap},
 	sqlx::{MySql, Pool, QueryBuilder},
 	std::{collections::HashSet, fmt::Display},
+	tracing::error,
 	twitch_irc::{
 		irc,
 		login::StaticLoginCredentials,
@@ -98,9 +99,13 @@ impl GlobalState {
 			.map(|channel| format!("#{channel}"))
 			.ok_or(eyre!("NO CHANNEL FOUND"))?;
 
-		self.client
+		if let Err(why) = self
+			.client
 			.send_message(irc!("PRIVMSG", channel, message.to_string()))
-			.await?;
+			.await
+		{
+			error!("Failed to send message: {why:?}");
+		}
 
 		Ok(())
 	}
