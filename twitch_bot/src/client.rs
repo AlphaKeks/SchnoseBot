@@ -158,8 +158,6 @@ impl GlobalState {
 			),
 		};
 
-		std::thread::sleep(std::time::Duration::from_secs(2));
-
 		if let Err(why) = self
 			.send(reply, message, tag_user)
 			.await
