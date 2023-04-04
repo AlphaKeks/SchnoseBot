@@ -1,8 +1,8 @@
 use {
 	eframe::{
 		egui::{
-			self, style::Selection, CentralPanel, FontData, FontDefinitions, RichText, Style,
-			TextEdit, TextStyle, TopBottomPanel, Ui, Visuals,
+			self, style::Selection, Button, CentralPanel, FontData, FontDefinitions, RichText,
+			Style, TextEdit, TextStyle, TopBottomPanel, Ui, Visuals,
 		},
 		epaint::{Color32, FontFamily, FontId},
 		HardwareAcceleration, NativeOptions, Theme,
@@ -36,6 +36,34 @@ impl GsiGui {
 	const APP_NAME: &str = "schnose_gsi_client";
 	const NORMAL_FONT: &str = "Quicksand";
 	const MONOSPACE_FONT: &str = "Fira Code";
+
+	const _ROSEWATER: Color32 = Color32::from_rgb(245, 224, 220);
+	const _FLAMINGO: Color32 = Color32::from_rgb(242, 205, 205);
+	const _PINK: Color32 = Color32::from_rgb(245, 194, 231);
+	const MAUVE: Color32 = Color32::from_rgb(203, 166, 247);
+	const RED: Color32 = Color32::from_rgb(243, 139, 168);
+	const _MAROON: Color32 = Color32::from_rgb(235, 160, 172);
+	const PEACH: Color32 = Color32::from_rgb(250, 179, 135);
+	const _YELLOW: Color32 = Color32::from_rgb(249, 226, 175);
+	const GREEN: Color32 = Color32::from_rgb(166, 227, 161);
+	const _TEAL: Color32 = Color32::from_rgb(148, 226, 213);
+	const _SKY: Color32 = Color32::from_rgb(137, 220, 235);
+	const _SAPPHIRE: Color32 = Color32::from_rgb(116, 199, 236);
+	const _BLUE: Color32 = Color32::from_rgb(137, 180, 250);
+	const _LAVENDER: Color32 = Color32::from_rgb(180, 190, 254);
+	const TEXT: Color32 = Color32::from_rgb(205, 214, 244);
+	const _SUBTEXT1: Color32 = Color32::from_rgb(186, 194, 222);
+	const _SUBTEXT0: Color32 = Color32::from_rgb(166, 173, 200);
+	const _OVERLAY2: Color32 = Color32::from_rgb(147, 153, 178);
+	const _OVERLAY1: Color32 = Color32::from_rgb(127, 132, 156);
+	const _OVERLAY0: Color32 = Color32::from_rgb(108, 112, 134);
+	const SURFACE2: Color32 = Color32::from_rgb(88, 91, 112);
+	const _SURFACE1: Color32 = Color32::from_rgb(69, 71, 90);
+	const _SURFACE0: Color32 = Color32::from_rgb(49, 50, 68);
+	const BASE: Color32 = Color32::from_rgb(30, 30, 46);
+	const MANTLE: Color32 = Color32::from_rgb(24, 24, 37);
+	const CRUST: Color32 = Color32::from_rgb(17, 17, 27);
+	const POGGERS: Color32 = Color32::from_rgb(116, 128, 194);
 
 	#[tracing::instrument]
 	pub async fn init(config: Config) -> eframe::Result<()> {
@@ -130,19 +158,19 @@ impl GsiGui {
 	pub fn load_colors(&self, ctx: &eframe::CreationContext) {
 		let visuals = Visuals {
 			dark_mode: true,
-			override_text_color: Some(Color32::from_rgb(205, 214, 244)),
+			override_text_color: Some(Self::TEXT),
 			selection: Selection {
-				bg_fill: Color32::from_rgb(69, 71, 90),
+				bg_fill: Self::SURFACE2,
 				..Default::default()
 			},
-			hyperlink_color: Color32::from_rgb(203, 166, 247),
-			faint_bg_color: Color32::from_rgb(49, 50, 68),
-			extreme_bg_color: Color32::from_rgb(17, 17, 27),
-			code_bg_color: Color32::from_rgb(24, 24, 37),
-			warn_fg_color: Color32::from_rgb(250, 179, 135),
-			error_fg_color: Color32::from_rgb(243, 139, 168),
-			window_fill: Color32::from_rgb(30, 30, 46),
-			panel_fill: Color32::from_rgb(24, 24, 37),
+			hyperlink_color: Self::MAUVE,
+			faint_bg_color: Self::MANTLE,
+			extreme_bg_color: Self::CRUST,
+			code_bg_color: Self::MANTLE,
+			warn_fg_color: Self::PEACH,
+			error_fg_color: Self::RED,
+			window_fill: Self::BASE,
+			panel_fill: Self::MANTLE,
 			button_frame: true,
 			slider_trailing_fill: true,
 			..Default::default()
@@ -156,15 +184,15 @@ impl GsiGui {
 			ui.heading(
 				RichText::new("SchnoseBot GSI Client")
 					.heading()
-					.color(Color32::from_rgb(116, 128, 194)),
+					.color(Self::POGGERS),
 			);
 
 			ui.heading(match self.gsi_server_running {
-				true => RichText::new(" (Running)")
-					.color(Color32::from_rgb(166, 227, 161))
+				true => RichText::new("Running")
+					.color(Self::GREEN)
 					.heading(),
-				false => RichText::new(" (Stopped)")
-					.color(Color32::from_rgb(243, 139, 168))
+				false => RichText::new("Stopped")
+					.color(Self::RED)
 					.heading(),
 			});
 
@@ -174,10 +202,9 @@ impl GsiGui {
 
 	pub fn render_cfg_path_prompt(&mut self, ui: &mut Ui) {
 		ui.vertical_centered(|ui| {
-			if ui
-				.button("Select your /csgo/cfg folder")
-				.clicked()
-			{
+			let button = ui.add(Button::new("Select your /csgo/cfg folder").fill(Self::SURFACE2));
+
+			if button.clicked() {
 				if let Some(path) = FileDialog::new().pick_folder() {
 					let path = path.display().to_string();
 					self.csgo_cfg_folder = path.clone();
@@ -185,8 +212,10 @@ impl GsiGui {
 				}
 			}
 
-			ui.code(format!("Current folder: {}\n", self.csgo_cfg_folder));
+			button.on_hover_text(format!("Current folder: {}", self.csgo_cfg_folder));
 		});
+
+		ui.add_space(12.0);
 	}
 
 	pub fn render_api_key_prompt(&mut self, ui: &mut Ui) {
@@ -196,6 +225,8 @@ impl GsiGui {
 				.password(true)
 				.show(ui);
 		});
+
+		ui.add_space(12.0);
 	}
 
 	// #[tracing::instrument(skip(ui))]
@@ -205,7 +236,10 @@ impl GsiGui {
 		}
 
 		ui.vertical_centered(|ui| {
-			if ui.button("Run GSI server.").clicked() {
+			if ui
+				.add(Button::new("Run GSI server").fill(Self::SURFACE2))
+				.clicked()
+			{
 				// Spawn a thread to listen for CS:GO events and send them back to
 				// the GUI through a channel.
 				tokio::spawn(gsi::run_server(
@@ -235,8 +269,8 @@ impl eframe::App for GsiGui {
 
 		CentralPanel::default().show(ctx, |ui| {
 			self.render_cfg_path_prompt(ui);
-			self.render_run_button(ui);
 			self.render_api_key_prompt(ui);
+			self.render_run_button(ui);
 		});
 	}
 
