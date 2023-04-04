@@ -2,7 +2,7 @@ use {
 	eframe::{
 		egui::{
 			self, style::Selection, CentralPanel, FontData, FontDefinitions, RichText, Style,
-			TextStyle, TopBottomPanel, Ui, Visuals,
+			TextEdit, TextStyle, TopBottomPanel, Ui, Visuals,
 		},
 		epaint::{Color32, FontFamily, FontId},
 		HardwareAcceleration, NativeOptions, Theme,
@@ -192,7 +192,9 @@ impl GsiGui {
 	pub fn render_api_key_prompt(&mut self, ui: &mut Ui) {
 		ui.vertical_centered(|ui| {
 			ui.label("Enter your API Key: ");
-			ui.text_edit_singleline(&mut self.config.schnose_api_key);
+			TextEdit::singleline(&mut self.config.schnose_api_key)
+				.password(true)
+				.show(ui);
 		});
 	}
 

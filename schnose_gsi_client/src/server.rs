@@ -136,7 +136,7 @@ async fn get_wrs(
 }
 
 async fn get_pbs(
-	Query(Params { steam_id, map_identifier, mode, .. }): Query<Params>,
+	Query(Params { steam_id, map_identifier, mode }): Query<Params>,
 	AxumState(state): AxumState<State>,
 ) -> impl IntoResponse {
 	let tp = global_api::get_pb(
