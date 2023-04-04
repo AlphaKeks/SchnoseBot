@@ -15,7 +15,10 @@ use {
 	},
 	serde::Serialize,
 	std::{collections::BTreeMap, fs::File},
-	tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender},
+	tokio::{
+		sync::mpsc::{self, UnboundedReceiver, UnboundedSender},
+		task::JoinHandle,
+	},
 	tracing::{error, info},
 };
 
@@ -30,6 +33,11 @@ pub struct GsiGui {
 	pub axum_sender: UnboundedSender<server::Payload>,
 	#[serde(skip)]
 	pub axum_receiver: Option<UnboundedReceiver<server::Payload>>,
+
+	#[serde(skip)]
+	pub gsi_handle: Option<JoinHandle<()>>,
+	#[serde(skip)]
+	pub axum_handle: Option<JoinHandle<()>>,
 }
 
 impl GsiGui {
@@ -81,6 +89,8 @@ impl GsiGui {
 			gsi_server_running: false,
 			axum_sender,
 			axum_receiver: Some(axum_receiver),
+			gsi_handle: None,
+			axum_handle: None,
 		};
 
 		let native_options = NativeOptions {
@@ -229,34 +239,55 @@ impl GsiGui {
 		ui.add_space(12.0);
 	}
 
-	// #[tracing::instrument(skip(ui))]
+	#[tracing::instrument]
+	fn run_server(&mut self) {
+		self.gsi_handle =
+			Some(tokio::spawn(gsi::run_server(self.axum_sender.clone(), self.config.clone())));
+
+		let axum_receiver = self
+			.axum_receiver
+			.take()
+			.expect("We only ever use this receiver once.");
+
+		self.axum_handle = Some(tokio::spawn(server::run(axum_receiver)));
+
+		self.gsi_server_running = true;
+	}
+
+	#[tracing::instrument]
+	fn stop_and_exit(&mut self) {
+		let gsi_handle = self
+			.gsi_handle
+			.take()
+			.expect("We only ever take this handle once and then shut down.");
+
+		let axum_handle = self
+			.axum_handle
+			.take()
+			.expect("We only ever take this handle once and then shut down.");
+
+		gsi_handle.abort();
+		axum_handle.abort();
+
+		std::process::exit(0);
+	}
+
 	pub fn render_run_button(&mut self, ui: &mut Ui) {
-		if self.gsi_server_running {
-			return;
-		}
-
 		ui.vertical_centered(|ui| {
-			if ui
-				.add(Button::new("Run GSI server").fill(Self::SURFACE2))
-				.clicked()
-			{
-				// Spawn a thread to listen for CS:GO events and send them back to
-				// the GUI through a channel.
-				tokio::spawn(gsi::run_server(
-					// self.gsi_sender.clone(),
-					self.axum_sender.clone(),
-					self.config.clone(),
-				));
-
-				// Spawn a thread that will expose information on an HTTP endpoint.
-				tokio::spawn(server::run(
-					self.axum_receiver
-						.take()
-						.expect("We only ever take this receiver once -- here."),
-				));
-
-				self.gsi_server_running = true;
-			}
+			match self.gsi_server_running {
+				false => {
+					let run_button = Button::new("Run GSI server").fill(Self::SURFACE2);
+					if ui.add(run_button).clicked() {
+						self.run_server();
+					}
+				}
+				true => {
+					let stop_button = Button::new("Stop GSI server and exit").fill(Self::SURFACE2);
+					if ui.add(stop_button).clicked() {
+						self.stop_and_exit();
+					}
+				}
+			};
 		});
 	}
 }
