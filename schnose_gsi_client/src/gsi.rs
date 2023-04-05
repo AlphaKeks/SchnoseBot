@@ -2,7 +2,7 @@ use {
 	crate::{config::Config, server},
 	color_eyre::Result,
 	gokz_rs::{schnose_api, MapIdentifier, Mode, SteamID, Tier},
-	schnose_gsi::{GSIConfigBuilder, GSIServer, Subscription},
+	schnose_gsi::{GSIConfigBuilder, GSIServer, Result as GSIResult, ServerHandle, Subscription},
 	serde::{Deserialize, Serialize},
 	std::{
 		sync::{Arc, Mutex},
@@ -26,7 +26,10 @@ pub struct Map {
 	pub tier: Option<Tier>,
 }
 
-pub async fn run_server(axum_sender: UnboundedSender<server::Payload>, config: Config) {
+pub fn run_server(
+	axum_sender: UnboundedSender<server::Payload>,
+	config: Config,
+) -> GSIResult<ServerHandle> {
 	let mut config_builder = GSIConfigBuilder::new("schnose-gsi-client");
 
 	config_builder
@@ -202,10 +205,7 @@ pub async fn run_server(axum_sender: UnboundedSender<server::Payload>, config: C
 
 	info!("Listening for CS:GO events on port {}.", config.gsi_port);
 
-	gsi_server
-		.run()
-		.await
-		.expect("Failed to run GSI server.");
+	gsi_server.run()
 }
 
 async fn post_to_schnose_api(

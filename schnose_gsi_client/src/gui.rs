@@ -15,10 +15,7 @@ use {
 	},
 	serde::Serialize,
 	std::{collections::BTreeMap, fs::File},
-	tokio::{
-		sync::mpsc::{self, UnboundedReceiver, UnboundedSender},
-		task::JoinHandle,
-	},
+	tokio::{sync::mpsc, task::JoinHandle},
 	tracing::{error, info},
 };
 
@@ -29,13 +26,12 @@ pub struct GsiGui {
 	pub config: Config,
 	pub gsi_server_running: bool,
 
+	// #[serde(skip)]
+	// pub axum_sender: Option<UnboundedSender<server::Payload>>,
+	// #[serde(skip)]
+	// pub axum_receiver: Option<UnboundedReceiver<server::Payload>>,
 	#[serde(skip)]
-	pub axum_sender: UnboundedSender<server::Payload>,
-	#[serde(skip)]
-	pub axum_receiver: Option<UnboundedReceiver<server::Payload>>,
-
-	#[serde(skip)]
-	pub gsi_handle: Option<JoinHandle<()>>,
+	pub gsi_handle: Option<schnose_gsi::ServerHandle>,
 	#[serde(skip)]
 	pub axum_handle: Option<JoinHandle<()>>,
 }
@@ -80,15 +76,13 @@ impl GsiGui {
 			.display()
 			.to_string();
 
-		let (axum_sender, axum_receiver) = mpsc::unbounded_channel();
-
 		let gui = Self {
 			csgo_report: None,
 			csgo_cfg_folder,
 			config,
 			gsi_server_running: false,
-			axum_sender,
-			axum_receiver: Some(axum_receiver),
+			// axum_sender: None,
+			// axum_receiver: None,
 			gsi_handle: None,
 			axum_handle: None,
 		};
@@ -241,35 +235,37 @@ impl GsiGui {
 
 	#[tracing::instrument]
 	fn run_server(&mut self) {
-		self.gsi_handle =
-			Some(tokio::spawn(gsi::run_server(self.axum_sender.clone(), self.config.clone())));
+		let (axum_sender, axum_receiver) = mpsc::unbounded_channel();
 
-		let axum_receiver = self
-			.axum_receiver
-			.take()
-			.expect("We only ever use this receiver once.");
+		self.gsi_handle = Some(
+			gsi::run_server(axum_sender, self.config.clone()).expect("Failed to run GSI server"),
+		);
 
 		self.axum_handle = Some(tokio::spawn(server::run(axum_receiver)));
 
 		self.gsi_server_running = true;
+
+		info!("Started GSI server");
 	}
 
 	#[tracing::instrument]
-	fn stop_and_exit(&mut self) {
+	fn stop_server(&mut self) {
 		let gsi_handle = self
 			.gsi_handle
 			.take()
-			.expect("We only ever take this handle once and then shut down.");
+			.expect("This should only ever be called after the server has been started.");
 
 		let axum_handle = self
 			.axum_handle
 			.take()
-			.expect("We only ever take this handle once and then shut down.");
+			.expect("This should only ever be called after the server has been started.");
 
 		gsi_handle.abort();
 		axum_handle.abort();
 
-		std::process::exit(0);
+		self.gsi_server_running = false;
+
+		info!("Stopped GSI server");
 	}
 
 	pub fn render_run_button(&mut self, ui: &mut Ui) {
@@ -282,9 +278,9 @@ impl GsiGui {
 					}
 				}
 				true => {
-					let stop_button = Button::new("Stop GSI server and exit").fill(Self::SURFACE2);
+					let stop_button = Button::new("Stop GSI server").fill(Self::SURFACE2);
 					if ui.add(stop_button).clicked() {
-						self.stop_and_exit();
+						self.stop_server();
 					}
 				}
 			};
