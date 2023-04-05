@@ -117,11 +117,13 @@
 					.catch(console.error)
 				: [null, null];
 
-			if (tp_wr_req && pro_wr_req) {
+			if (tp_wr_req) {
 				if (tp_wr !== tp_wr_req) {
 					tp_wr = tp_wr_req;
 				}
+			}
 
+			if (pro_wr_req) {
 				if (pro_wr !== pro_wr_req) {
 					pro_wr = pro_wr_req;
 				}
@@ -135,11 +137,13 @@
 					.catch(console.error)
 				: [null, null];
 
-			if (tp_pb_req && pro_pb_req) {
+			if (tp_pb_req) {
 				if (tp_pb !== tp_pb_req) {
 					tp_pb = tp_pb_req;
 				}
+			}
 
+			if (pro_pb_req) {
 				if (pro_pb !== pro_pb_req) {
 					pro_pb = pro_pb_req;
 				}

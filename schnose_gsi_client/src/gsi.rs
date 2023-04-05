@@ -112,10 +112,19 @@ pub fn run_server(
 								.clan
 								.as_ref()
 								.and_then(|clan_tag| {
-									let (mode, _rank) = clan_tag.split_once(' ')?;
-									mode.replace('[', "")
-										.parse::<Mode>()
-										.ok()
+									if clan_tag.contains(' ') {
+										// [SKZ Beginner] Player Name
+										let (mode, _rank) = clan_tag.split_once(' ')?;
+										mode.replace('[', "")
+											.parse::<Mode>()
+											.ok()
+									} else {
+										// [SKZ] Player Name
+										clan_tag
+											.replace(['[', ']'], "")
+											.parse::<Mode>()
+											.ok()
+									}
 								})
 						}),
 					steam_id: event

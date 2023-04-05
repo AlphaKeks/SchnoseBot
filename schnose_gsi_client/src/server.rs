@@ -55,7 +55,7 @@ pub async fn run(mut receiver: UnboundedReceiver<Payload>) {
 	let addr = SocketAddr::from(([127, 0, 0, 1], 9999));
 	let router = Router::new()
 		.route("/", get(overlay))
-		.route("/gsi", get(recv))
+		.route("/gsi", get(gsi))
 		.route("/wrs", get(get_wrs))
 		.route("/pbs", get(get_pbs))
 		.with_state(state);
@@ -82,7 +82,7 @@ async fn overlay() -> impl IntoResponse {
 	Html(include_str!("../static/overlay.html"))
 }
 
-async fn recv(AxumState(state): AxumState<State>) -> impl IntoResponse {
+async fn gsi(AxumState(state): AxumState<State>) -> impl IntoResponse {
 	let mut current_payload = match state.current_payload.lock() {
 		Ok(guard) => guard,
 		Err(why) => {
