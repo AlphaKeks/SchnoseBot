@@ -139,6 +139,8 @@
 
 				if (tp_pb && tp_pb.time - tp_wr.time != 0) {
 					tpPb.innerHTML = `(+${formatTime(tp_pb.time)})`;
+				} else {
+					tpPb.innerHTML = "";
 				}
 
 			} else {
@@ -151,6 +153,8 @@
 
 				if (pro_pb && pro_pb.time - pro_wr.time != 0) {
 					proPb.innerHTML = `(+${formatTime(pro_pb.time)})`;
+				} else {
+					proPb.innerHTML = "";
 				}
 
 			} else {
