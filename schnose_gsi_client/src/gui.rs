@@ -122,13 +122,13 @@ impl GsiGui {
 		// Default font for most of the UI
 		font_definitions.font_data.insert(
 			String::from(Self::NORMAL_FONT),
-			FontData::from_static(include_bytes!("../static/fonts/Quicksand.ttf")),
+			FontData::from_static(include_bytes!("../assets/fonts/Quicksand.ttf")),
 		);
 
 		// Monospace font for codeblocks etc.
 		font_definitions.font_data.insert(
 			String::from(Self::MONOSPACE_FONT),
-			FontData::from_static(include_bytes!("../static/fonts/Fira Code.ttf")),
+			FontData::from_static(include_bytes!("../assets/fonts/Fira Code.ttf")),
 		);
 
 		font_definitions

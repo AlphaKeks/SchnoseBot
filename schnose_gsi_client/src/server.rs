@@ -79,7 +79,7 @@ impl IntoResponse for Response {
 }
 
 async fn overlay() -> impl IntoResponse {
-	Html(include_str!("../static/overlay.html"))
+	Html(include_str!("../assets/overlay.html"))
 }
 
 async fn gsi(AxumState(state): AxumState<State>) -> impl IntoResponse {
