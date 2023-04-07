@@ -138,7 +138,7 @@
 				tpWr.innerHTML = `${formatTime(tp_wr.time)} by ${tp_wr.player_name}`;
 
 				if (tp_pb && tp_pb.time - tp_wr.time != 0) {
-					tpPb.innerHTML = `(+${formatTime(tp_pb.time)})`;
+					tpPb.innerHTML = `(+${formatTime(tp_pb.time - tp_wr.time)})`;
 				} else {
 					tpPb.innerHTML = "";
 				}
@@ -152,7 +152,7 @@
 				proWr.innerHTML = `${formatTime(pro_wr.time)} by ${pro_wr.player_name}`;
 
 				if (pro_pb && pro_pb.time - pro_wr.time != 0) {
-					proPb.innerHTML = `(+${formatTime(pro_pb.time)})`;
+					proPb.innerHTML = `(+${formatTime(pro_pb.time - pro_wr.time)})`;
 				} else {
 					proPb.innerHTML = "";
 				}
