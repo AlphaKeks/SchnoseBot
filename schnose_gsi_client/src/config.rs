@@ -18,7 +18,7 @@ impl Config {
 		let mut home_dir = PathBuf::from(std::env::var("HOME")?);
 
 		#[cfg(windows)]
-		let mut home_dir = PathBuf::from(std::env::var("HOMEPATH")?);
+		let mut home_dir = PathBuf::from(std::env::var("USERPROFILE")?);
 
 		#[cfg(unix)]
 		home_dir.push(".config");
