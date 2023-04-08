@@ -26,10 +26,6 @@ pub struct GsiGui {
 	pub config: Config,
 	pub gsi_server_running: bool,
 
-	// #[serde(skip)]
-	// pub axum_sender: Option<UnboundedSender<server::Payload>>,
-	// #[serde(skip)]
-	// pub axum_receiver: Option<UnboundedReceiver<server::Payload>>,
 	#[serde(skip)]
 	pub gsi_handle: Option<schnose_gsi::ServerHandle>,
 	#[serde(skip)]
@@ -81,8 +77,6 @@ impl GsiGui {
 			csgo_cfg_folder,
 			config,
 			gsi_server_running: false,
-			// axum_sender: None,
-			// axum_receiver: None,
 			gsi_handle: None,
 			axum_handle: None,
 		};
@@ -199,6 +193,10 @@ impl GsiGui {
 					.color(Self::RED)
 					.heading(),
 			});
+
+			if self.gsi_server_running {
+				ui.hyperlink_to("Open Overlay", "http://localhost:9999");
+			}
 
 			ui.add_space(12.0);
 		});

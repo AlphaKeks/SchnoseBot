@@ -99,8 +99,17 @@
 		setInterval(async () => {
 
 			const gameInfo = await fetch("http://localhost:9999/gsi")
-				.then((res) => res.json())
+				.then((res) => {
+					if (res.status != 200) {
+						return null;
+					}
+					return res.json();
+				})
 				.catch(console.error);
+
+			if (!gameInfo) {
+				return;
+			}
 
 			const shouldFetchRecords = gameInfo.steam_id
 				&& gameInfo.mode

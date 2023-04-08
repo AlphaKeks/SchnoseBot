@@ -35,19 +35,14 @@ pub struct Payload {
 
 #[derive(Debug, Clone)]
 struct State {
-	current_payload: Arc<Mutex<Payload>>,
+	current_payload: Arc<Mutex<Option<Payload>>>,
 	receiver: Arc<Mutex<UnboundedReceiver<Payload>>>,
 	gokz_client: Arc<gokz_rs::Client>,
 }
 
-pub async fn run(mut receiver: UnboundedReceiver<Payload>) {
-	let initial_payload = receiver
-		.recv()
-		.await
-		.expect("Channel has been closed earlier than expected.");
-
+pub async fn run(receiver: UnboundedReceiver<Payload>) {
 	let state = State {
-		current_payload: Arc::new(Mutex::new(initial_payload)),
+		current_payload: Arc::new(Mutex::new(None)),
 		receiver: Arc::new(Mutex::new(receiver)),
 		gokz_client: Arc::new(gokz_rs::Client::new()),
 	};
@@ -84,7 +79,13 @@ async fn overlay() -> impl IntoResponse {
 
 async fn gsi(AxumState(state): AxumState<State>) -> impl IntoResponse {
 	let mut current_payload = match state.current_payload.lock() {
-		Ok(guard) => guard,
+		Ok(guard) => {
+			if guard.is_none() {
+				return (StatusCode::NO_CONTENT, Response(None));
+			}
+
+			guard
+		}
 		Err(why) => {
 			error!("Failed to acquire payload Mutex: {why:?}");
 			return (StatusCode::INTERNAL_SERVER_ERROR, Response(None));
@@ -101,12 +102,14 @@ async fn gsi(AxumState(state): AxumState<State>) -> impl IntoResponse {
 
 	let payload = match receiver.try_recv() {
 		Ok(new_payload) => {
-			*current_payload = new_payload.clone();
+			*current_payload = Some(new_payload.clone());
 			new_payload
 		}
 		Err(why) => {
 			warn!("No new data? {why:?}");
-			(*current_payload).clone()
+			(*current_payload)
+				.clone()
+				.expect("We already checked for `None` and return early in that case.")
 		}
 	};
 
