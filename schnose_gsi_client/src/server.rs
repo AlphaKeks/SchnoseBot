@@ -79,13 +79,8 @@ async fn overlay() -> impl IntoResponse {
 
 async fn gsi(AxumState(state): AxumState<State>) -> impl IntoResponse {
 	let mut current_payload = match state.current_payload.lock() {
-		Ok(guard) => {
-			if guard.is_none() {
-				return (StatusCode::NO_CONTENT, Response(None));
-			}
-
-			guard
-		}
+		Ok(guard) if guard.is_none() => return (StatusCode::NO_CONTENT, Response(None)),
+		Ok(guard) => guard,
 		Err(why) => {
 			error!("Failed to acquire payload Mutex: {why:?}");
 			return (StatusCode::INTERNAL_SERVER_ERROR, Response(None));
