@@ -441,11 +441,11 @@ impl State for Context<'_> {
 
 	async fn find_user_by_name(&self, user_name: &str) -> Result<db::User> {
 		let mut query = QueryBuilder::new(format!(
-			r#"SELECT * FROM {} WHERE name LIKE "%"#,
+			r#"SELECT * FROM {} WHERE name LIKE "#,
 			self.config().mysql_table
 		));
 
-		query.push_bind(user_name).push(r#"%""#);
+		query.push_bind(format!(r#"%{user_name}%"#));
 
 		Ok(query
 			.build_query_as::<db::UserSchema>()
