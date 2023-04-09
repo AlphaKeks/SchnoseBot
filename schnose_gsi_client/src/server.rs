@@ -42,7 +42,7 @@ struct State {
 
 pub async fn run(receiver: UnboundedReceiver<Payload>) {
 	let state = State {
-		current_payload: Arc::new(Mutex::new(None)),
+		current_payload: Default::default(),
 		receiver: Arc::new(Mutex::new(receiver)),
 		gokz_client: Arc::new(gokz_rs::Client::new()),
 	};

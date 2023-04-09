@@ -1,8 +1,9 @@
 use {
+	crate::logger::Event,
 	eframe::{
 		egui::{
 			self, style::Selection, Button, CentralPanel, FontData, FontDefinitions, RichText,
-			Style, TextEdit, TextStyle, TopBottomPanel, Ui, Visuals,
+			ScrollArea, Style, TextEdit, TextStyle, TopBottomPanel, Ui, Visuals,
 		},
 		epaint::{Color32, FontFamily, FontId},
 		HardwareAcceleration, NativeOptions, Theme,
@@ -14,10 +15,19 @@ use {
 		server,
 	},
 	serde::Serialize,
-	std::{collections::BTreeMap, fs::File},
-	tokio::{sync::mpsc, task::JoinHandle},
+	std::{collections::BTreeMap, fs::File, io::Write},
+	tokio::{
+		sync::mpsc::{self, UnboundedReceiver},
+		task::JoinHandle,
+	},
 	tracing::{error, info},
 };
+
+#[derive(Debug, Serialize, PartialEq)]
+pub enum Tab {
+	Main,
+	Logs,
+}
 
 #[derive(Debug, Serialize)]
 pub struct GsiGui {
@@ -25,6 +35,12 @@ pub struct GsiGui {
 	pub csgo_cfg_folder: String,
 	pub config: Config,
 	pub gsi_server_running: bool,
+	pub current_tab: Tab,
+
+	#[serde(skip)]
+	pub log_receiver: UnboundedReceiver<Vec<u8>>,
+	#[serde(skip)]
+	pub logs: Vec<Event>,
 
 	#[serde(skip)]
 	pub gsi_handle: Option<schnose_gsi::ServerHandle>,
@@ -33,40 +49,43 @@ pub struct GsiGui {
 }
 
 impl GsiGui {
-	const APP_NAME: &str = "schnose_gsi_client";
-	const NORMAL_FONT: &str = "Quicksand";
-	const MONOSPACE_FONT: &str = "Fira Code";
+	pub const APP_NAME: &str = "schnose_gsi_client";
+	pub const NORMAL_FONT: &str = "Quicksand";
+	pub const MONOSPACE_FONT: &str = "Fira Code";
 
-	const _ROSEWATER: Color32 = Color32::from_rgb(245, 224, 220);
-	const _FLAMINGO: Color32 = Color32::from_rgb(242, 205, 205);
-	const _PINK: Color32 = Color32::from_rgb(245, 194, 231);
-	const MAUVE: Color32 = Color32::from_rgb(203, 166, 247);
-	const RED: Color32 = Color32::from_rgb(243, 139, 168);
-	const _MAROON: Color32 = Color32::from_rgb(235, 160, 172);
-	const PEACH: Color32 = Color32::from_rgb(250, 179, 135);
-	const _YELLOW: Color32 = Color32::from_rgb(249, 226, 175);
-	const GREEN: Color32 = Color32::from_rgb(166, 227, 161);
-	const _TEAL: Color32 = Color32::from_rgb(148, 226, 213);
-	const _SKY: Color32 = Color32::from_rgb(137, 220, 235);
-	const _SAPPHIRE: Color32 = Color32::from_rgb(116, 199, 236);
-	const _BLUE: Color32 = Color32::from_rgb(137, 180, 250);
-	const _LAVENDER: Color32 = Color32::from_rgb(180, 190, 254);
-	const TEXT: Color32 = Color32::from_rgb(205, 214, 244);
-	const _SUBTEXT1: Color32 = Color32::from_rgb(186, 194, 222);
-	const _SUBTEXT0: Color32 = Color32::from_rgb(166, 173, 200);
-	const _OVERLAY2: Color32 = Color32::from_rgb(147, 153, 178);
-	const _OVERLAY1: Color32 = Color32::from_rgb(127, 132, 156);
-	const _OVERLAY0: Color32 = Color32::from_rgb(108, 112, 134);
-	const SURFACE2: Color32 = Color32::from_rgb(88, 91, 112);
-	const _SURFACE1: Color32 = Color32::from_rgb(69, 71, 90);
-	const _SURFACE0: Color32 = Color32::from_rgb(49, 50, 68);
-	const BASE: Color32 = Color32::from_rgb(30, 30, 46);
-	const MANTLE: Color32 = Color32::from_rgb(24, 24, 37);
-	const CRUST: Color32 = Color32::from_rgb(17, 17, 27);
-	const POGGERS: Color32 = Color32::from_rgb(116, 128, 194);
+	pub const _ROSEWATER: Color32 = Color32::from_rgb(245, 224, 220);
+	pub const _FLAMINGO: Color32 = Color32::from_rgb(242, 205, 205);
+	pub const _PINK: Color32 = Color32::from_rgb(245, 194, 231);
+	pub const MAUVE: Color32 = Color32::from_rgb(203, 166, 247);
+	pub const RED: Color32 = Color32::from_rgb(243, 139, 168);
+	pub const _MAROON: Color32 = Color32::from_rgb(235, 160, 172);
+	pub const PEACH: Color32 = Color32::from_rgb(250, 179, 135);
+	pub const YELLOW: Color32 = Color32::from_rgb(249, 226, 175);
+	pub const GREEN: Color32 = Color32::from_rgb(166, 227, 161);
+	pub const TEAL: Color32 = Color32::from_rgb(148, 226, 213);
+	pub const _SKY: Color32 = Color32::from_rgb(137, 220, 235);
+	pub const _SAPPHIRE: Color32 = Color32::from_rgb(116, 199, 236);
+	pub const BLUE: Color32 = Color32::from_rgb(137, 180, 250);
+	pub const LAVENDER: Color32 = Color32::from_rgb(180, 190, 254);
+	pub const TEXT: Color32 = Color32::from_rgb(205, 214, 244);
+	pub const _SUBTEXT1: Color32 = Color32::from_rgb(186, 194, 222);
+	pub const _SUBTEXT0: Color32 = Color32::from_rgb(166, 173, 200);
+	pub const _OVERLAY2: Color32 = Color32::from_rgb(147, 153, 178);
+	pub const _OVERLAY1: Color32 = Color32::from_rgb(127, 132, 156);
+	pub const _OVERLAY0: Color32 = Color32::from_rgb(108, 112, 134);
+	pub const SURFACE2: Color32 = Color32::from_rgb(88, 91, 112);
+	pub const _SURFACE1: Color32 = Color32::from_rgb(69, 71, 90);
+	pub const _SURFACE0: Color32 = Color32::from_rgb(49, 50, 68);
+	pub const BASE: Color32 = Color32::from_rgb(30, 30, 46);
+	pub const MANTLE: Color32 = Color32::from_rgb(24, 24, 37);
+	pub const CRUST: Color32 = Color32::from_rgb(17, 17, 27);
+	pub const POGGERS: Color32 = Color32::from_rgb(116, 128, 194);
 
 	#[tracing::instrument]
-	pub async fn init(config: Config) -> eframe::Result<()> {
+	pub async fn init(
+		config: Config,
+		log_receiver: UnboundedReceiver<Vec<u8>>,
+	) -> eframe::Result<()> {
 		let csgo_cfg_folder = config
 			.csgo_cfg_path
 			.display()
@@ -76,6 +95,9 @@ impl GsiGui {
 			csgo_report: None,
 			csgo_cfg_folder,
 			config,
+			current_tab: Tab::Main,
+			log_receiver,
+			logs: Vec::new(),
 			gsi_server_running: false,
 			gsi_handle: None,
 			axum_handle: None,
@@ -288,20 +310,68 @@ impl GsiGui {
 
 impl eframe::App for GsiGui {
 	fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+		let new_logs = self
+			.log_receiver
+			.try_recv()
+			.unwrap_or_default();
+
+		self.logs.extend(
+			String::from_utf8_lossy(&new_logs)
+				.lines()
+				.filter_map(|line| serde_json::from_str::<Event>(line).ok()),
+		);
+
+		if std::mem::size_of_val(&self.logs) > 1_000_000 {
+			let mid = self.logs.len() / 2;
+			self.logs.drain(0..mid);
+		}
+
 		TopBottomPanel::top("heading-panel").show(ctx, |ui| {
+			ui.horizontal(|ui| {
+				ui.selectable_value(&mut self.current_tab, Tab::Main, "Main");
+				ui.selectable_value(&mut self.current_tab, Tab::Logs, "Logs");
+			});
 			self.render_heading(ui);
 		});
 
 		CentralPanel::default().show(ctx, |ui| {
-			self.render_cfg_path_prompt(ui);
-			self.render_api_key_prompt(ui);
-			self.render_run_button(ui);
+			match self.current_tab {
+				Tab::Main => {
+					self.render_cfg_path_prompt(ui);
+					self.render_api_key_prompt(ui);
+					self.render_run_button(ui);
+				}
+				Tab::Logs => {
+					ScrollArea::new([false, true])
+						.stick_to_bottom(true)
+						.show(ui, |ui| {
+							for event in &self.logs {
+								event.render(ui);
+							}
+
+							if ui.small_button("Export logs").clicked() {
+								if let Some(file_path) = FileDialog::new().save_file() {
+									let mut file = match File::create(file_path) {
+										Ok(file) => file,
+										Err(why) => return error!("Failed to open file: {why:?}"),
+									};
+
+									let Ok(json) = serde_json::to_vec(&self.logs) else {
+										return error!("Failed to convert logs to JSON.");
+									};
+
+									if let Err(why) = file.write_all(&json) {
+										error!("Failed to save logs to file: {why:?}");
+									}
+								}
+							}
+						});
+				}
+			};
 		});
 	}
 
 	fn save(&mut self, _storage: &mut dyn eframe::Storage) {
-		use std::io::Write;
-
 		let Ok(config_path) = Config::get_path() else {
 			return error!("Failed to locate config file.");
 		};
