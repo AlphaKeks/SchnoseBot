@@ -1,5 +1,6 @@
 use {
 	crate::logger::Event,
+	chrono::Utc,
 	eframe::{
 		egui::{
 			self, style::Selection, Button, CentralPanel, FontData, FontDefinitions, RichText,
@@ -306,6 +307,63 @@ impl GsiGui {
 			};
 		});
 	}
+
+	pub fn render_main(&mut self, ui: &mut Ui) {
+		self.render_cfg_path_prompt(ui);
+		self.render_api_key_prompt(ui);
+		self.render_run_button(ui);
+	}
+
+	pub fn render_logs(&mut self, ui: &mut Ui) {
+		if ui.button("Save logs").clicked() {
+			let date = Utc::now();
+			let file_name = format!("{}-schnose-gsi.log", date.format("%Y%m%d%H%M%S"));
+
+			if let Some(log_path) = rfd::FileDialog::new()
+				.set_file_name(&file_name)
+				.save_file()
+			{
+				match File::create(&log_path) {
+					Ok(mut file) => {
+						match serde_json::to_vec(&self.logs) {
+							Ok(json) => {
+								match file.write_all(&json) {
+									Ok(()) => {
+										info!("Wrote config file to `{}`.", log_path.display())
+									}
+									Err(why) => error!(
+										"Failed to save logs to `{}`. {:?}",
+										log_path.display(),
+										why
+									),
+								};
+							}
+							Err(why) => error!("Failed to convert logs to json: {why:?}"),
+						};
+					}
+					Err(why) => error!("Failed to save logs: {why:?}"),
+				};
+			}
+		}
+
+		ui.add_space(4.0);
+		ui.separator();
+		ui.add_space(4.0);
+
+		ScrollArea::new([true; 2])
+			.auto_shrink([false; 2])
+			.stick_to_bottom(true)
+			.show_rows(ui, 12.0, self.logs.len(), |ui, range| {
+				for event in self
+					.logs
+					.iter()
+					.skip(range.start)
+					.take(range.len())
+				{
+					event.render(ui);
+				}
+			});
+	}
 }
 
 impl eframe::App for GsiGui {
@@ -336,37 +394,8 @@ impl eframe::App for GsiGui {
 
 		CentralPanel::default().show(ctx, |ui| {
 			match self.current_tab {
-				Tab::Main => {
-					self.render_cfg_path_prompt(ui);
-					self.render_api_key_prompt(ui);
-					self.render_run_button(ui);
-				}
-				Tab::Logs => {
-					ScrollArea::new([false, true])
-						.stick_to_bottom(true)
-						.show(ui, |ui| {
-							for event in &self.logs {
-								event.render(ui);
-							}
-
-							if ui.small_button("Export logs").clicked() {
-								if let Some(file_path) = FileDialog::new().save_file() {
-									let mut file = match File::create(file_path) {
-										Ok(file) => file,
-										Err(why) => return error!("Failed to open file: {why:?}"),
-									};
-
-									let Ok(json) = serde_json::to_vec(&self.logs) else {
-										return error!("Failed to convert logs to JSON.");
-									};
-
-									if let Err(why) = file.write_all(&json) {
-										error!("Failed to save logs to file: {why:?}");
-									}
-								}
-							}
-						});
-				}
+				Tab::Main => self.render_main(ui),
+				Tab::Logs => self.render_logs(ui),
 			};
 		});
 	}

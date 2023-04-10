@@ -54,52 +54,55 @@ pub struct Event {
 	pub body: serde_json::Value,
 }
 
-impl std::fmt::Display for Event {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl Event {
+	pub fn render(&self, ui: &mut Ui) {
+		let Ok(message) = serde_json::to_string_pretty(&self.body["fields"]["message"]) else {
+			return;
+		};
+
+		let message = RichText::new(message)
+			.color(GsiGui::LAVENDER)
+			.monospace();
+
 		let (date, time) = self
 			.timestamp
 			.split_once('T')
-			.ok_or(std::fmt::Error::default())?;
-
-		let (time, _) = time
-			.split_once('.')
-			.ok_or(std::fmt::Error::default())?;
-
-		let timestamp = format!("[{date} | {time}]");
-
-		f.write_fmt(format_args!(
-			"({}) {} @ {}:{} | {:?}",
-			self.level, timestamp, self.filename, self.line_number, self.body
-		))
-	}
-}
-
-impl Event {
-	pub fn render(&self, ui: &mut Ui) {
-		let event = self.to_string();
-
-		let (level, event) = event
-			.split_once(' ')
 			.unwrap_or_default();
+		let (time, _) = time.split_once('.').unwrap_or_default();
+		let timestamp = format!("{} {}", date.replace('-', "/"), time);
 
-		let level = match level {
-			"(TRACE)" => RichText::new("(TRACE) ").color(GsiGui::TEAL),
-			"(DEBUG)" => RichText::new("(DEBUG) ").color(GsiGui::BLUE),
-			"(INFO)" => RichText::new("(INFO) ").color(GsiGui::GREEN),
-			"(WARN)" => RichText::new("(WARN) ").color(GsiGui::YELLOW),
-			"(ERROR)" => RichText::new("(ERROR) ").color(GsiGui::RED),
-			level => RichText::new(format!("({level}) ")).color(GsiGui::MAUVE),
-		};
+		let timestamp = RichText::new(timestamp)
+			.color(GsiGui::POGGERS)
+			.monospace();
 
-		let (meta, body) = event
-			.rsplit_once('|')
-			.unwrap_or_default();
+		let level = match self.level.as_str() {
+			"TRACE" => RichText::new("[TRACE]").color(GsiGui::TEAL),
+			"DEBUG" => RichText::new("[DEBUG]").color(GsiGui::BLUE),
+			"INFO" => RichText::new("[INFO] ").color(GsiGui::GREEN),
+			"WARN" => RichText::new("[WARN] ").color(GsiGui::YELLOW),
+			"ERROR" => RichText::new("[ERROR]").color(GsiGui::RED),
+			level => RichText::new(format!("[{level}]")).color(GsiGui::MAUVE),
+		}
+		.monospace();
 
-		let text = RichText::new(format!("{meta}\n\t{body}")).color(GsiGui::LAVENDER);
+		ui.horizontal_top(|ui| {
+			ui.add_space(4.0);
+			ui.label(timestamp);
+			ui.add_space(4.0);
+			ui.separator();
 
-		ui.horizontal_wrapped(|ui| {
-			ui.label(level);
-			ui.label(text);
+			ui.horizontal(|ui| {
+				ui.set_min_width(40.0);
+
+				ui.add_space(4.0);
+				ui.label(level);
+				ui.add_space(4.0);
+				ui.separator();
+			});
+
+			ui.add_space(4.0);
+			ui.label(message);
+			ui.add_space(4.0);
 		});
 	}
 }
