@@ -1,107 +1,109 @@
 use {
-	crate::gui::GsiGui,
-	eframe::egui::{RichText, Ui},
-	serde::{Deserialize, Serialize},
-	std::{io, ops::Deref},
-	tokio::sync::mpsc::UnboundedSender,
-	tracing::{debug, error},
+	crate::gui::colors,
+	eframe::egui::RichText,
+	serde_json::Value as JsonValue,
+	std::ops::Deref,
+	tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender},
+	tracing::error,
 };
 
 #[derive(Debug)]
-pub struct Logger {
+pub struct LogSender {
 	sender: UnboundedSender<Vec<u8>>,
 }
 
-impl Logger {
-	pub fn new(sender: UnboundedSender<Vec<u8>>) -> Self {
-		Self { sender }
+#[derive(Debug)]
+pub struct LogReceiver {
+	receiver: UnboundedReceiver<Vec<u8>>,
+	buffer: Vec<u8>,
+}
+
+#[tracing::instrument]
+pub fn new() -> (LogSender, LogReceiver) {
+	let (sender, receiver) = mpsc::unbounded_channel();
+	(LogSender { sender }, LogReceiver { receiver, buffer: Vec::new() })
+}
+
+pub struct Log {
+	pub message: RichText,
+	pub timestamp: RichText,
+	pub level: RichText,
+}
+
+impl LogReceiver {
+	/// Get a copy of the current buffer's contents.
+	pub fn current(&mut self) -> Vec<u8> {
+		if let Ok(new_logs) = self.receiver.try_recv() {
+			self.buffer.extend(new_logs);
+
+			// Just to make sure we don't grow to infinity and beyond.
+			self.buffer.truncate(1024 * 1_000_000);
+		}
+
+		self.buffer.clone()
+	}
+
+	/// Takes in a bunch of logs, returning a bunch of nicely formatted logs.
+	pub fn formatted(logs: &[u8]) -> Vec<Log> {
+		String::from_utf8_lossy(&logs)
+			.lines()
+			.into_iter()
+			.flat_map(|log_line| serde_json::from_str::<JsonValue>(log_line))
+			.filter_map(|json| {
+				let message = json
+					.get("fields")?
+					.get("message")?
+					.as_str()?;
+				let message = RichText::new(message)
+					.color(colors::LAVENDER)
+					.monospace();
+
+				let (date, time) = json
+					.get("timestamp")?
+					.as_str()?
+					.split_once('T')?;
+				let (time, _) = time.split_once('.')?;
+				let timestamp = RichText::new(format!("{} {}", date.replace('-', "/"), time))
+					.color(colors::POGGERS)
+					.monospace();
+
+				let level = match json.get("level")?.as_str()? {
+					"TRACE" => RichText::new("[TRACE]").color(colors::TEAL),
+					"DEBUG" => RichText::new("[DEBUG]").color(colors::BLUE),
+					"INFO" => RichText::new("[INFO] ").color(colors::GREEN),
+					"WARN" => RichText::new("[WARN] ").color(colors::YELLOW),
+					"ERROR" => RichText::new("[ERROR]").color(colors::RED),
+					level => RichText::new(format!("[{level}]")).color(colors::MAUVE),
+				}
+				.monospace();
+
+				Some(Log { message, timestamp, level })
+			})
+			.collect()
 	}
 }
 
-impl Deref for Logger {
-	type Target = UnboundedSender<Vec<u8>>;
+impl Deref for LogReceiver {
+	type Target = Vec<u8>;
 
 	fn deref(&self) -> &Self::Target {
-		&self.sender
+		&self.buffer
 	}
 }
 
-impl io::Write for &Logger {
-	fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-		if let Err(why) = self.send(Vec::from(buf)) {
-			error!("Failed to send log information: {why:?}");
-			return Err(io::Error::new(
-				io::ErrorKind::Other,
-				"Failed to send log data through channel.",
-			));
+impl std::io::Write for &LogSender {
+	fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+		match self.sender.send(Vec::from(buf)) {
+			Ok(()) => Ok(buf.len()),
+			Err(why) => {
+				let message = format!("Failed to send new logs: {why:?}");
+				error!(message);
+				Err(std::io::Error::new(std::io::ErrorKind::Other, message))
+			}
 		}
-
-		Ok(buf.len())
 	}
 
-	fn flush(&mut self) -> io::Result<()> {
+	fn flush(&mut self) -> std::io::Result<()> {
 		Ok(())
-	}
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Event {
-	pub timestamp: String,
-	pub level: String,
-	pub filename: String,
-	pub line_number: usize,
-	#[serde(flatten)]
-	pub body: serde_json::Value,
-}
-
-impl Event {
-	pub fn render(&self, ui: &mut Ui) {
-		let Ok(message) = serde_json::to_string_pretty(&self.body["fields"]["message"]) else {
-			debug!("no message");
-			return;
-		};
-
-		let message = RichText::new(message)
-			.color(GsiGui::LAVENDER)
-			.monospace();
-
-		let (date, time) = self
-			.timestamp
-			.split_once('T')
-			.unwrap_or_default();
-		let (time, _) = time.split_once('.').unwrap_or_default();
-		let timestamp = format!("{} {}", date.replace('-', "/"), time);
-
-		let timestamp = RichText::new(timestamp)
-			.color(GsiGui::POGGERS)
-			.monospace();
-
-		let level = match self.level.as_str() {
-			"TRACE" => RichText::new("[TRACE]").color(GsiGui::TEAL),
-			"DEBUG" => RichText::new("[DEBUG]").color(GsiGui::BLUE),
-			"INFO" => RichText::new("[INFO] ").color(GsiGui::GREEN),
-			"WARN" => RichText::new("[WARN] ").color(GsiGui::YELLOW),
-			"ERROR" => RichText::new("[ERROR]").color(GsiGui::RED),
-			level => RichText::new(format!("[{level}]")).color(GsiGui::MAUVE),
-		}
-		.monospace();
-
-		ui.horizontal_top(|ui| {
-			ui.add_space(4.0);
-			ui.label(timestamp);
-			ui.add_space(4.0);
-			ui.separator();
-
-			ui.horizontal(|ui| {
-				ui.add_space(4.0);
-				ui.label(level);
-				ui.add_space(4.0);
-				ui.separator();
-			});
-
-			ui.add_space(4.0);
-			ui.label(message);
-			ui.add_space(4.0);
-		});
 	}
 }

@@ -1,5 +1,5 @@
 use {
-	color_eyre::{eyre::eyre, Result},
+	color_eyre::{eyre::bail as yeet, Result},
 	serde::{Deserialize, Serialize},
 	std::{fs::File, path::PathBuf},
 };
@@ -14,25 +14,24 @@ pub struct Config {
 impl Config {
 	#[tracing::instrument]
 	pub fn get_path() -> Result<PathBuf> {
+		// Try to follow XDG standard, but fall back to `/home/user/.config` if the user's system
+		// doesn't follow XDG. `XDG_CONFIG_HOME` will usually be just `/home/user/.config`, but it
+		// _migt_ be different.
 		#[cfg(unix)]
-		let mut home_dir = PathBuf::from(std::env::var("HOME")?);
+		let mut config_dir = match std::env::var("XDG_CONFIG_HOME") {
+			Ok(dir) => PathBuf::from(dir),
+			Err(_) => {
+				let mut home_dir = PathBuf::from(std::env::var("HOME")?);
+				home_dir.push(".config");
+				home_dir
+			}
+		};
 
 		#[cfg(windows)]
-		let mut home_dir = PathBuf::from(std::env::var("USERPROFILE")?);
-
-		#[cfg(unix)]
-		home_dir.push(".config");
-
-		#[cfg(windows)]
-		{
-			home_dir.push("AppData");
-			home_dir.push("Roaming");
-		}
-
-		let mut config_dir = home_dir;
+		let mut home_dir = PathBuf::from(std::env::var("APPDATA")?);
 
 		if !config_dir.exists() {
-			return Err(eyre!("Config directory ({}) does not exist!", config_dir.display()));
+			yeet!("Config directory ({}) does not exist!", config_dir.display());
 		}
 
 		config_dir.push("schnose_gsi_client");
@@ -64,7 +63,7 @@ impl Config {
 				.write(true)
 				.open(config_file)?,
 			Err(err) => {
-				return Err(eyre!("Error opening config file: {err:?}"));
+				yeet!("Error opening config file: {err:?}");
 			}
 		};
 
