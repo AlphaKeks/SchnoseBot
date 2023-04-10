@@ -13,7 +13,7 @@ use {
 		sync::{Arc, Mutex},
 	},
 	tokio::sync::mpsc::UnboundedReceiver,
-	tracing::{error, warn},
+	tracing::error,
 };
 
 fn ser_mode<S>(mode: &Option<Mode>, serializer: S) -> Result<S::Ok, S::Error>
@@ -79,7 +79,6 @@ async fn overlay() -> impl IntoResponse {
 
 async fn gsi(AxumState(state): AxumState<State>) -> impl IntoResponse {
 	let mut current_payload = match state.current_payload.lock() {
-		Ok(guard) if guard.is_none() => return (StatusCode::NO_CONTENT, Response(None)),
 		Ok(guard) => guard,
 		Err(why) => {
 			error!("Failed to acquire payload Mutex: {why:?}");
@@ -100,12 +99,10 @@ async fn gsi(AxumState(state): AxumState<State>) -> impl IntoResponse {
 			*current_payload = Some(new_payload.clone());
 			new_payload
 		}
-		Err(why) => {
-			warn!("No new data? {why:?}");
-			(*current_payload)
-				.clone()
-				.expect("We already checked for `None` and return early in that case.")
-		}
+		Err(_) => match &*current_payload {
+			None => return (StatusCode::NO_CONTENT, Response(None)),
+			Some(payload) => payload.clone(),
+		},
 	};
 
 	(StatusCode::OK, Response(Some(payload)))
