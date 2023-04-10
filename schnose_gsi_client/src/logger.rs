@@ -4,7 +4,7 @@ use {
 	serde::{Deserialize, Serialize},
 	std::{io, ops::Deref},
 	tokio::sync::mpsc::UnboundedSender,
-	tracing::error,
+	tracing::{debug, error},
 };
 
 #[derive(Debug)]
@@ -57,6 +57,7 @@ pub struct Event {
 impl Event {
 	pub fn render(&self, ui: &mut Ui) {
 		let Ok(message) = serde_json::to_string_pretty(&self.body["fields"]["message"]) else {
+			debug!("no message");
 			return;
 		};
 
@@ -92,8 +93,6 @@ impl Event {
 			ui.separator();
 
 			ui.horizontal(|ui| {
-				ui.set_min_width(40.0);
-
 				ui.add_space(4.0);
 				ui.label(level);
 				ui.add_space(4.0);

@@ -353,15 +353,13 @@ impl GsiGui {
 		ScrollArea::new([true; 2])
 			.auto_shrink([false; 2])
 			.stick_to_bottom(true)
+			.always_show_scroll(true)
 			.show_rows(ui, 12.0, self.logs.len(), |ui, range| {
-				for event in self
-					.logs
+				self.logs
 					.iter()
 					.skip(range.start)
 					.take(range.len())
-				{
-					event.render(ui);
-				}
+					.for_each(|event| event.render(ui));
 			});
 	}
 }
