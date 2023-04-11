@@ -28,7 +28,7 @@ impl Config {
 		};
 
 		#[cfg(windows)]
-		let mut home_dir = PathBuf::from(std::env::var("APPDATA")?);
+		let mut config_dir = PathBuf::from(std::env::var("APPDATA")?);
 
 		if !config_dir.exists() {
 			yeet!("Config directory ({}) does not exist!", config_dir.display());
